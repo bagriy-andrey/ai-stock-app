@@ -1,0 +1,13 @@
+{
+  "name": "@ai-stock-advisor/shared",
+  "version": "0.1.0",
+  "private": true,
+  "types": "./src/index.ts",
+  "scripts": {
+    "type-check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0"
+  }
+}
+
