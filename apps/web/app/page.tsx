@@ -1,8 +1,8 @@
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type { MockStockQuote } from "@ai-stock-advisor/shared";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
 import { Dashboard } from "./Dashboard";
 
-const mockQuotes: StockQuote[] = [
+const mockQuotes: MockStockQuote[] = [
   {
     symbol: "AAPL",
     companyName: "Apple Inc.",

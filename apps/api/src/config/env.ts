@@ -2,12 +2,14 @@ interface RequiredEnv {
   MONGODB_URI: string;
   GOOGLE_CLIENT_ID: string;
   JWT_SECRET: string;
+  FINNHUB_API_KEY: string;
 }
 
 const requiredKeys = [
   "MONGODB_URI",
   "GOOGLE_CLIENT_ID",
   "JWT_SECRET",
+  "FINNHUB_API_KEY",
 ] as const;
 
 export function validateEnv(env: NodeJS.ProcessEnv): RequiredEnv {
@@ -20,8 +22,9 @@ export function validateEnv(env: NodeJS.ProcessEnv): RequiredEnv {
   const mongodbUri = env.MONGODB_URI;
   const googleClientId = env.GOOGLE_CLIENT_ID;
   const jwtSecret = env.JWT_SECRET;
+  const finnhubApiKey = env.FINNHUB_API_KEY;
 
-  if (!mongodbUri || !googleClientId || !jwtSecret) {
+  if (!mongodbUri || !googleClientId || !jwtSecret || !finnhubApiKey) {
     throw new Error("Required environment validation failed");
   }
 
@@ -29,6 +32,7 @@ export function validateEnv(env: NodeJS.ProcessEnv): RequiredEnv {
     MONGODB_URI: mongodbUri,
     GOOGLE_CLIENT_ID: googleClientId,
     JWT_SECRET: jwtSecret,
+    FINNHUB_API_KEY: finnhubApiKey,
   };
 }
 

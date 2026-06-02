@@ -2,15 +2,16 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The initial scaffold uses mock market data only. Google authentication is wired
-for the web app and NestJS API, with users stored in MongoDB.
+The dashboard retains scaffold mock quotes, while the watchlist uses live
+Finnhub market data. Google authentication is wired for the web app and NestJS
+API, with users stored in MongoDB.
 
 ## Repository Layout
 
 ```text
 apps/
   web/                    # Next.js app and mock web endpoint
-  api/                    # NestJS API and mock stock endpoints
+  api/                    # NestJS API, watchlist, and Finnhub market data
 packages/
   shared/                 # Shared TypeScript request and response types
 services/
@@ -57,6 +58,7 @@ NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.
 PORT=3001
 MONGODB_URI=mongodb://localhost:27017/ai-stock-advisor
 REDIS_URL=redis://localhost:6379
+FINNHUB_API_KEY=your_finnhub_api_key
 TRADING_AGENT_URL=http://localhost:8000
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
@@ -121,6 +123,10 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
+| API | `GET` | `http://localhost:3001/market-data/search?query=apple` | Search Finnhub symbols |
+| API | `GET` | `http://localhost:3001/market-data/quote/AAPL` | Return one live Finnhub quote |
+| API | `POST` | `http://localhost:3001/market-data/quotes` | Return live Finnhub quotes for `{ "tickers": ["AAPL"] }` |
+| API | `GET` | `http://localhost:3001/market-data/company/AAPL` | Return a Finnhub company profile |
 | API | `GET` | `http://localhost:3001/stocks/mock` | Mock stock watchlist |
 | API | `GET` | `http://localhost:3001/stocks/mock/AAPL` | Mock quote by symbol |
 | Trading agent | `GET` | `http://localhost:8000/health` | FastAPI health check |
@@ -224,19 +230,38 @@ Local browser check:
 
 1. Sign in through `http://localhost:3000/login`.
 2. Open `http://localhost:3000/watchlist` from the dashboard navigation.
-3. Add a ticker such as `aapl`. It should be displayed as `AAPL`.
-4. Refresh the page. The ticker should remain in the list.
-5. Try to add `AAPL` again. The page should show a duplicate-ticker error.
-6. Remove the ticker. It should disappear from the persistent list.
+3. Search for `apple` or `AAPL`, then select Apple from the autocomplete list.
+4. Add the selected stock. Its company name and current market price should be displayed.
+5. Refresh the page. The ticker should remain in the list with its latest quote.
+6. Try to add `AAPL` again. The page should show a duplicate-ticker error.
+7. Remove the ticker. It should disappear from the persistent list.
+
+## Market Data
+
+`MarketDataModule` exposes Finnhub behind a provider-neutral
+`MarketDataProvider` interface. The current implementation uses an in-memory
+TTL cache because Redis application wiring has not been added yet:
+
+| Data | Cache TTL |
+| --- | --- |
+| Quotes | 2 minutes |
+| Company profiles | 24 hours |
+| Symbol searches | 1 hour |
+
+The cache is process-local and resets when the API restarts. Replace it with a
+Redis-backed implementation when BullMQ or shared Redis integration is added.
+Finnhub requests time out after 5 seconds and API failures return a
+user-friendly error without exposing provider details.
 
 ## Environment Variables
 
 The scaffold includes sanitized `.env.example` files. Required API variables
-include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, and `JWT_SECRET`. `JWT_EXPIRES_IN`
-defaults to `7d` when omitted. The web app requires
+include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
+`JWT_EXPIRES_IN` defaults to `7d` when omitted. The web app requires
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_API_URL`. Telegram and Redis
-configuration remains reserved for later integrations. Never commit real tokens
-or credentials.
+configuration remains reserved for later integrations. Create a Finnhub API key
+at `https://finnhub.io/` and keep it only in `apps/api/.env`. Never commit real
+tokens or credentials.
 
 Local `.env` files are ignored by git. Before committing, verify that secrets
 are not staged:

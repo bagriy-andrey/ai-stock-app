@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type { MockStockQuote } from "@ai-stock-advisor/shared";
 
-const mockQuotes: StockQuote[] = [
+const mockQuotes: MockStockQuote[] = [
   {
     symbol: "AAPL",
     companyName: "Apple Inc.",
@@ -26,11 +26,11 @@ const mockQuotes: StockQuote[] = [
 
 @Injectable()
 export class StocksService {
-  getMockQuotes(): StockQuote[] {
+  getMockQuotes(): MockStockQuote[] {
     return mockQuotes;
   }
 
-  getMockQuote(symbol: string): StockQuote {
+  getMockQuote(symbol: string): MockStockQuote {
     const quote = mockQuotes.find(
       (candidate) => candidate.symbol === symbol.toUpperCase(),
     );
@@ -42,4 +42,3 @@ export class StocksService {
     return quote;
   }
 }
-

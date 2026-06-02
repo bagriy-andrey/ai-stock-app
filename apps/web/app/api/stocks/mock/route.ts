@@ -1,7 +1,7 @@
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type { MockStockQuote } from "@ai-stock-advisor/shared";
 import { NextResponse } from "next/server";
 
-const mockQuotes: StockQuote[] = [
+const mockQuotes: MockStockQuote[] = [
   {
     symbol: "AAPL",
     companyName: "Apple Inc.",
@@ -27,4 +27,3 @@ const mockQuotes: StockQuote[] = [
 export function GET() {
   return NextResponse.json(mockQuotes);
 }
-

@@ -194,9 +194,59 @@ footer {
 
 .watchlist-form {
   display: grid;
-  grid-template-columns: minmax(120px, 1fr) minmax(180px, 3fr) auto;
+  grid-template-columns: minmax(240px, 1fr) auto;
   gap: 12px;
   align-items: end;
+}
+
+.stock-search {
+  position: relative;
+  display: grid;
+  gap: 8px;
+}
+
+.search-status,
+.search-results {
+  margin: 0;
+}
+
+.search-results {
+  position: absolute;
+  z-index: 1;
+  top: calc(100% + 4px);
+  width: 100%;
+  padding: 0;
+  border: 1px solid #3b526f;
+  border-radius: 8px;
+  background: #172235;
+  list-style: none;
+  overflow: hidden;
+}
+
+.search-results button {
+  display: grid;
+  width: 100%;
+  height: auto;
+  gap: 4px;
+  border: 0;
+  border-radius: 0;
+  background: #172235;
+  color: #f8fafc;
+  padding: 12px;
+  text-align: left;
+}
+
+.search-results button:hover {
+  background: #24344d;
+}
+
+.search-results span {
+  color: #cbd5e1;
+  font-weight: 400;
+}
+
+.search-results small {
+  color: #94a3b8;
 }
 
 .watchlist-list {
@@ -205,7 +255,9 @@ footer {
 }
 
 .watchlist-item {
-  align-items: flex-start;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
 }
 
 .empty-state {

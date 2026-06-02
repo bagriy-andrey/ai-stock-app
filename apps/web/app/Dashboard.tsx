@@ -1,11 +1,11 @@
 "use client";
 
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type { MockStockQuote } from "@ai-stock-advisor/shared";
 import Link from "next/link";
 import { useAuth } from "./components/auth/AuthProvider";
 
 interface DashboardProps {
-  mockQuotes: StockQuote[];
+  mockQuotes: MockStockQuote[];
 }
 
 export function Dashboard({ mockQuotes }: DashboardProps) {
@@ -25,8 +25,8 @@ export function Dashboard({ mockQuotes }: DashboardProps) {
         <p className="eyebrow">MVP dashboard</p>
         <h1>AI Stock Advisor</h1>
         <p className="subtitle">
-          A local development shell using mock quotes. No live market data is
-          connected yet.
+          The dashboard still shows scaffold quotes. Open the watchlist to
+          search stocks and view live Finnhub market data.
         </p>
       </header>
 

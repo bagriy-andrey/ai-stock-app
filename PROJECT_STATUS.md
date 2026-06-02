@@ -118,6 +118,10 @@ Completed tasks:
 * React Query provider added for web data fetching and Watchlist cache invalidation.
 * JWT module export fixed so feature modules importing `AuthModule` can resolve `JwtService` for `JwtAuthGuard`.
 * Focused Watchlist service and DTO validation tests added.
+* Finnhub market data provider added behind a provider-neutral interface.
+* Authenticated market data search, quote, bulk quote, and company profile endpoints added.
+* In-memory TTL caching added for live quotes, symbol search, and company profiles as the Redis integration fallback.
+* Watchlist stock autocomplete and live quote display added.
 
 Technical cleanup:
 
@@ -223,7 +227,7 @@ Phase 4
 
 Phase 5
 
-* Stock Market Data Provider
+* Stock Market Data Provider ✅
 
 Phase 6
 

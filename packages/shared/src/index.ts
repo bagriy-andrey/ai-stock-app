@@ -1,4 +1,4 @@
-export interface StockQuote {
+export interface MockStockQuote {
   symbol: string;
   companyName: string;
   price: number;
@@ -7,6 +7,43 @@ export interface StockQuote {
   currency: "USD";
   asOf: string;
   source: "mock";
+}
+
+export interface StockSearchResult {
+  ticker: string;
+  name: string;
+  exchange: string;
+  type: string;
+  currency: string;
+}
+
+export interface StockQuote {
+  ticker: string;
+  currentPrice: number;
+  change: number;
+  changePercent: number;
+  previousClose: number;
+  openPrice: number;
+  highPrice: number;
+  lowPrice: number;
+  timestamp: string;
+  currency?: string;
+}
+
+export interface CompanyProfile {
+  ticker: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  country: string;
+  industry?: string;
+  logo?: string;
+  marketCapitalization?: number;
+  webUrl?: string;
+}
+
+export interface GetQuotesRequest {
+  tickers: string[];
 }
 
 export interface TradingAgentAnalysisRequest {

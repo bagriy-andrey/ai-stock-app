@@ -1,0 +1,106 @@
+import type { MarketDataProvider } from "./market-data-provider";
+import { InMemoryCacheService } from "./in-memory-cache.service";
+import { MarketDataService } from "./market-data.service";
+
+describe("MarketDataService", () => {
+  const provider = {
+    searchSymbols: jest.fn(),
+    getQuote: jest.fn(),
+    getQuotes: jest.fn(),
+    getCompanyProfile: jest.fn(),
+  } as jest.Mocked<MarketDataProvider>;
+  let service: MarketDataService;
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    service = new MarketDataService(provider, new InMemoryCacheService());
+  });
+
+  it("normalizes and caches quotes", async () => {
+    provider.getQuote.mockResolvedValue({
+      ticker: "AAPL",
+      currentPrice: 210.42,
+      change: 1.83,
+      changePercent: 0.88,
+      previousClose: 208.59,
+      openPrice: 209,
+      highPrice: 211,
+      lowPrice: 208,
+      timestamp: "2026-06-02T09:00:00.000Z",
+    });
+
+    await service.getQuote(" aapl ");
+    await service.getQuote("AAPL");
+
+    expect(provider.getQuote).toHaveBeenCalledTimes(1);
+    expect(provider.getQuote).toHaveBeenCalledWith("AAPL");
+  });
+
+  it("uses cached per-ticker quotes for bulk requests", async () => {
+    provider.getQuote.mockImplementation(async (ticker) => ({
+      ticker,
+      currentPrice: 100,
+      change: 1,
+      changePercent: 1,
+      previousClose: 99,
+      openPrice: 99,
+      highPrice: 101,
+      lowPrice: 98,
+      timestamp: "2026-06-02T09:00:00.000Z",
+    }));
+
+    await service.getQuote("AAPL");
+    await expect(service.getQuotes(["aapl", "msft"])).resolves.toHaveLength(2);
+
+    expect(provider.getQuote).toHaveBeenCalledTimes(2);
+    expect(provider.getQuote).toHaveBeenCalledWith("MSFT");
+  });
+
+  it("enriches and caches symbol searches with company profiles", async () => {
+    provider.searchSymbols.mockResolvedValue([
+      {
+        ticker: "AAPL",
+        name: "Apple Inc",
+        exchange: "",
+        currency: "",
+        type: "Common Stock",
+      },
+    ]);
+    provider.getCompanyProfile.mockResolvedValue({
+      ticker: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      country: "US",
+    });
+
+    await expect(service.searchSymbols(" Apple ")).resolves.toEqual([
+      {
+        ticker: "AAPL",
+        name: "Apple Inc.",
+        exchange: "NASDAQ NMS - GLOBAL MARKET",
+        currency: "USD",
+        type: "Common Stock",
+      },
+    ]);
+    await service.searchSymbols("apple");
+
+    expect(provider.searchSymbols).toHaveBeenCalledTimes(1);
+    expect(provider.searchSymbols).toHaveBeenCalledWith("apple");
+    expect(provider.getCompanyProfile).toHaveBeenCalledTimes(1);
+  });
+
+  it("returns base search results when profile enrichment fails", async () => {
+    const result = {
+      ticker: "AAPL",
+      name: "Apple Inc",
+      exchange: "",
+      currency: "",
+      type: "Common Stock",
+    };
+    provider.searchSymbols.mockResolvedValue([result]);
+    provider.getCompanyProfile.mockRejectedValue(new Error("provider error"));
+
+    await expect(service.searchSymbols("apple")).resolves.toEqual([result]);
+  });
+});

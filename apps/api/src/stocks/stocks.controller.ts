@@ -1,5 +1,5 @@
 import { Controller, Get, Param } from "@nestjs/common";
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type { MockStockQuote } from "@ai-stock-advisor/shared";
 import { StockSymbolDto } from "./dto/stock-symbol.dto";
 import { StocksService } from "./stocks.service";
 
@@ -8,13 +8,12 @@ export class StocksController {
   constructor(private readonly stocksService: StocksService) {}
 
   @Get("mock")
-  getMockQuotes(): StockQuote[] {
+  getMockQuotes(): MockStockQuote[] {
     return this.stocksService.getMockQuotes();
   }
 
   @Get("mock/:symbol")
-  getMockQuote(@Param() params: StockSymbolDto): StockQuote {
+  getMockQuote(@Param() params: StockSymbolDto): MockStockQuote {
     return this.stocksService.getMockQuote(params.symbol);
   }
 }
-
