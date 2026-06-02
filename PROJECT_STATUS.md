@@ -249,51 +249,44 @@ Telegram:
 * Connect Telegram account
 * Send generated reports
 
+Alerts:
+
+* Configure price alerts
+* Notify users when alert conditions are met
+
+Market Intelligence:
+
+* News feed
+* Earnings calendar
+
 ---
 
 # Planned Roadmap
 
-Phase 1
+Completed foundation:
 
 * MongoDB integration ✅
 * Initial domain models ✅
 * Health endpoint ✅
-
-Phase 2
-
 * Google Authentication ✅
-
-Phase 3
-
 * Watchlist CRUD ✅
-
-Phase 4
-
-* Portfolio CRUD
-
-Phase 5
-
 * Stock Market Data Provider ✅
 
-Phase 6
+Next TODO plan:
 
-* Telegram Integration
+* [ ] Portfolio CRUD
+* [ ] Portfolio Dashboard (P/L, Total Value)
+* [ ] Telegram Bot
+* [ ] AI Reports
+* [ ] Price Alerts
+* [ ] TradingAgents Integration
+* [ ] News Feed
+* [ ] Earnings Calendar
 
-Phase 7
+Later infrastructure work:
 
-* Scheduled Jobs (08:00 / 18:00)
-
-Phase 8
-
-* TradingAgents Integration
-
-Phase 9
-
-* AI Investment Reports
-
-Phase 10
-
-* AWS Deployment
+* [ ] Scheduled Jobs (08:00 / 18:00)
+* [ ] AWS Deployment
 
 ---
 

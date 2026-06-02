@@ -503,6 +503,19 @@ BullMQ scheduling is planned but not implemented in this initial scaffold.
 Redis is included in Docker Compose so the first scheduled-update vertical slice
 can add retryable, typed jobs without changing local infrastructure.
 
+## TODO Plan
+
+The next product work is planned in this order:
+
+- [ ] Portfolio CRUD
+- [ ] Portfolio Dashboard (P/L, Total Value)
+- [ ] Telegram Bot
+- [ ] AI Reports
+- [ ] Price Alerts
+- [ ] TradingAgents Integration
+- [ ] News Feed
+- [ ] Earnings Calendar
+
 ## Quality Commands
 
 ```bash
