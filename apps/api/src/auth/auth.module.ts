@@ -21,5 +21,6 @@ const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtAuthGuard],
+  exports: [JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}

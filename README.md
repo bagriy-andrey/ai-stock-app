@@ -118,6 +118,9 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
+| API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
+| API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
+| API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
 | API | `GET` | `http://localhost:3001/stocks/mock` | Mock stock watchlist |
 | API | `GET` | `http://localhost:3001/stocks/mock/AAPL` | Mock quote by symbol |
 | Trading agent | `GET` | `http://localhost:8000/health` | FastAPI health check |
@@ -158,6 +161,61 @@ Verify that a user was created:
 ```bash
 docker compose exec mongodb mongosh ai-stock-advisor \
   --eval 'db.users.find({}, {email: 1, name: 1, avatarUrl: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
+```
+
+## User Domain
+
+The API keeps user data in MongoDB through the NestJS `UsersModule`.
+Google authentication is the current source of user creation: `POST /auth/google`
+verifies the Google ID token, then `UsersService.findOrCreateFromGoogle`
+creates or updates a user by normalized email.
+
+User documents are stored in the `users` collection with these fields:
+
+| Field | Type | Required | Notes |
+| --- | --- | --- | --- |
+| `email` | `string` | Yes | Unique, indexed, lowercased, and trimmed. |
+| `name` | `string` | Yes | Display name from the Google profile. |
+| `avatarUrl` | `string` | No | Profile image URL from the Google profile. |
+| `telegramChatId` | `string` | No | Sparse indexed field reserved for Telegram account linking. |
+| `createdAt` | `Date` | Yes | Managed by Mongoose timestamps. |
+| `updatedAt` | `Date` | Yes | Managed by Mongoose timestamps. |
+
+`GET /users/me` is the user-domain endpoint for retrieving the authenticated
+user. It requires an `Authorization: Bearer <jwt>` header and returns the shared
+`UserDto` shape:
+
+```json
+{
+  "id": "665daec06c456275631b7af1",
+  "email": "user@example.com",
+  "name": "Example User",
+  "avatarUrl": "https://example.com/avatar.png",
+  "telegramChatId": "123456789",
+  "createdAt": "2026-06-02T09:00:00.000Z",
+  "updatedAt": "2026-06-02T09:00:00.000Z"
+}
+```
+
+`telegramChatId` and `avatarUrl` are omitted when they are not set.
+
+## Watchlist
+
+Authenticated users can manage a persistent MongoDB-backed stock watchlist from
+the web app at `http://localhost:3000/watchlist`. The page uses the stored app
+JWT and calls the API with an `Authorization: Bearer <jwt>` header.
+
+Watchlist items are stored with `userId`, uppercase `ticker`, optional
+`companyName`, `createdAt`, and `updatedAt`. Duplicate tickers are rejected per
+user, and deletes only match items owned by the authenticated user.
+
+Example add request:
+
+```bash
+curl -X POST http://localhost:3001/watchlist \
+  -H 'authorization: Bearer your_app_jwt' \
+  -H 'content-type: application/json' \
+  -d '{"ticker":"aapl"}'
 ```
 
 ## Environment Variables

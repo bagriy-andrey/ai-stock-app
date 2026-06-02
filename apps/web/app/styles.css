@@ -29,6 +29,37 @@ button:hover {
   background: #dbeafe;
 }
 
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.65;
+}
+
+a {
+  color: #7dd3fc;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+a:hover {
+  color: #bae6fd;
+}
+
+input {
+  min-height: 40px;
+  width: 100%;
+  border: 1px solid #3b526f;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #f8fafc;
+  font: inherit;
+  padding: 0 12px;
+}
+
+label {
+  color: #cbd5e1;
+  font-weight: 700;
+}
+
 main {
   max-width: 960px;
   margin: 0 auto;
@@ -80,6 +111,10 @@ p {
 
 .quote-card p {
   margin: 6px 0 0;
+}
+
+.quote-card small {
+  color: #94a3b8;
 }
 
 .quote-price {
@@ -149,15 +184,59 @@ footer {
   color: #fca5a5;
 }
 
+.watchlist-panel {
+  margin-top: 48px;
+}
+
+.watchlist-panel h2 {
+  margin-top: 0;
+}
+
+.watchlist-form {
+  display: grid;
+  grid-template-columns: minmax(120px, 1fr) minmax(180px, 3fr) auto;
+  gap: 12px;
+  align-items: end;
+}
+
+.watchlist-list {
+  display: grid;
+  gap: 16px;
+}
+
+.watchlist-item {
+  align-items: flex-start;
+}
+
+.empty-state {
+  border: 1px solid #2c3c52;
+  border-radius: 8px;
+  background: #172235;
+  padding: 24px;
+}
+
+.empty-state p {
+  margin-bottom: 0;
+}
+
 @media (max-width: 640px) {
   main {
     padding: 40px 16px;
   }
 
   .quote-card,
-  .top-nav {
+  .top-nav,
+  .watchlist-form {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .watchlist-form {
+    display: flex;
+  }
+
+  .watchlist-form button {
+    width: 100%;
   }
 
   .quote-price {

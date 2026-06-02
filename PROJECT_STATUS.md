@@ -101,11 +101,12 @@ Completed tasks:
 * Google authentication implemented.
 * Login page added.
 * Protected dashboard route added.
-* Browser session persistence added through JWT local storage and `/auth/me`.
+* Browser session persistence added through JWT local storage and `/users/me`.
 * API Google ID token validation added.
 * API JWT generation added.
-* MongoDB user creation on first login added.
-* User retrieval endpoint added.
+* MongoDB user creation/update from Google authentication added.
+* User domain added with `UsersModule`, `UsersService`, `UsersController`, and `GET /users/me`.
+* User schema added with `email`, `name`, `avatarUrl`, optional `telegramChatId`, `createdAt`, and `updatedAt`.
 
 Technical cleanup:
 

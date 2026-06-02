@@ -14,8 +14,31 @@ export async function apiRequest<T>(
   });
 
   if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
+    throw new Error(await getErrorMessage(response));
   }
 
-  return response.json() as Promise<T>;
+  if (response.status === 204) {
+    return undefined as T;
+  }
+
+  const text = await response.text();
+  return (text ? JSON.parse(text) : undefined) as T;
+}
+
+async function getErrorMessage(response: Response): Promise<string> {
+  try {
+    const body = (await response.json()) as { message?: string | string[] };
+
+    if (Array.isArray(body.message)) {
+      return body.message.join(", ");
+    }
+
+    if (body.message) {
+      return body.message;
+    }
+  } catch {
+    // Fall back to the status code when the API does not return JSON.
+  }
+
+  return `API request failed with status ${response.status}`;
 }

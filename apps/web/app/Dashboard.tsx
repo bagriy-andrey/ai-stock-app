@@ -1,6 +1,7 @@
 "use client";
 
 import type { StockQuote } from "@ai-stock-advisor/shared";
+import Link from "next/link";
 import { useAuth } from "./components/auth/AuthProvider";
 
 interface DashboardProps {
@@ -13,6 +14,7 @@ export function Dashboard({ mockQuotes }: DashboardProps) {
   return (
     <main>
       <nav className="top-nav" aria-label="User">
+        <Link href="/watchlist">Watchlist</Link>
         <span>{user?.email}</span>
         <button type="button" onClick={logout}>
           Sign out

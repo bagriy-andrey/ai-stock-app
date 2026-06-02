@@ -38,3 +38,17 @@ export interface AuthResponse {
   accessToken: string;
   user: UserDto;
 }
+
+export interface WatchlistItemDto {
+  id: string;
+  userId: string;
+  ticker: string;
+  companyName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateWatchlistItemRequest {
+  ticker: string;
+  companyName?: string;
+}
