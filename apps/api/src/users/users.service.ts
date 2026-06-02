@@ -3,6 +3,7 @@ import { InjectModel } from "@nestjs/mongoose";
 import type { UpdateProfileRequest, UserDto } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "./schemas/user.schema";
+import { normalizeProfileLanguage } from "./profile-language";
 
 export interface GoogleUserProfile {
   email: string;
@@ -122,7 +123,7 @@ export class UsersService {
       lastName: user.lastName,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
-      language: user.language ?? "en",
+      language: normalizeProfileLanguage(user.language),
       theme: user.theme,
       telegramChatId: user.telegramChatId,
       createdAt: user.createdAt.toISOString(),

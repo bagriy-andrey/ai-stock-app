@@ -1,11 +1,17 @@
 "use client";
 
-import type { StockQuote, StockSearchResult } from "@ai-stock-advisor/shared";
+import type {
+  ProfileLanguage,
+  StockQuote,
+  StockSearchResult,
+} from "@ai-stock-advisor/shared";
+import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import Link from "next/link";
 import { useAuth } from "../components/auth/AuthProvider";
+import { AppHeader } from "../components/layout/AppHeader";
+import { useI18n } from "../components/i18n/I18nProvider";
 import {
   fetchMarketQuotes,
   searchMarketSymbols,
@@ -20,7 +26,8 @@ const watchlistQueryKey = ["watchlist"] as const;
 
 export function WatchlistPage() {
   const queryClient = useQueryClient();
-  const { accessToken, user, logout } = useAuth();
+  const { accessToken } = useAuth();
+  const { language, t } = useI18n();
   const [searchInput, setSearchInput] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
     null,
@@ -88,7 +95,7 @@ export function WatchlistPage() {
     event.preventDefault();
 
     if (!selectedStock) {
-      setFormError("Search for a stock and select it from the results.");
+      setFormError(t.chooseStockError);
       return;
     }
 
@@ -97,38 +104,28 @@ export function WatchlistPage() {
 
   const errorMessage =
     formError ??
-    (addMutation.error instanceof Error ? addMutation.error.message : null) ??
-    (removeMutation.error instanceof Error ? removeMutation.error.message : null);
+    (addMutation.error instanceof Error ? t.addStockError : null) ??
+    (removeMutation.error instanceof Error ? t.removeStockError : null);
 
   return (
     <main>
-      <nav className="top-nav" aria-label="User">
-        <Link href="/">Dashboard</Link>
-        <Link href="/profile">Profile</Link>
-        <span>{user?.email}</span>
-        <button type="button" onClick={logout}>
-          Sign out
-        </button>
-      </nav>
+      <AppHeader />
 
       <header>
-        <p className="eyebrow">Watchlist</p>
-        <h1>Tracked Stocks</h1>
-        <p className="subtitle">
-          Search stocks by company name or ticker and track their latest market
-          price.
-        </p>
+        <p className="eyebrow">{t.watchlist}</p>
+        <h1>{t.trackedStocks}</h1>
+        <p className="subtitle">{t.watchlistSubtitle}</p>
       </header>
 
       <section aria-labelledby="add-ticker-heading" className="watchlist-panel">
-        <h2 id="add-ticker-heading">Add stock</h2>
+        <h2 id="add-ticker-heading">{t.addStock}</h2>
         <form className="watchlist-form" onSubmit={onSubmit}>
           <div className="stock-search">
-            <label htmlFor="stock-search">Ticker or company name</label>
+            <label htmlFor="stock-search">{t.tickerOrCompanyName}</label>
             <input
               id="stock-search"
               name="stock-search"
-              placeholder="Apple or AAPL"
+              placeholder={t.stockSearchPlaceholder}
               value={searchInput}
               onChange={(event) => {
                 setSearchInput(event.target.value);
@@ -143,6 +140,7 @@ export function WatchlistPage() {
                 error={searchQuery.error}
                 isLoading={searchQuery.isLoading}
                 results={searchQuery.data ?? []}
+                t={t}
                 onSelect={(stock) => {
                   setSelectedStock(stock);
                   setSearchInput(stock.ticker);
@@ -152,29 +150,26 @@ export function WatchlistPage() {
             ) : null}
           </div>
           <button type="submit" disabled={addMutation.isPending}>
-            {addMutation.isPending ? "Adding..." : "Add"}
+            {addMutation.isPending ? t.adding : t.add}
           </button>
         </form>
         {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
       </section>
 
       <section aria-labelledby="watchlist-heading">
-        <h2 id="watchlist-heading">Your watchlist</h2>
+        <h2 id="watchlist-heading">{t.yourWatchlist}</h2>
         {quotesQuery.error instanceof Error ? (
-          <p className="error-text">
-            Live prices are temporarily unavailable. Your saved watchlist is
-            still shown.
-          </p>
+          <p className="error-text">{t.livePricesUnavailable}</p>
         ) : null}
 
         {watchlistQuery.isLoading ? (
-          <p>Loading watchlist...</p>
+          <p>{t.loadingWatchlist}</p>
         ) : watchlistQuery.error instanceof Error ? (
-          <p className="error-text">{watchlistQuery.error.message}</p>
+          <p className="error-text">{t.watchlistLoadError}</p>
         ) : items.length === 0 ? (
           <div className="empty-state">
-            <strong>No stocks yet</strong>
-            <p>Search for a stock to start building your watchlist.</p>
+            <strong>{t.noStocksYet}</strong>
+            <p>{t.watchlistEmpty}</p>
           </div>
         ) : (
           <div className="watchlist-list">
@@ -182,11 +177,13 @@ export function WatchlistPage() {
               <article className="quote-card watchlist-item" key={item.id}>
                 <div>
                   <strong>{item.ticker}</strong>
-                  <p>{item.companyName ?? "Company name not set"}</p>
+                  <p>{item.companyName ?? t.companyNameNotSet}</p>
                 </div>
                 <QuotePrice
                   isLoading={quotesQuery.isLoading}
+                  language={language}
                   quote={quotesByTicker.get(item.ticker)}
+                  t={t}
                 />
                 <button
                   type="button"
@@ -198,8 +195,8 @@ export function WatchlistPage() {
                 >
                   {removeMutation.isPending &&
                   removeMutation.variables === item.id
-                    ? "Removing..."
-                    : "Remove"}
+                    ? t.removing
+                    : t.remove}
                 </button>
               </article>
             ))}
@@ -215,6 +212,7 @@ interface SearchResultsProps {
   isLoading: boolean;
   results: StockSearchResult[];
   onSelect: (stock: StockSearchResult) => void;
+  t: Dictionary;
 }
 
 function SearchResults({
@@ -222,31 +220,32 @@ function SearchResults({
   isLoading,
   results,
   onSelect,
+  t,
 }: SearchResultsProps) {
   if (isLoading) {
-    return <p className="search-status">Searching...</p>;
+    return <p className="search-status">{t.searching}</p>;
   }
 
   if (error) {
     return (
       <p className="search-status error-text">
-        Stock search is temporarily unavailable.
+        {t.stockSearchUnavailable}
       </p>
     );
   }
 
   if (results.length === 0) {
-    return <p className="search-status">No matching stocks found.</p>;
+    return <p className="search-status">{t.noMatchingStocks}</p>;
   }
 
   return (
-    <ul className="search-results" aria-label="Stock search results">
+    <ul className="search-results" aria-label={t.stockSearchResults}>
       {results.map((stock) => (
         <li key={`${stock.ticker}-${stock.exchange}`}>
           <button type="button" onClick={() => onSelect(stock)}>
             <strong>{stock.ticker}</strong>
             <span>{stock.name}</span>
-            <small>{stock.exchange || "Exchange unavailable"}</small>
+            <small>{stock.exchange || t.exchangeUnavailable}</small>
           </button>
         </li>
       ))}
@@ -256,21 +255,23 @@ function SearchResults({
 
 interface QuotePriceProps {
   isLoading: boolean;
+  language: ProfileLanguage;
   quote?: StockQuote;
+  t: Dictionary;
 }
 
-function QuotePrice({ isLoading, quote }: QuotePriceProps) {
+function QuotePrice({ isLoading, language, quote, t }: QuotePriceProps) {
   if (isLoading) {
-    return <div className="quote-price">Loading price...</div>;
+    return <div className="quote-price">{t.loadingPrice}</div>;
   }
 
   if (!quote) {
-    return <div className="quote-price">Price unavailable</div>;
+    return <div className="quote-price">{t.priceUnavailable}</div>;
   }
 
   return (
     <div className="quote-price">
-      <span>{formatPrice(quote.currentPrice, quote.currency)}</span>
+      <span>{formatPrice(quote.currentPrice, quote.currency, language)}</span>
       <small className={quote.change >= 0 ? "positive" : "negative"}>
         {quote.change >= 0 ? "+" : ""}
         {quote.change.toFixed(2)} ({quote.change >= 0 ? "+" : ""}
@@ -280,9 +281,13 @@ function QuotePrice({ isLoading, quote }: QuotePriceProps) {
   );
 }
 
-function formatPrice(price: number, currency = "USD"): string {
+function formatPrice(
+  price: number,
+  currency = "USD",
+  language: ProfileLanguage,
+): string {
   try {
-    return new Intl.NumberFormat("en-US", {
+    return new Intl.NumberFormat(language, {
       style: "currency",
       currency,
     }).format(price);

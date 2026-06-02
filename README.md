@@ -224,7 +224,17 @@ Optional fields are omitted when they are not set.
 
 Authenticated users can manage their profile at `http://localhost:3000/profile`.
 The page uses TanStack Query for loading and mutations, and updates the active
-theme immediately after a saved preference changes.
+theme immediately after a saved preference changes. Users can switch the
+interface between English, Russian, and Ukrainian from the header or profile
+page. Language changes are saved immediately through `PATCH /profile`, applied
+after the API confirms the update, and restored from the saved user profile
+after login. The compact authenticated header exposes flag-based language
+selection, icon-based theme selection, the profile avatar, and a burger menu
+with application navigation. Header theme changes are also persisted
+immediately through `PATCH /profile`. The MVP exposes `/dashboard` as an alias
+for the current authenticated home dashboard so the burger menu can keep
+separate Dashboard and Home page destinations while the dedicated landing page
+is still pending.
 
 For the MVP, uploaded profile photos are written to the API filesystem under
 `uploads/avatars` and served from `/uploads/avatars`. The folder is ignored by
@@ -236,9 +246,11 @@ Local browser check:
 
 1. Sign in through `http://localhost:3000/login`.
 2. Open `http://localhost:3000/profile`.
-3. Update the personal information, language, and theme, then save.
-4. Upload a profile image and refresh the page. The image and form values should persist.
-5. Delete the profile image. The fallback initials avatar should be shown.
+3. Change the language and confirm that the visible interface updates immediately.
+4. Refresh the page and confirm that the saved language remains active.
+5. Update the personal information and theme, then save.
+6. Upload a profile image and refresh the page. The image and form values should persist.
+7. Delete the profile image. The fallback initials avatar should be shown.
 
 ## Watchlist
 

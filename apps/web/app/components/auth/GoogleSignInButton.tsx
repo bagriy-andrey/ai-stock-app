@@ -4,6 +4,7 @@ import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
+import { useI18n } from "../i18n/I18nProvider";
 
 interface GoogleCredentialResponse {
   credential?: string;
@@ -39,13 +40,14 @@ export function GoogleSignInButton() {
   const buttonRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { loginWithGoogleCredential } = useAuth();
+  const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const initializeGoogleButton = () => {
     if (!clientId || !window.google || !buttonRef.current) {
-      setError("Google sign-in is not configured.");
+      setError(t.googleNotConfigured);
       return;
     }
 
@@ -53,7 +55,7 @@ export function GoogleSignInButton() {
       client_id: clientId,
       callback: (response) => {
         if (!response.credential) {
-          setError("Google did not return a sign-in credential.");
+          setError(t.googleMissingCredential);
           return;
         }
 
@@ -64,7 +66,7 @@ export function GoogleSignInButton() {
             router.replace("/");
           })
           .catch(() => {
-            setError("Google sign-in failed. Check the API configuration.");
+            setError(t.googleSignInFailed);
           })
           .finally(() => {
             setIsSubmitting(false);
@@ -88,7 +90,7 @@ export function GoogleSignInButton() {
         onLoad={initializeGoogleButton}
       />
       <div ref={buttonRef} aria-hidden={isSubmitting} />
-      {isSubmitting ? <p>Signing in...</p> : null}
+      {isSubmitting ? <p>{t.signingIn}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
     </div>
   );

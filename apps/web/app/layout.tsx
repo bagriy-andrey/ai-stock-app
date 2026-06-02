@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { AuthProvider } from "./components/auth/AuthProvider";
 import { QueryProvider } from "./components/query/QueryProvider";
+import { I18nProvider } from "./components/i18n/I18nProvider";
 import { ThemePreferenceSynchronizer } from "./components/theme/ThemePreferenceSynchronizer";
 import "./styles.css";
 
@@ -19,8 +20,10 @@ export default function RootLayout({
       <body>
         <QueryProvider>
           <AuthProvider>
-            <ThemePreferenceSynchronizer />
-            {children}
+            <I18nProvider>
+              <ThemePreferenceSynchronizer />
+              {children}
+            </I18nProvider>
           </AuthProvider>
         </QueryProvider>
       </body>

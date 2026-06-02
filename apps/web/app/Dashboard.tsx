@@ -1,38 +1,28 @@
 "use client";
 
 import type { MockStockQuote } from "@ai-stock-advisor/shared";
-import Link from "next/link";
-import { useAuth } from "./components/auth/AuthProvider";
+import { AppHeader } from "./components/layout/AppHeader";
+import { useI18n } from "./components/i18n/I18nProvider";
 
 interface DashboardProps {
   mockQuotes: MockStockQuote[];
 }
 
 export function Dashboard({ mockQuotes }: DashboardProps) {
-  const { user, logout } = useAuth();
+  const { t } = useI18n();
 
   return (
     <main>
-      <nav className="top-nav" aria-label="User">
-        <Link href="/watchlist">Watchlist</Link>
-        <Link href="/profile">Profile</Link>
-        <span>{user?.email}</span>
-        <button type="button" onClick={logout}>
-          Sign out
-        </button>
-      </nav>
+      <AppHeader />
 
       <header>
-        <p className="eyebrow">MVP dashboard</p>
+        <p className="eyebrow">{t.mvpDashboard}</p>
         <h1>AI Stock Advisor</h1>
-        <p className="subtitle">
-          The dashboard still shows scaffold quotes. Open the watchlist to
-          search stocks and view live Finnhub market data.
-        </p>
+        <p className="subtitle">{t.dashboardSubtitle}</p>
       </header>
 
       <section aria-labelledby="watchlist-heading">
-        <h2 id="watchlist-heading">Mock watchlist</h2>
+        <h2 id="watchlist-heading">{t.mockWatchlist}</h2>
         <div className="quote-grid">
           {mockQuotes.map((quote) => (
             <article className="quote-card" key={quote.symbol}>
@@ -53,7 +43,7 @@ export function Dashboard({ mockQuotes }: DashboardProps) {
       </section>
 
       <footer>
-        Next mock endpoint: <code>/api/stocks/mock</code>
+        {t.nextMockEndpoint} <code>/api/stocks/mock</code>
       </footer>
     </main>
   );

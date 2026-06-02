@@ -5,17 +5,18 @@ import Image from "next/image";
 
 interface AvatarProps {
   alt: string;
+  className?: string;
   fallback: string;
   src?: string;
 }
 
-export function Avatar({ alt, fallback, src }: AvatarProps) {
+export function Avatar({ alt, className = "", fallback, src }: AvatarProps) {
   const [hasImageError, setHasImageError] = useState(false);
 
   useEffect(() => setHasImageError(false), [src]);
 
   return (
-    <span className="ui-avatar">
+    <span className={`ui-avatar ${className}`.trim()}>
       {src && !hasImageError ? (
         <Image
           src={src}

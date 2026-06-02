@@ -10,6 +10,7 @@ import {
   useState,
 } from "react";
 import { apiRequest } from "../../lib/api";
+import { normalizeProfileLanguage } from "../../lib/profile-language";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -52,7 +53,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       },
     })
       .then((currentUser) => {
-        setUser(currentUser);
+        setUser(normalizeUser(currentUser));
         setStatus("authenticated");
       })
       .catch(() => {
@@ -68,12 +69,12 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
 
     window.localStorage.setItem(authStorageKey, response.accessToken);
     setAccessToken(response.accessToken);
-    setUser(response.user);
+    setUser(normalizeUser(response.user));
     setStatus("authenticated");
   }, []);
 
   const updateUser = useCallback((nextUser: UserDto) => {
-    setUser(nextUser);
+    setUser(normalizeUser(nextUser));
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -99,4 +100,11 @@ export function useAuth(): AuthContextValue {
   }
 
   return value;
+}
+
+function normalizeUser(user: UserDto): UserDto {
+  return {
+    ...user,
+    language: normalizeProfileLanguage(user.language),
+  };
 }

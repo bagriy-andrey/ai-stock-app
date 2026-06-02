@@ -92,6 +92,18 @@ describe("UsersService", () => {
     });
   });
 
+  it("falls back to English when a stored language is invalid", async () => {
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue({
+      ...userDocument,
+      language: "de",
+    } as unknown as UserDocument);
+    userModel.findById.mockReturnValue({ exec });
+
+    await expect(service.findById(userId.toString())).resolves.toMatchObject({
+      language: "en",
+    });
+  });
+
   it("rejects invalid user ids", async () => {
     await expect(service.findById("not-an-object-id")).rejects.toThrow(
       NotFoundException,
