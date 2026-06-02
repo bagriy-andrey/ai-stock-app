@@ -508,13 +508,17 @@ can add retryable, typed jobs without changing local infrastructure.
 The next product work is planned in this order:
 
 - [ ] Portfolio CRUD
-- [ ] Portfolio Dashboard (P/L, Total Value)
+- [ ] Portfolio P/L calculation
+- [ ] Portfolio Dashboard
+- [ ] Stock Details Page
+- [ ] Improve Search
+- [ ] AI Stock Report
+- [ ] News + AI Summary
 - [ ] Telegram Bot
-- [ ] AI Reports
 - [ ] Price Alerts
-- [ ] TradingAgents Integration
-- [ ] News Feed
-- [ ] Earnings Calendar
+- [ ] CSV Import
+- [ ] Revolut / IBKR sync
+- [ ] Email/password + 2FA
 
 ## Quality Commands
 

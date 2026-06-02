@@ -228,7 +228,8 @@ Portfolio:
 * Add position
 * Edit position
 * Remove position
-* Display profit/loss
+* Calculate profit/loss
+* Portfolio dashboard
 
 Market Data:
 
@@ -237,27 +238,33 @@ Market Data:
 * Dashboard Top Gainers and Top Losers
 * Historical chart with `1D`, `1W`, `1M`, and `1Y` ranges
 * Portfolio performance
+* Dedicated stock details page
+* Improved stock search
 
 AI Reports:
 
-* Manual report generation
-* Watchlist analysis
-* Portfolio analysis
+* AI stock report
+* News feed with AI summary
 
 Telegram:
 
 * Connect Telegram account
-* Send generated reports
+* Send generated reports and alerts
 
 Alerts:
 
 * Configure price alerts
 * Notify users when alert conditions are met
 
-Market Intelligence:
+Data Import And Sync:
 
-* News feed
-* Earnings calendar
+* CSV portfolio import
+* Revolut and IBKR synchronization
+
+Authentication:
+
+* Email and password login
+* Two-factor authentication
 
 ---
 
@@ -275,13 +282,17 @@ Completed foundation:
 Next TODO plan:
 
 * [ ] Portfolio CRUD
-* [ ] Portfolio Dashboard (P/L, Total Value)
+* [ ] Portfolio P/L calculation
+* [ ] Portfolio Dashboard
+* [ ] Stock Details Page
+* [ ] Improve Search
+* [ ] AI Stock Report
+* [ ] News + AI Summary
 * [ ] Telegram Bot
-* [ ] AI Reports
 * [ ] Price Alerts
-* [ ] TradingAgents Integration
-* [ ] News Feed
-* [ ] Earnings Calendar
+* [ ] CSV Import
+* [ ] Revolut / IBKR sync
+* [ ] Email/password + 2FA
 
 Later infrastructure work:
 
