@@ -2,6 +2,7 @@ import type { MarketDataProvider } from "./market-data-provider";
 import type { HistoricalMarketDataProvider } from "./historical-market-data-provider";
 import { InMemoryCacheService } from "./in-memory-cache.service";
 import { MarketDataService } from "./market-data.service";
+import type { MarketMoversProvider } from "./market-movers-provider";
 
 describe("MarketDataService", () => {
   const provider = {
@@ -13,6 +14,9 @@ describe("MarketDataService", () => {
   const historicalProvider = {
     getCandles: jest.fn(),
   } as jest.Mocked<HistoricalMarketDataProvider>;
+  const marketMoversProvider = {
+    getMarketMovers: jest.fn(),
+  } as jest.Mocked<MarketMoversProvider>;
   let service: MarketDataService;
 
   beforeEach(() => {
@@ -20,6 +24,7 @@ describe("MarketDataService", () => {
     service = new MarketDataService(
       provider,
       historicalProvider,
+      marketMoversProvider,
       new InMemoryCacheService(),
     );
   });
@@ -161,5 +166,18 @@ describe("MarketDataService", () => {
 
     expect(historicalProvider.getCandles).toHaveBeenCalledTimes(1);
     expect(historicalProvider.getCandles).toHaveBeenCalledWith("AAPL", "1m");
+  });
+
+  it("caches market movers responses", async () => {
+    marketMoversProvider.getMarketMovers.mockResolvedValue({
+      gainers: [],
+      losers: [],
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    });
+
+    await service.getMarketMovers();
+    await service.getMarketMovers();
+
+    expect(marketMoversProvider.getMarketMovers).toHaveBeenCalledTimes(1);
   });
 });

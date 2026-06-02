@@ -1,6 +1,7 @@
 import { Inject, Injectable } from "@nestjs/common";
 import type {
   CompanyProfile,
+  MarketMoversResponse,
   StockCandle,
   StockCandleRange,
   StockCandlesResponse,
@@ -17,11 +18,16 @@ import {
   MARKET_DATA_PROVIDER,
   type MarketDataProvider,
 } from "./market-data-provider";
+import {
+  MARKET_MOVERS_PROVIDER,
+  type MarketMoversProvider,
+} from "./market-movers-provider";
 
 const QUOTE_TTL_MS = 2 * 60 * 1_000;
 const COMPANY_PROFILE_TTL_MS = 24 * 60 * 60 * 1_000;
 const SEARCH_TTL_MS = 60 * 60 * 1_000;
 const CANDLES_TTL_MS = 5 * 60 * 1_000;
+const MARKET_MOVERS_TTL_MS = 5 * 60 * 1_000;
 
 @Injectable()
 export class MarketDataService {
@@ -30,6 +36,8 @@ export class MarketDataService {
     private readonly provider: MarketDataProvider,
     @Inject(HISTORICAL_MARKET_DATA_PROVIDER)
     private readonly historicalProvider: HistoricalMarketDataProvider,
+    @Inject(MARKET_MOVERS_PROVIDER)
+    private readonly marketMoversProvider: MarketMoversProvider,
     private readonly cache: InMemoryCacheService,
   ) {}
 
@@ -126,6 +134,14 @@ export class MarketDataService {
       range,
       candles,
     };
+  }
+
+  getMarketMovers(): Promise<MarketMoversResponse> {
+    return this.cache.getOrSet(
+      "market-data:market-movers",
+      MARKET_MOVERS_TTL_MS,
+      () => this.marketMoversProvider.getMarketMovers(),
+    );
   }
 
   private normalizeTicker(ticker: string): string {

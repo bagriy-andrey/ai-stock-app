@@ -74,6 +74,20 @@ export interface StockCandlesResponse {
   candles: StockCandle[];
 }
 
+export interface MarketMover {
+  symbol: string;
+  name: string;
+  price: number;
+  change: number;
+  changesPercentage: number;
+}
+
+export interface MarketMoversResponse {
+  gainers: MarketMover[];
+  losers: MarketMover[];
+  updatedAt: string;
+}
+
 export interface GetQuotesRequest {
   tickers: string[];
 }

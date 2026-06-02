@@ -2,10 +2,10 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The dashboard links into a personal watchlist that uses Finnhub for live
-company data and Yahoo Finance for historical chart candles. Google
-authentication is wired for the web app and NestJS API, with users stored in
-MongoDB.
+The dashboard shows Financial Modeling Prep market movers and links into a
+personal watchlist that uses Finnhub for live company data and Yahoo Finance
+for historical chart candles. Google authentication is wired for the web app
+and NestJS API, with users stored in MongoDB.
 
 ## Repository Layout
 
@@ -60,6 +60,7 @@ PORT=3001
 MONGODB_URI=mongodb://localhost:27017/ai-stock-advisor
 REDIS_URL=redis://localhost:6379
 FINNHUB_API_KEY=your_finnhub_api_key
+FMP_API_KEY=your_fmp_api_key
 TRADING_AGENT_URL=http://localhost:8000
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
@@ -132,6 +133,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/market-data/quote/AAPL` | Return one live Finnhub quote |
 | API | `POST` | `http://localhost:3001/market-data/quotes` | Return live Finnhub quotes for `{ "tickers": ["AAPL"] }` |
 | API | `GET` | `http://localhost:3001/market-data/company/AAPL` | Return a Finnhub company profile |
+| API | `GET` | `http://localhost:3001/market/movers` | Return cached FMP top gainers and losers |
 | API | `GET` | `http://localhost:3001/market/stocks/AAPL/details` | Return normalized company and current quote details |
 | API | `GET` | `http://localhost:3001/market/stocks/AAPL/candles?range=1m` | Return normalized Yahoo Finance OHLCV candles for `1d`, `1w`, `1m`, or `1y` |
 | API | `GET` | `http://localhost:3001/stocks/mock` | Mock stock watchlist |
@@ -305,6 +307,7 @@ Local browser check:
 | Provider | Responsibility |
 | --- | --- |
 | Finnhub | Symbol search, company profiles, and current quotes |
+| Financial Modeling Prep | Dashboard top gainers and losers |
 | Yahoo Finance through `yahoo-finance2` | Historical OHLCV candles for stock charts |
 
 Finnhub is exposed behind the provider-neutral `MarketDataProvider` interface.
@@ -331,14 +334,67 @@ application wiring has not been added yet:
 | Quotes | 2 minutes |
 | Company profiles | 24 hours |
 | Symbol searches | 1 hour |
+| FMP market movers | 5 minutes |
 | Historical candles | 5 minutes |
 
 The cache is process-local and resets when the API restarts. Replace it with a
 Redis-backed implementation when BullMQ or shared Redis integration is added.
-Finnhub and Yahoo Finance requests time out after 5 seconds. API failures return
-user-friendly errors without exposing provider details. Yahoo Finance chart
-responses are normalized into OHLCV candles, and incomplete points are omitted
-instead of being replaced with placeholder financial values.
+Finnhub, FMP, and Yahoo Finance requests time out after 5 seconds. API failures
+return user-friendly errors without exposing provider details. Yahoo Finance
+chart responses are normalized into OHLCV candles, and incomplete points are
+omitted instead of being replaced with placeholder financial values.
+
+`GET /market/movers` requires the application JWT and returns up to ten FMP
+gainers and losers from the stable `biggest-gainers` and `biggest-losers`
+endpoints. Percentage strings such as `"12.34%"` are normalized to numbers,
+invalid records are omitted, and the response includes an ISO `updatedAt`
+timestamp. The FMP API key is read from `FMP_API_KEY`; when it is missing or FMP
+cannot be reached, the endpoint returns a controlled `503`.
+
+FMP deprecated the legacy `/api/v3/stock_market/gainers` and
+`/api/v3/stock_market/losers` endpoints for new subscriptions. Use only the
+stable endpoints:
+
+| List | FMP endpoint |
+| --- | --- |
+| Top gainers | `GET https://financialmodelingprep.com/stable/biggest-gainers?apikey=...` |
+| Top losers | `GET https://financialmodelingprep.com/stable/biggest-losers?apikey=...` |
+
+Example application API request:
+
+```bash
+curl http://localhost:3001/market/movers \
+  -H 'authorization: Bearer your_app_jwt'
+```
+
+```json
+{
+  "gainers": [
+    {
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "price": 210.42,
+      "change": 5.23,
+      "changesPercentage": 2.55
+    }
+  ],
+  "losers": [
+    {
+      "symbol": "MSFT",
+      "name": "Microsoft Corporation",
+      "price": 420.1,
+      "change": -6.1,
+      "changesPercentage": -1.43
+    }
+  ],
+  "updatedAt": "2026-06-02T09:00:00.000Z"
+}
+```
+
+The dashboard requests this endpoint through TanStack Query and renders
+separate Top Gainers and Top Losers lists. It shows loading skeletons while the
+request is pending, an empty state when FMP returns no valid records, and a
+safe error state when the provider request fails.
 
 `GET /market/stocks/:symbol/candles?range=1d|1w|1m|1y` requires the application
 JWT and returns:
@@ -374,12 +430,12 @@ return `503`.
 
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
-`JWT_EXPIRES_IN` defaults to `7d` when omitted. `PROFILE_UPLOAD_DIR` optionally
-changes the writable local avatar directory. The web app requires
-`NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_API_URL`. Telegram and Redis
-configuration remains reserved for later integrations. Create a Finnhub API key
-at `https://finnhub.io/` and keep it only in `apps/api/.env`. Never commit real
-tokens or credentials.
+Set `FMP_API_KEY` to load dashboard market movers. `JWT_EXPIRES_IN` defaults to
+`7d` when omitted. `PROFILE_UPLOAD_DIR` optionally changes the writable local
+avatar directory. The web app requires `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and
+`NEXT_PUBLIC_API_URL`. Telegram and Redis configuration remains reserved for
+later integrations. Create Finnhub and Financial Modeling Prep API keys and
+keep them only in `apps/api/.env`. Never commit real tokens or credentials.
 
 Local `.env` files are ignored by git. Before committing, verify that secrets
 are not staged:
@@ -423,6 +479,13 @@ npm run dev:api
 
 Yahoo Finance returned no complete OHLCV points for the selected symbol and
 range. The chart intentionally does not generate placeholder financial data.
+
+`Market movers are temporarily unavailable.`
+
+Confirm that `FMP_API_KEY` is set in `apps/api/.env`, then restart the API. The
+implementation uses the current FMP `/stable/biggest-gainers` and
+`/stable/biggest-losers` endpoints. A `403` response mentioning a legacy
+endpoint usually means an older `/api/v3/stock_market/*` URL is still in use.
 
 `EADDRINUSE: address already in use :::3000` or `:::3001`
 

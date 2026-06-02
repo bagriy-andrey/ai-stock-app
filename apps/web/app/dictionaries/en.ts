@@ -15,6 +15,14 @@ export const en = {
   dashboardEmpty:
     "Add stocks to your watchlist to start building your personal market overview.",
   openWatchlist: "Open watchlist",
+  marketMovers: "Market movers",
+  marketMoversSubtitle: "Stocks with the largest price moves today.",
+  marketMoversUpdated: "Updated",
+  marketMoversUnavailable: "Market movers are temporarily unavailable.",
+  marketMoversEmpty: "No market movers are available right now.",
+  loadingMarketMovers: "Loading market movers...",
+  topGainers: "Top Gainers",
+  topLosers: "Top Losers",
   trackedStocks: "Tracked Stocks",
   watchlistSubtitle:
     "Search stocks by company name or ticker and track their latest market price.",

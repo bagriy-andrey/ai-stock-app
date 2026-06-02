@@ -1,6 +1,7 @@
 import type {
   CompanyProfile,
   GetQuotesRequest,
+  MarketMoversResponse,
   StockCandle,
   StockCandleRange,
   StockCandlesResponse,
@@ -46,6 +47,14 @@ export function fetchCompanyProfile(
   ticker: string,
 ): Promise<CompanyProfile> {
   return apiRequest<CompanyProfile>(`/market-data/company/${ticker}`, {
+    headers: authHeaders(accessToken),
+  });
+}
+
+export function fetchMarketMovers(
+  accessToken: string,
+): Promise<MarketMoversResponse> {
+  return apiRequest<MarketMoversResponse>("/market/movers", {
     headers: authHeaders(accessToken),
   });
 }

@@ -17,6 +17,14 @@ export const uk = {
   dashboardEmpty:
     "Додайте акції до списку спостереження, щоб сформувати персональний огляд ринку.",
   openWatchlist: "Відкрити список спостереження",
+  marketMovers: "Лідери ринку",
+  marketMoversSubtitle: "Акції з найбільшими змінами ціни за сьогодні.",
+  marketMoversUpdated: "Оновлено",
+  marketMoversUnavailable: "Дані про лідерів ринку тимчасово недоступні.",
+  marketMoversEmpty: "Наразі немає доступних даних про лідерів ринку.",
+  loadingMarketMovers: "Завантаження даних про лідерів ринку...",
+  topGainers: "Лідери зростання",
+  topLosers: "Лідери падіння",
   trackedStocks: "Акції, що відстежуються",
   watchlistSubtitle:
     "Шукайте акції за назвою компанії або тикером і відстежуйте їхню актуальну ціну.",
