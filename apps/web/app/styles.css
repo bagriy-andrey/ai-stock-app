@@ -604,16 +604,17 @@ footer {
   padding: 24px;
   background: rgb(2 6 23 / 68%);
   inset: 0;
-  place-items: center;
+  place-items: start center;
 }
 
 .stock-modal {
   position: relative;
-  width: min(100%, 560px);
+  width: min(100%, 760px);
   border: 1px solid var(--border);
   border-radius: 20px;
   background: var(--panel);
   box-shadow: 0 24px 56px rgb(0 0 0 / 30%);
+  margin: auto 0;
   padding: 24px;
 }
 
@@ -688,6 +689,107 @@ footer {
   margin: 7px 0 0;
   font-size: 1.05rem;
   font-weight: 800;
+}
+
+.stock-chart-section {
+  margin-top: 32px;
+  border-top: 1px solid var(--border);
+  padding-top: 24px;
+}
+
+.stock-chart-header,
+.stock-chart-prices,
+.stock-chart-dates {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.stock-chart-header h3 {
+  margin: 0;
+}
+
+.stock-chart-ranges {
+  display: flex;
+  gap: 6px;
+}
+
+.stock-chart-ranges button {
+  min-height: 32px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--subtle-foreground);
+  padding: 0 10px;
+  font-size: 0.78rem;
+}
+
+.stock-chart-ranges button:hover,
+.stock-chart-ranges button[aria-pressed="true"] {
+  background: var(--panel-hover);
+  color: var(--foreground);
+}
+
+.stock-chart-status {
+  display: grid;
+  min-height: 250px;
+  margin: 0;
+  place-items: center;
+  text-align: center;
+}
+
+.stock-chart {
+  margin-top: 20px;
+}
+
+.stock-chart-prices,
+.stock-chart-dates {
+  font-size: 0.8rem;
+}
+
+.stock-chart-prices {
+  color: var(--muted-foreground);
+}
+
+.stock-chart svg {
+  display: block;
+  width: 100%;
+  height: 240px;
+  margin-top: 8px;
+}
+
+.stock-chart svg polyline {
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+}
+
+.stock-chart-line-positive {
+  stroke: var(--positive);
+}
+
+.stock-chart-line-negative {
+  stroke: var(--negative);
+}
+
+.stock-chart-line-neutral {
+  stroke: var(--neutral);
+}
+
+.stock-chart-value-positive {
+  color: var(--positive);
+}
+
+.stock-chart-value-negative {
+  color: var(--negative);
+}
+
+.stock-chart-value-neutral {
+  color: var(--neutral);
+}
+
+.stock-chart-dates {
+  color: var(--subtle-foreground);
 }
 
 .empty-state {
@@ -847,6 +949,15 @@ footer {
 
   .stock-modal {
     padding: 20px;
+  }
+
+  .stock-chart-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .stock-chart svg {
+    height: 180px;
   }
 
   h1,

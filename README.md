@@ -2,16 +2,17 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The dashboard retains scaffold mock quotes, while the watchlist uses live
-Finnhub market data. Google authentication is wired for the web app and NestJS
-API, with users stored in MongoDB.
+The dashboard retains scaffold mock quotes, while the watchlist uses Finnhub
+for live company data and Yahoo Finance for historical chart candles. Google
+authentication is wired for the web app and NestJS API, with users stored in
+MongoDB.
 
 ## Repository Layout
 
 ```text
 apps/
   web/                    # Next.js app and mock web endpoint
-  api/                    # NestJS API, profiles, watchlist, and Finnhub market data
+  api/                    # NestJS API, profiles, watchlist, and market data providers
 packages/
   shared/                 # Shared TypeScript request and response types
 services/
@@ -132,6 +133,8 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/market-data/quote/AAPL` | Return one live Finnhub quote |
 | API | `POST` | `http://localhost:3001/market-data/quotes` | Return live Finnhub quotes for `{ "tickers": ["AAPL"] }` |
 | API | `GET` | `http://localhost:3001/market-data/company/AAPL` | Return a Finnhub company profile |
+| API | `GET` | `http://localhost:3001/market/stocks/AAPL/details` | Return normalized company and current quote details |
+| API | `GET` | `http://localhost:3001/market/stocks/AAPL/candles?range=1m` | Return normalized Yahoo Finance OHLCV candles for `1d`, `1w`, `1m`, or `1y` |
 | API | `GET` | `http://localhost:3001/stocks/mock` | Mock stock watchlist |
 | API | `GET` | `http://localhost:3001/stocks/mock/AAPL` | Mock quote by symbol |
 | Trading agent | `GET` | `http://localhost:8000/health` | FastAPI health check |
@@ -269,8 +272,11 @@ Each card shows a circular Finnhub company logo when available, or circular
 fallback initials when a logo is missing. Cards display the ticker, company
 name, current price, absolute price change, and percentage change with
 positive, negative, and neutral color states. Selecting the main card area
-opens a stock details modal with the latest quote values. The remove action is
-kept separate so deleting a ticker does not open the modal.
+opens a stock details modal with the latest quote values and a responsive
+historical closing-price chart. The chart supports `1D`, `1W`, `1M`, and `1Y`
+ranges backed by Yahoo Finance, with loading, empty, and safe provider-error
+states. The remove action is kept separate so deleting a ticker does not open
+the modal.
 
 Example add request:
 
@@ -287,27 +293,83 @@ Local browser check:
 2. Open `http://localhost:3000/watchlist` from the dashboard navigation.
 3. Search for `apple` or `AAPL`, then select Apple from the autocomplete list.
 4. Add the selected stock. Its card should show a company logo or fallback initials, company name, current market price, and colored price change.
-5. Select the stock card. A stock details modal should open with the latest quote values.
-6. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
-7. Try to add `AAPL` again. The page should show a duplicate-ticker error.
-8. Remove the ticker. It should disappear without opening the details modal.
+5. Select the stock card. A stock details modal should open with the latest quote values and a historical chart.
+6. Select each chart range and confirm that the chart reloads and uses a green, red, or gray line based on the selected period trend.
+7. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
+8. Try to add `AAPL` again. The page should show a duplicate-ticker error.
+9. Remove the ticker. It should disappear without opening the details modal.
 
 ## Market Data
 
-`MarketDataModule` exposes Finnhub behind a provider-neutral
-`MarketDataProvider` interface. The current implementation uses an in-memory
-TTL cache because Redis application wiring has not been added yet:
+`MarketDataModule` separates live market data from historical chart data:
+
+| Provider | Responsibility |
+| --- | --- |
+| Finnhub | Symbol search, company profiles, and current quotes |
+| Yahoo Finance through `yahoo-finance2` | Historical OHLCV candles for stock charts |
+
+Finnhub is exposed behind the provider-neutral `MarketDataProvider` interface.
+Historical chart candles use `YahooFinanceProvider` through the separate
+`HistoricalMarketDataProvider` interface. Installing root Node dependencies
+with `npm install` installs `yahoo-finance2`; Yahoo Finance does not require an
+additional API key. `yahoo-finance2` uses Yahoo Finance's unofficial API, so
+historical data availability still depends on the upstream service.
+
+Historical candle ranges map to Yahoo Finance chart queries as follows:
+
+| UI range | Yahoo period | Yahoo interval |
+| --- | --- | --- |
+| `1D` | `1d` | `5m` |
+| `1W` | `7d` | `1h` |
+| `1M` | `1mo` | `1d` |
+| `1Y` | `1y` | `1wk` |
+
+The current implementation uses an in-memory TTL cache because Redis
+application wiring has not been added yet:
 
 | Data | Cache TTL |
 | --- | --- |
 | Quotes | 2 minutes |
 | Company profiles | 24 hours |
 | Symbol searches | 1 hour |
+| Historical candles | 5 minutes |
 
 The cache is process-local and resets when the API restarts. Replace it with a
 Redis-backed implementation when BullMQ or shared Redis integration is added.
-Finnhub requests time out after 5 seconds and API failures return a
-user-friendly error without exposing provider details.
+Finnhub and Yahoo Finance requests time out after 5 seconds. API failures return
+user-friendly errors without exposing provider details. Yahoo Finance chart
+responses are normalized into OHLCV candles, and incomplete points are omitted
+instead of being replaced with placeholder financial values.
+
+`GET /market/stocks/:symbol/candles?range=1d|1w|1m|1y` requires the application
+JWT and returns:
+
+```bash
+curl http://localhost:3001/market/stocks/AAPL/candles?range=1d \
+  -H 'authorization: Bearer your_app_jwt'
+```
+
+```json
+{
+  "symbol": "AAPL",
+  "range": "1d",
+  "candles": [
+    {
+      "timestamp": 1780401600,
+      "open": 208,
+      "high": 209,
+      "low": 207.5,
+      "close": 208.5,
+      "volume": 10000
+    }
+  ]
+}
+```
+
+`timestamp` is a Unix timestamp in seconds. The web API adapter converts it to
+an ISO timestamp before passing candles into the chart component. Invalid
+symbols return `404`. Temporary Yahoo Finance failures and request timeouts
+return `503`.
 
 ## Environment Variables
 
@@ -346,6 +408,22 @@ MongoDB is not running. Start local infrastructure:
 ```bash
 docker compose up -d
 ```
+
+`Historical prices are temporarily unavailable.`
+
+The stock details modal could not load Yahoo Finance chart data. Confirm that
+the API can reach Yahoo Finance, then restart the API if dependencies were
+installed while it was already running:
+
+```bash
+npm install
+npm run dev:api
+```
+
+`No historical prices are available for this range.`
+
+Yahoo Finance returned no complete OHLCV points for the selected symbol and
+range. The chart intentionally does not generate placeholder financial data.
 
 `EADDRINUSE: address already in use :::3000` or `:::3001`
 

@@ -29,6 +29,11 @@ Backend:
 * NestJS
 * TypeScript
 
+Market Data:
+
+* Finnhub for symbol search, company profiles, and current quotes
+* Yahoo Finance through `yahoo-finance2` for historical OHLCV chart candles
+
 Database:
 
 * MongoDB
@@ -126,6 +131,17 @@ Completed tasks:
 * Stock cards now show circular Finnhub company logos with circular fallback initials when a logo is missing.
 * Reusable stock formatting helpers added for currency, percentage, and positive, negative, or neutral change variants.
 * Stock card selection now opens a details modal with the latest quote values while the separate remove action deletes without opening the modal.
+* Authenticated stock details endpoint added with `GET /market/stocks/:symbol/details`.
+* Authenticated historical candle endpoint added with `GET /market/stocks/:symbol/candles?range=1d|1w|1m|1y`.
+* Shared normalized stock details, candle, candle-range, and candle-response TypeScript contracts added.
+* Historical chart provider separated from the live Finnhub provider through `HistoricalMarketDataProvider`.
+* `YahooFinanceProvider` added with `yahoo-finance2` chart API integration.
+* Yahoo Finance range mapping added: `1D → 1d/5m`, `1W → 7d/1h`, `1M → 1mo/1d`, and `1Y → 1y/1wk`.
+* Yahoo Finance candle normalization filters null values and incomplete OHLCV records.
+* Historical candle requests are cached for 5 minutes.
+* Stock details modal extended with responsive historical chart, `1D`, `1W`, `1M`, and `1Y` selectors, loading state, empty state, and provider-error state.
+* Historical chart color now reflects the selected range trend: green for positive, red for negative, and gray for unchanged.
+* Focused Yahoo Finance provider tests added for range mapping, candle normalization, invalid candle filtering, invalid symbols, and provider failures.
 
 Technical cleanup:
 
@@ -169,6 +185,12 @@ Runtime validation:
 
 ✅ API starts with `WatchlistModule` and JWT guard dependencies resolved
 
+✅ Stock details modal shows current Finnhub quote data and historical Yahoo Finance chart data
+
+✅ Stock chart ranges `1D`, `1W`, `1M`, and `1Y` are wired to Yahoo Finance intervals
+
+✅ Real Yahoo Finance `AAPL` chart request returns OHLCV candles without Finnhub premium access
+
 ---
 
 # MVP Scope
@@ -196,6 +218,7 @@ Market Data:
 
 * Current stock price
 * Daily change
+* Historical chart with `1D`, `1W`, `1M`, and `1Y` ranges
 * Portfolio performance
 
 AI Reports:

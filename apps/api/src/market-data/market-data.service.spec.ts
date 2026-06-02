@@ -1,4 +1,5 @@
 import type { MarketDataProvider } from "./market-data-provider";
+import type { HistoricalMarketDataProvider } from "./historical-market-data-provider";
 import { InMemoryCacheService } from "./in-memory-cache.service";
 import { MarketDataService } from "./market-data.service";
 
@@ -9,11 +10,18 @@ describe("MarketDataService", () => {
     getQuotes: jest.fn(),
     getCompanyProfile: jest.fn(),
   } as jest.Mocked<MarketDataProvider>;
+  const historicalProvider = {
+    getCandles: jest.fn(),
+  } as jest.Mocked<HistoricalMarketDataProvider>;
   let service: MarketDataService;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    service = new MarketDataService(provider, new InMemoryCacheService());
+    service = new MarketDataService(
+      provider,
+      historicalProvider,
+      new InMemoryCacheService(),
+    );
   });
 
   it("normalizes and caches quotes", async () => {
@@ -102,5 +110,56 @@ describe("MarketDataService", () => {
     provider.getCompanyProfile.mockRejectedValue(new Error("provider error"));
 
     await expect(service.searchSymbols("apple")).resolves.toEqual([result]);
+  });
+
+  it("returns normalized stock details from a cached quote and profile", async () => {
+    provider.getQuote.mockResolvedValue({
+      ticker: "AAPL",
+      currentPrice: 210.42,
+      change: 1.83,
+      changePercent: 0.88,
+      previousClose: 208.59,
+      openPrice: 209,
+      highPrice: 211,
+      lowPrice: 208,
+      timestamp: "2026-06-02T09:00:00.000Z",
+    });
+    provider.getCompanyProfile.mockResolvedValue({
+      ticker: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      country: "US",
+      logo: "https://example.com/apple.png",
+    });
+
+    await expect(service.getStockDetails(" aapl ")).resolves.toEqual({
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      logoUrl: "https://example.com/apple.png",
+      currentPrice: 210.42,
+      change: 1.83,
+      percentChange: 0.88,
+      previousClose: 208.59,
+      open: 209,
+      high: 211,
+      low: 208,
+    });
+  });
+
+  it("normalizes and caches candle requests by ticker and range", async () => {
+    historicalProvider.getCandles.mockResolvedValue([]);
+
+    await expect(service.getCandles(" aapl ", "1m")).resolves.toEqual({
+      symbol: "AAPL",
+      range: "1m",
+      candles: [],
+    });
+    await service.getCandles("AAPL", "1m");
+
+    expect(historicalProvider.getCandles).toHaveBeenCalledTimes(1);
+    expect(historicalProvider.getCandles).toHaveBeenCalledWith("AAPL", "1m");
   });
 });

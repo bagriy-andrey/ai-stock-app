@@ -1,10 +1,18 @@
 import type {
   CompanyProfile,
   GetQuotesRequest,
+  StockCandle,
+  StockCandleRange,
+  StockCandlesResponse,
+  StockDetails,
   StockQuote,
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
 import { apiRequest } from "./api";
+
+export interface StockChartCandle extends Omit<StockCandle, "timestamp"> {
+  timestamp: string;
+}
 
 function authHeaders(accessToken: string): HeadersInit {
   return {
@@ -40,4 +48,29 @@ export function fetchCompanyProfile(
   return apiRequest<CompanyProfile>(`/market-data/company/${ticker}`, {
     headers: authHeaders(accessToken),
   });
+}
+
+export function fetchStockDetails(
+  accessToken: string,
+  ticker: string,
+): Promise<StockDetails> {
+  return apiRequest<StockDetails>(`/market/stocks/${ticker}/details`, {
+    headers: authHeaders(accessToken),
+  });
+}
+
+export function fetchStockCandles(
+  accessToken: string,
+  ticker: string,
+  range: StockCandleRange,
+): Promise<StockChartCandle[]> {
+  return apiRequest<StockCandlesResponse>(
+    `/market/stocks/${ticker}/candles?range=${range}`,
+    { headers: authHeaders(accessToken) },
+  ).then((response) =>
+    response.candles.map((candle) => ({
+      ...candle,
+      timestamp: new Date(candle.timestamp * 1_000).toISOString(),
+    })),
+  );
 }

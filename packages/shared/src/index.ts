@@ -42,6 +42,38 @@ export interface CompanyProfile {
   webUrl?: string;
 }
 
+export interface StockDetails {
+  symbol: string;
+  name: string;
+  exchange: string;
+  currency: string;
+  logoUrl?: string;
+  currentPrice: number;
+  change: number;
+  percentChange: number;
+  high: number;
+  low: number;
+  open: number;
+  previousClose: number;
+}
+
+export type StockCandleRange = "1d" | "1w" | "1m" | "1y";
+
+export interface StockCandle {
+  timestamp: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number;
+}
+
+export interface StockCandlesResponse {
+  symbol: string;
+  range: StockCandleRange;
+  candles: StockCandle[];
+}
+
 export interface GetQuotesRequest {
   tickers: string[];
 }

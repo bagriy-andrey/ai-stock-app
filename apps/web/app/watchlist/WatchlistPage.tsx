@@ -223,12 +223,10 @@ export function WatchlistPage() {
       </section>
       {detailsItem ? (
         <StockDetailsModal
-          isPriceLoading={quotesQuery.isLoading}
+          accessToken={accessToken ?? ""}
           item={detailsItem}
           language={language}
           onClose={() => setDetailsItem(null)}
-          profile={profilesByTicker.get(detailsItem.ticker)}
-          quote={quotesByTicker.get(detailsItem.ticker)}
           t={t}
         />
       ) : null}
