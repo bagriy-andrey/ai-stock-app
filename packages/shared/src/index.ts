@@ -61,10 +61,27 @@ export interface UserDto {
   id: string;
   email: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
+  nickname?: string;
   avatarUrl?: string;
+  language: ProfileLanguage;
+  theme?: ProfileTheme;
   telegramChatId?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export type ProfileLanguage = "en" | "ru" | "uk";
+
+export type ProfileTheme = "light" | "dark" | "system";
+
+export interface UpdateProfileRequest {
+  firstName?: string | null;
+  lastName?: string | null;
+  nickname?: string | null;
+  language?: ProfileLanguage;
+  theme?: ProfileTheme;
 }
 
 export interface GoogleLoginRequest {

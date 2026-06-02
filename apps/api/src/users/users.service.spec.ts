@@ -7,6 +7,7 @@ describe("UsersService", () => {
   const userModel = {
     findOneAndUpdate: jest.fn(),
     findById: jest.fn(),
+    findByIdAndUpdate: jest.fn(),
   };
   const service = new UsersService(userModel as never);
   const userId = new Types.ObjectId("665daec06c456275631b7af1");
@@ -15,7 +16,12 @@ describe("UsersService", () => {
     _id: userId,
     email: "test@example.com",
     name: "Test User",
+    firstName: "Test",
+    lastName: "User",
+    nickname: "Tester",
     avatarUrl: "https://example.com/avatar.png",
+    language: "en",
+    theme: "dark",
     telegramChatId: "123456789",
     createdAt: now,
     updatedAt: now,
@@ -39,7 +45,12 @@ describe("UsersService", () => {
       id: userId.toString(),
       email: userDocument.email,
       name: userDocument.name,
+      firstName: userDocument.firstName,
+      lastName: userDocument.lastName,
+      nickname: userDocument.nickname,
       avatarUrl: userDocument.avatarUrl,
+      language: userDocument.language,
+      theme: userDocument.theme,
       telegramChatId: userDocument.telegramChatId,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
@@ -51,7 +62,10 @@ describe("UsersService", () => {
         $set: {
           email: "test@example.com",
           name: "Test User",
+        },
+        $setOnInsert: {
           avatarUrl: "https://example.com/avatar.png",
+          language: "en",
         },
       },
       { new: true, upsert: true, setDefaultsOnInsert: true },
@@ -66,7 +80,12 @@ describe("UsersService", () => {
       id: userId.toString(),
       email: userDocument.email,
       name: userDocument.name,
+      firstName: userDocument.firstName,
+      lastName: userDocument.lastName,
+      nickname: userDocument.nickname,
       avatarUrl: userDocument.avatarUrl,
+      language: userDocument.language,
+      theme: userDocument.theme,
       telegramChatId: userDocument.telegramChatId,
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
@@ -76,6 +95,57 @@ describe("UsersService", () => {
   it("rejects invalid user ids", async () => {
     await expect(service.findById("not-an-object-id")).rejects.toThrow(
       NotFoundException,
+    );
+  });
+
+  it("updates editable profile fields and clears empty optional text", async () => {
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
+    userModel.findByIdAndUpdate.mockReturnValue({ exec });
+
+    await expect(
+      service.updateProfile(userId.toString(), {
+        firstName: "Updated",
+        lastName: null,
+        language: "uk",
+        theme: "system",
+      }),
+    ).resolves.toMatchObject({
+      id: userId.toString(),
+      language: "en",
+    });
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      userId.toString(),
+      {
+        $set: {
+          firstName: "Updated",
+          language: "uk",
+          theme: "system",
+        },
+        $unset: {
+          lastName: 1,
+        },
+      },
+      { new: true, runValidators: true },
+    );
+  });
+
+  it("updates and removes an avatar", async () => {
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
+    userModel.findByIdAndUpdate.mockReturnValue({ exec });
+
+    await service.updateAvatar(userId.toString(), "/uploads/avatars/avatar.png");
+    expect(userModel.findByIdAndUpdate).toHaveBeenLastCalledWith(
+      userId.toString(),
+      { $set: { avatarUrl: "/uploads/avatars/avatar.png" } },
+      { new: true },
+    );
+
+    await service.updateAvatar(userId.toString());
+    expect(userModel.findByIdAndUpdate).toHaveBeenLastCalledWith(
+      userId.toString(),
+      { $unset: { avatarUrl: 1 } },
+      { new: true },
     );
   });
 

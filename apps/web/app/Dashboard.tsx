@@ -15,6 +15,7 @@ export function Dashboard({ mockQuotes }: DashboardProps) {
     <main>
       <nav className="top-nav" aria-label="User">
         <Link href="/watchlist">Watchlist</Link>
+        <Link href="/profile">Profile</Link>
         <span>{user?.email}</span>
         <button type="button" onClick={logout}>
           Sign out

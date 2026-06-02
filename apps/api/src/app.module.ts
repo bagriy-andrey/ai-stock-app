@@ -4,6 +4,7 @@ import { MongooseModule } from "@nestjs/mongoose";
 import { AuthModule } from "./auth/auth.module";
 import { HealthController } from "./health.controller";
 import { MarketDataModule } from "./market-data/market-data.module";
+import { ProfileModule } from "./profile/profile.module";
 import { StocksModule } from "./stocks/stocks.module";
 import { UsersModule } from "./users/users.module";
 import { WatchlistModule } from "./watchlist/watchlist.module";
@@ -16,6 +17,7 @@ import { WatchlistModule } from "./watchlist/watchlist.module";
     StocksModule,
     WatchlistModule,
     MarketDataModule,
+    ProfileModule,
   ],
   controllers: [HealthController],
 })

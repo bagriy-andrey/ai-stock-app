@@ -18,6 +18,7 @@ interface AuthContextValue {
   user: UserDto | null;
   accessToken: string | null;
   loginWithGoogleCredential: (credential: string) => Promise<void>;
+  updateUser: (user: UserDto) => void;
   logout: () => void;
 }
 
@@ -71,15 +72,20 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     setStatus("authenticated");
   }, []);
 
+  const updateUser = useCallback((nextUser: UserDto) => {
+    setUser(nextUser);
+  }, []);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       accessToken,
       loginWithGoogleCredential,
+      updateUser,
       logout,
     }),
-    [accessToken, loginWithGoogleCredential, logout, status, user],
+    [accessToken, loginWithGoogleCredential, logout, status, updateUser, user],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

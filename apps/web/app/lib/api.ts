@@ -6,7 +6,10 @@ export async function apiRequest<T>(
   options: RequestInit = {},
 ): Promise<T> {
   const headers = new Headers(options.headers);
-  headers.set("content-type", headers.get("content-type") ?? "application/json");
+
+  if (!(options.body instanceof FormData)) {
+    headers.set("content-type", headers.get("content-type") ?? "application/json");
+  }
 
   const response = await fetch(`${apiBaseUrl}${path}`, {
     ...options,

@@ -11,7 +11,7 @@ API, with users stored in MongoDB.
 ```text
 apps/
   web/                    # Next.js app and mock web endpoint
-  api/                    # NestJS API, watchlist, and Finnhub market data
+  api/                    # NestJS API, profiles, watchlist, and Finnhub market data
 packages/
   shared/                 # Shared TypeScript request and response types
 services/
@@ -64,6 +64,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
+# PROFILE_UPLOAD_DIR=uploads/avatars
 ```
 
 In the Google Cloud OAuth client settings, add this authorized JavaScript
@@ -120,6 +121,10 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
+| API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
+| API | `PATCH` | `http://localhost:3001/profile` | Update the authenticated user's profile |
+| API | `POST` | `http://localhost:3001/profile/avatar` | Upload or replace the authenticated user's avatar |
+| API | `DELETE` | `http://localhost:3001/profile/avatar` | Delete the authenticated user's avatar |
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
@@ -166,7 +171,7 @@ Verify that a user was created:
 
 ```bash
 docker compose exec mongodb mongosh ai-stock-advisor \
-  --eval 'db.users.find({}, {email: 1, name: 1, avatarUrl: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
+  --eval 'db.users.find({}, {email: 1, name: 1, firstName: 1, lastName: 1, nickname: 1, avatarUrl: 1, language: 1, theme: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
 ```
 
 ## User Domain
@@ -182,7 +187,12 @@ User documents are stored in the `users` collection with these fields:
 | --- | --- | --- | --- |
 | `email` | `string` | Yes | Unique, indexed, lowercased, and trimmed. |
 | `name` | `string` | Yes | Display name from the Google profile. |
-| `avatarUrl` | `string` | No | Profile image URL from the Google profile. |
+| `firstName` | `string` | No | User-managed first name. |
+| `lastName` | `string` | No | User-managed last name. |
+| `nickname` | `string` | No | User-managed nickname. |
+| `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
+| `language` | `"en" \| "ru" \| "uk"` | Yes | Preferred language. Defaults to English. |
+| `theme` | `"light" \| "dark" \| "system"` | No | Preferred application theme. |
 | `telegramChatId` | `string` | No | Sparse indexed field reserved for Telegram account linking. |
 | `createdAt` | `Date` | Yes | Managed by Mongoose timestamps. |
 | `updatedAt` | `Date` | Yes | Managed by Mongoose timestamps. |
@@ -196,14 +206,39 @@ user. It requires an `Authorization: Bearer <jwt>` header and returns the shared
   "id": "665daec06c456275631b7af1",
   "email": "user@example.com",
   "name": "Example User",
-  "avatarUrl": "https://example.com/avatar.png",
+  "firstName": "Example",
+  "lastName": "User",
+  "nickname": "example-investor",
+  "avatarUrl": "/uploads/avatars/2f4354c7-d838-46d1-984c-c066677e54d8.png",
+  "language": "en",
+  "theme": "system",
   "telegramChatId": "123456789",
   "createdAt": "2026-06-02T09:00:00.000Z",
   "updatedAt": "2026-06-02T09:00:00.000Z"
 }
 ```
 
-`telegramChatId` and `avatarUrl` are omitted when they are not set.
+Optional fields are omitted when they are not set.
+
+## User Profile
+
+Authenticated users can manage their profile at `http://localhost:3000/profile`.
+The page uses TanStack Query for loading and mutations, and updates the active
+theme immediately after a saved preference changes.
+
+For the MVP, uploaded profile photos are written to the API filesystem under
+`uploads/avatars` and served from `/uploads/avatars`. The folder is ignored by
+git. Set the optional `PROFILE_UPLOAD_DIR` API environment variable to use
+another writable local directory. JPEG, PNG, and WebP files up to 5 MB are
+accepted. External storage credentials are not required.
+
+Local browser check:
+
+1. Sign in through `http://localhost:3000/login`.
+2. Open `http://localhost:3000/profile`.
+3. Update the personal information, language, and theme, then save.
+4. Upload a profile image and refresh the page. The image and form values should persist.
+5. Delete the profile image. The fallback initials avatar should be shown.
 
 ## Watchlist
 
@@ -257,7 +292,8 @@ user-friendly error without exposing provider details.
 
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
-`JWT_EXPIRES_IN` defaults to `7d` when omitted. The web app requires
+`JWT_EXPIRES_IN` defaults to `7d` when omitted. `PROFILE_UPLOAD_DIR` optionally
+changes the writable local avatar directory. The web app requires
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_API_URL`. Telegram and Redis
 configuration remains reserved for later integrations. Create a Finnhub API key
 at `https://finnhub.io/` and keep it only in `apps/api/.env`. Never commit real

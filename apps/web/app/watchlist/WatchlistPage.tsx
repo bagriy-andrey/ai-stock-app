@@ -104,6 +104,7 @@ export function WatchlistPage() {
     <main>
       <nav className="top-nav" aria-label="User">
         <Link href="/">Dashboard</Link>
+        <Link href="/profile">Profile</Link>
         <span>{user?.email}</span>
         <button type="button" onClick={logout}>
           Sign out
