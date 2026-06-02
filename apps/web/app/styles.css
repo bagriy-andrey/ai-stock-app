@@ -12,6 +12,12 @@
   --input-background: #0f172a;
   --link: #7dd3fc;
   --link-hover: #bae6fd;
+  --positive: #86efac;
+  --positive-background: rgb(34 197 94 / 14%);
+  --negative: #fca5a5;
+  --negative-background: rgb(239 68 68 / 14%);
+  --neutral: #cbd5e1;
+  --neutral-background: rgb(148 163 184 / 14%);
   background: var(--background);
   color: var(--foreground);
 }
@@ -29,6 +35,12 @@
   --input-background: #ffffff;
   --link: #0369a1;
   --link-hover: #075985;
+  --positive: #15803d;
+  --positive-background: #dcfce7;
+  --negative: #b91c1c;
+  --negative-background: #fee2e2;
+  --neutral: #475569;
+  --neutral-background: #e2e8f0;
 }
 
 * {
@@ -158,11 +170,15 @@ p {
 }
 
 .positive {
-  color: #86efac;
+  color: var(--positive);
 }
 
 .negative {
-  color: #fca5a5;
+  color: var(--negative);
+}
+
+.neutral {
+  color: var(--neutral);
 }
 
 footer {
@@ -406,12 +422,272 @@ footer {
 .watchlist-list {
   display: grid;
   gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
 }
 
-.watchlist-item {
+.stock-card {
+  position: relative;
+  min-height: 196px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--panel);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.stock-card:hover {
+  border-color: var(--control-border);
+  box-shadow: 0 16px 32px rgb(0 0 0 / 14%);
+  transform: translateY(-3px);
+}
+
+.stock-card-open {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  width: 100%;
+  min-height: 194px;
+  gap: 28px;
+  border: 0;
+  border-radius: 18px;
+  background: transparent;
+  color: var(--foreground);
+  padding: 20px;
+  text-align: left;
+}
+
+.stock-card-open:hover {
+  background: transparent;
+}
+
+.stock-card-open:focus-visible {
+  outline: 2px solid var(--link);
+  outline-offset: -3px;
+}
+
+.stock-card-header {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
   align-items: center;
+  padding-right: 32px;
+}
+
+.stock-card-identity {
+  min-width: 0;
+}
+
+.stock-card-identity strong {
+  font-size: 1.05rem;
+  letter-spacing: 0.04em;
+}
+
+.stock-card-identity p {
+  overflow: hidden;
+  margin: 5px 0 0;
+  font-weight: 400;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.company-logo {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--input-background);
+  color: var(--link);
+  font-size: 0.88rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+}
+
+.company-logo img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  padding: 7px;
+}
+
+.stock-card-remove,
+.stock-modal-close {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  place-items: center;
+  border-color: transparent;
+  background: transparent;
+  color: var(--subtle-foreground);
+  padding: 0;
+}
+
+.stock-card-remove {
+  position: absolute;
+  z-index: 1;
+  top: 16px;
+  right: 16px;
+}
+
+.stock-card-remove:hover,
+.stock-modal-close:hover {
+  background: var(--negative-background);
+  color: var(--negative);
+}
+
+.stock-card-remove svg,
+.stock-modal-close svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.stock-card-price {
+  display: grid;
+  gap: 12px;
+}
+
+.stock-card-price > strong {
+  font-size: 1.8rem;
+  letter-spacing: -0.04em;
+}
+
+.stock-card-status {
+  align-self: end;
+  margin: 0;
+}
+
+.stock-change {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 8px;
+  border-radius: 999px;
+  padding: 5px 10px;
+  font-size: 0.85rem;
+  font-weight: 800;
+}
+
+.stock-change small {
+  color: inherit;
+  font-size: inherit;
+}
+
+.stock-change-positive {
+  background: var(--positive-background);
+  color: var(--positive);
+}
+
+.stock-change-negative {
+  background: var(--negative-background);
+  color: var(--negative);
+}
+
+.stock-change-neutral {
+  background: var(--neutral-background);
+  color: var(--neutral);
+}
+
+.stock-modal-backdrop {
+  position: fixed;
+  z-index: 10;
+  display: grid;
+  overflow-y: auto;
+  padding: 24px;
+  background: rgb(2 6 23 / 68%);
+  inset: 0;
+  place-items: center;
+}
+
+.stock-modal {
+  position: relative;
+  width: min(100%, 560px);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: var(--panel);
+  box-shadow: 0 24px 56px rgb(0 0 0 / 30%);
+  padding: 24px;
+}
+
+.stock-modal-close {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+}
+
+.stock-modal-header {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding-right: 40px;
+}
+
+.stock-modal-header h2 {
+  margin: 3px 0 0;
+}
+
+.stock-modal-ticker,
+.stock-modal-metadata {
+  margin: 0;
+}
+
+.stock-modal-ticker {
+  color: var(--link);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.stock-modal-metadata {
+  margin-top: 7px;
+  font-size: 0.88rem;
+}
+
+.stock-modal-price {
+  display: grid;
+  gap: 10px;
+  margin-top: 32px;
+}
+
+.stock-modal-price > span:first-child,
+.stock-detail-grid dt {
+  color: var(--subtle-foreground);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.stock-modal-price > strong {
+  font-size: 2.4rem;
+  letter-spacing: -0.06em;
+}
+
+.stock-detail-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 28px 0 0;
+}
+
+.stock-detail-grid div {
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.stock-detail-grid dd {
+  margin: 7px 0 0;
+  font-size: 1.05rem;
+  font-weight: 800;
 }
 
 .empty-state {
@@ -563,6 +839,14 @@ footer {
 
   .quote-price {
     text-align: left;
+  }
+
+  .stock-modal-backdrop {
+    padding: 12px;
+  }
+
+  .stock-modal {
+    padding: 20px;
   }
 
   h1,

@@ -40,6 +40,13 @@ export const en = {
   exchangeUnavailable: "Exchange unavailable",
   loadingPrice: "Loading price...",
   priceUnavailable: "Price unavailable",
+  stockDetails: "Stock details",
+  close: "Close",
+  currentPrice: "Current price",
+  previousClose: "Previous close",
+  openPrice: "Open",
+  dayHigh: "Day high",
+  dayLow: "Day low",
   accountSettings: "Account settings",
   userProfile: "User Profile",
   profileSubtitle:

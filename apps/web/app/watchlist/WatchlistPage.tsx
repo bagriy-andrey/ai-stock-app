@@ -1,18 +1,26 @@
 "use client";
 
 import type {
-  ProfileLanguage,
-  StockQuote,
+  CompanyProfile,
   StockSearchResult,
+  WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useAuth } from "../components/auth/AuthProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
+import { StockCard } from "../components/watchlist/StockCard";
+import { StockDetailsModal } from "../components/watchlist/StockDetailsModal";
 import {
+  fetchCompanyProfile,
   fetchMarketQuotes,
   searchMarketSymbols,
 } from "../lib/market-data-api";
@@ -32,6 +40,7 @@ export function WatchlistPage() {
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
     null,
   );
+  const [detailsItem, setDetailsItem] = useState<WatchlistItemDto | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
 
@@ -89,6 +98,25 @@ export function WatchlistPage() {
         (quotesQuery.data ?? []).map((quote) => [quote.ticker, quote] as const),
       ),
     [quotesQuery.data],
+  );
+  const companyProfileQueries = useQueries({
+    queries: items.map((item) => ({
+      queryKey: ["market-data", "company", item.ticker],
+      queryFn: () => fetchCompanyProfile(accessToken ?? "", item.ticker),
+      enabled: Boolean(accessToken),
+      staleTime: 24 * 60 * 60 * 1_000,
+      retry: false,
+    })),
+  });
+  const profilesByTicker = useMemo(
+    () =>
+      new Map(
+        companyProfileQueries
+          .map((query) => query.data)
+          .filter((profile): profile is CompanyProfile => Boolean(profile))
+          .map((profile) => [profile.ticker, profile] as const),
+      ),
+    [companyProfileQueries],
   );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -174,35 +202,36 @@ export function WatchlistPage() {
         ) : (
           <div className="watchlist-list">
             {items.map((item) => (
-              <article className="quote-card watchlist-item" key={item.id}>
-                <div>
-                  <strong>{item.ticker}</strong>
-                  <p>{item.companyName ?? t.companyNameNotSet}</p>
-                </div>
-                <QuotePrice
-                  isLoading={quotesQuery.isLoading}
-                  language={language}
-                  quote={quotesByTicker.get(item.ticker)}
-                  t={t}
-                />
-                <button
-                  type="button"
-                  onClick={() => removeMutation.mutate(item.id)}
-                  disabled={
-                    removeMutation.isPending &&
-                    removeMutation.variables === item.id
-                  }
-                >
-                  {removeMutation.isPending &&
+              <StockCard
+                isPriceLoading={quotesQuery.isLoading}
+                isRemoving={
+                  removeMutation.isPending &&
                   removeMutation.variables === item.id
-                    ? t.removing
-                    : t.remove}
-                </button>
-              </article>
+                }
+                item={item}
+                key={item.id}
+                language={language}
+                onOpen={() => setDetailsItem(item)}
+                onRemove={() => removeMutation.mutate(item.id)}
+                profile={profilesByTicker.get(item.ticker)}
+                quote={quotesByTicker.get(item.ticker)}
+                t={t}
+              />
             ))}
           </div>
         )}
       </section>
+      {detailsItem ? (
+        <StockDetailsModal
+          isPriceLoading={quotesQuery.isLoading}
+          item={detailsItem}
+          language={language}
+          onClose={() => setDetailsItem(null)}
+          profile={profilesByTicker.get(detailsItem.ticker)}
+          quote={quotesByTicker.get(detailsItem.ticker)}
+          t={t}
+        />
+      ) : null}
     </main>
   );
 }
@@ -251,49 +280,6 @@ function SearchResults({
       ))}
     </ul>
   );
-}
-
-interface QuotePriceProps {
-  isLoading: boolean;
-  language: ProfileLanguage;
-  quote?: StockQuote;
-  t: Dictionary;
-}
-
-function QuotePrice({ isLoading, language, quote, t }: QuotePriceProps) {
-  if (isLoading) {
-    return <div className="quote-price">{t.loadingPrice}</div>;
-  }
-
-  if (!quote) {
-    return <div className="quote-price">{t.priceUnavailable}</div>;
-  }
-
-  return (
-    <div className="quote-price">
-      <span>{formatPrice(quote.currentPrice, quote.currency, language)}</span>
-      <small className={quote.change >= 0 ? "positive" : "negative"}>
-        {quote.change >= 0 ? "+" : ""}
-        {quote.change.toFixed(2)} ({quote.change >= 0 ? "+" : ""}
-        {quote.changePercent.toFixed(2)}%)
-      </small>
-    </div>
-  );
-}
-
-function formatPrice(
-  price: number,
-  currency = "USD",
-  language: ProfileLanguage,
-): string {
-  try {
-    return new Intl.NumberFormat(language, {
-      style: "currency",
-      currency,
-    }).format(price);
-  } catch {
-    return `${price.toFixed(2)} ${currency}`;
-  }
 }
 
 function useDebouncedValue(value: string, delayMilliseconds: number): string {

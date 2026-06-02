@@ -1,4 +1,5 @@
 import type {
+  CompanyProfile,
   GetQuotesRequest,
   StockQuote,
   StockSearchResult,
@@ -29,5 +30,14 @@ export function fetchMarketQuotes(
     method: "POST",
     headers: authHeaders(accessToken),
     body: JSON.stringify(input),
+  });
+}
+
+export function fetchCompanyProfile(
+  accessToken: string,
+  ticker: string,
+): Promise<CompanyProfile> {
+  return apiRequest<CompanyProfile>(`/market-data/company/${ticker}`, {
+    headers: authHeaders(accessToken),
   });
 }

@@ -43,6 +43,13 @@ export const uk = {
   exchangeUnavailable: "Біржа недоступна",
   loadingPrice: "Завантаження ціни...",
   priceUnavailable: "Ціна недоступна",
+  stockDetails: "Дані про акцію",
+  close: "Закрити",
+  currentPrice: "Поточна ціна",
+  previousClose: "Попереднє закриття",
+  openPrice: "Відкриття",
+  dayHigh: "Максимум дня",
+  dayLow: "Мінімум дня",
   accountSettings: "Налаштування облікового запису",
   userProfile: "Профіль користувача",
   profileSubtitle:

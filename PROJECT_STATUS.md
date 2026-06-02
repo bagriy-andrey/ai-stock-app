@@ -122,6 +122,10 @@ Completed tasks:
 * Authenticated market data search, quote, bulk quote, and company profile endpoints added.
 * In-memory TTL caching added for live quotes, symbol search, and company profiles as the Redis integration fallback.
 * Watchlist stock autocomplete and live quote display added.
+* Watchlist rows replaced with reusable responsive fintech-style stock cards.
+* Stock cards now show circular Finnhub company logos with circular fallback initials when a logo is missing.
+* Reusable stock formatting helpers added for currency, percentage, and positive, negative, or neutral change variants.
+* Stock card selection now opens a details modal with the latest quote values while the separate remove action deletes without opening the modal.
 
 Technical cleanup:
 
@@ -160,6 +164,8 @@ Runtime validation:
 ✅ Watchlist items can be added, persisted after refresh, and removed
 
 ✅ Duplicate Watchlist tickers are rejected per user
+
+✅ Watchlist stock cards show circular logos or fallback initials, formatted price changes, and a details modal
 
 ✅ API starts with `WatchlistModule` and JWT guard dependencies resolved
 

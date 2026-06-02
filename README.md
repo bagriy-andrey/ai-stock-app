@@ -264,6 +264,14 @@ Watchlist items are stored with `userId`, uppercase `ticker`, optional
 user, and deletes only match items owned by the authenticated user. Ticker
 input is trimmed, converted to uppercase, and validated before persistence.
 
+The watchlist renders tracked companies as responsive fintech-style cards.
+Each card shows a circular Finnhub company logo when available, or circular
+fallback initials when a logo is missing. Cards display the ticker, company
+name, current price, absolute price change, and percentage change with
+positive, negative, and neutral color states. Selecting the main card area
+opens a stock details modal with the latest quote values. The remove action is
+kept separate so deleting a ticker does not open the modal.
+
 Example add request:
 
 ```bash
@@ -278,10 +286,11 @@ Local browser check:
 1. Sign in through `http://localhost:3000/login`.
 2. Open `http://localhost:3000/watchlist` from the dashboard navigation.
 3. Search for `apple` or `AAPL`, then select Apple from the autocomplete list.
-4. Add the selected stock. Its company name and current market price should be displayed.
-5. Refresh the page. The ticker should remain in the list with its latest quote.
-6. Try to add `AAPL` again. The page should show a duplicate-ticker error.
-7. Remove the ticker. It should disappear from the persistent list.
+4. Add the selected stock. Its card should show a company logo or fallback initials, company name, current market price, and colored price change.
+5. Select the stock card. A stock details modal should open with the latest quote values.
+6. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
+7. Try to add `AAPL` again. The page should show a duplicate-ticker error.
+8. Remove the ticker. It should disappear without opening the details modal.
 
 ## Market Data
 
