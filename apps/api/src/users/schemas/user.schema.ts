@@ -15,6 +15,9 @@ export class User {
   @Prop()
   avatarUrl?: string;
 
+  @Prop({ index: true, sparse: true, trim: true })
+  telegramChatId?: string;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

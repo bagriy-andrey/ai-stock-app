@@ -117,6 +117,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
+| API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/stocks/mock` | Mock stock watchlist |
 | API | `GET` | `http://localhost:3001/stocks/mock/AAPL` | Mock quote by symbol |
 | Trading agent | `GET` | `http://localhost:8000/health` | FastAPI health check |
@@ -136,7 +137,7 @@ The login page uses Google Identity Services to obtain a Google ID token. The
 web app posts that token to the API, the API verifies it against
 `GOOGLE_CLIENT_ID`, creates or updates the MongoDB user record, and returns an
 application JWT. The browser stores the JWT in local storage and validates it
-with `GET /auth/me` after page refreshes. Dashboard routes redirect to
+with `GET /users/me` after page refreshes. Dashboard routes redirect to
 `/login` when no valid session is present.
 
 Local browser check:
@@ -156,7 +157,7 @@ Verify that a user was created:
 
 ```bash
 docker compose exec mongodb mongosh ai-stock-advisor \
-  --eval 'db.users.find({}, {email: 1, name: 1, avatarUrl: 1, createdAt: 1, updatedAt: 1}).pretty()'
+  --eval 'db.users.find({}, {email: 1, name: 1, avatarUrl: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
 ```
 
 ## Environment Variables

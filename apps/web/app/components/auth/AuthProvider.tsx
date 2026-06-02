@@ -45,7 +45,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     }
 
     setAccessToken(storedToken);
-    apiRequest<UserDto>("/auth/me", {
+    apiRequest<UserDto>("/users/me", {
       headers: {
         authorization: `Bearer ${storedToken}`,
       },

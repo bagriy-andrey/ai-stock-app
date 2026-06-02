@@ -25,6 +25,7 @@ export interface UserDto {
   email: string;
   name: string;
   avatarUrl?: string;
+  telegramChatId?: string;
   createdAt: string;
   updatedAt: string;
 }
