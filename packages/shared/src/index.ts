@@ -20,3 +20,20 @@ export interface TradingAgentAnalysisResponse {
   source: "mock";
 }
 
+export interface UserDto {
+  id: string;
+  email: string;
+  name: string;
+  avatarUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GoogleLoginRequest {
+  credential: string;
+}
+
+export interface AuthResponse {
+  accessToken: string;
+  user: UserDto;
+}

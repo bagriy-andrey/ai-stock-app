@@ -98,6 +98,14 @@ Completed tasks:
 * Build pipeline validated.
 * Lint pipeline validated.
 * Test pipeline validated.
+* Google authentication implemented.
+* Login page added.
+* Protected dashboard route added.
+* Browser session persistence added through JWT local storage and `/auth/me`.
+* API Google ID token validation added.
+* API JWT generation added.
+* MongoDB user creation on first login added.
+* User retrieval endpoint added.
 
 Technical cleanup:
 
@@ -118,6 +126,18 @@ Validation results:
 ✅ docker compose config
 
 ✅ git diff --check
+
+Runtime validation:
+
+✅ Google Sign In opens from `http://localhost:3000/login`
+
+✅ Successful login redirects to the dashboard
+
+✅ User document is created in MongoDB
+
+✅ Session survives browser refresh
+
+✅ Protected dashboard redirects unauthenticated users to `/login`
 
 ---
 
@@ -171,7 +191,7 @@ Phase 1
 
 Phase 2
 
-* Google Authentication
+* Google Authentication ✅
 
 Phase 3
 
