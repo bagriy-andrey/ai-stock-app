@@ -7,7 +7,7 @@ import type {
   WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { Dictionary } from "../../dictionaries";
 import {
   fetchStockCandles,
@@ -40,6 +40,8 @@ export function StockDetailsModal({
 }: StockDetailsModalProps) {
   const headingId = useId();
   const chartHeadingId = useId();
+  const dialogRef = useRef<HTMLElement>(null);
+  const onCloseRef = useRef(onClose);
   const [range, setRange] = useState<StockCandleRange>("1d");
   const detailsQuery = useQuery({
     queryKey: ["market", "stocks", item.ticker, "details"],
@@ -58,15 +60,58 @@ export function StockDetailsModal({
   const companyName = details?.name ?? item.companyName ?? t.companyNameNotSet;
 
   useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previouslyFocusedElement =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const previousOverflow = document.body.style.overflow;
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
-        onClose();
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(dialog);
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
       }
     };
 
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    if (dialog) {
+      (getFocusableElements(dialog)[0] ?? dialog).focus();
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocusedElement?.focus();
+    };
+  }, []);
 
   return (
     <div
@@ -81,7 +126,9 @@ export function StockDetailsModal({
         aria-labelledby={headingId}
         aria-modal="true"
         className="stock-modal"
+        ref={dialogRef}
         role="dialog"
+        tabIndex={-1}
       >
         <button
           aria-label={t.close}
@@ -108,9 +155,9 @@ export function StockDetailsModal({
           </div>
         </div>
         {detailsQuery.isLoading ? (
-          <p>{t.loadingStockDetails}</p>
+          <p role="status">{t.loadingStockDetails}</p>
         ) : detailsQuery.error instanceof Error ? (
-          <p className="error-text">{t.stockDetailsUnavailable}</p>
+          <p className="error-text" role="alert">{t.stockDetailsUnavailable}</p>
         ) : details ? (
           <StockSummary details={details} language={language} t={t} />
         ) : null}
@@ -138,9 +185,9 @@ export function StockDetailsModal({
             </div>
           </div>
           {candlesQuery.isLoading ? (
-            <p className="stock-chart-status">{t.loadingChart}</p>
+            <p className="stock-chart-status" role="status">{t.loadingChart}</p>
           ) : candlesQuery.error instanceof Error ? (
-            <p className="stock-chart-status error-text">{t.chartUnavailable}</p>
+            <p className="stock-chart-status error-text" role="alert">{t.chartUnavailable}</p>
           ) : candles.length === 0 ? (
             <p className="stock-chart-status">{t.noChartData}</p>
           ) : (
@@ -155,6 +202,14 @@ export function StockDetailsModal({
         </section>
       </section>
     </div>
+  );
+}
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ),
   );
 }
 

@@ -33,7 +33,16 @@ export function AppHeader() {
     };
     const closeMenuOnEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        const focusedControl =
+          document.activeElement instanceof HTMLElement
+            ? document.activeElement.closest<HTMLElement>(".header-control")
+            : null;
+
+        event.preventDefault();
         setOpenMenu(null);
+        focusedControl
+          ?.querySelector<HTMLButtonElement>(".header-icon-button")
+          ?.focus();
       }
     };
 
@@ -56,66 +65,77 @@ export function AppHeader() {
   return (
     <header className="app-header" ref={headerRef}>
       <nav className="top-nav" aria-label={t.navLabel}>
-        <HeaderLanguageSelector
-          isOpen={openMenu === "language"}
-          onToggle={() => toggleMenu("language")}
-        />
-        <HeaderThemeSelector
-          isOpen={openMenu === "theme"}
-          onToggle={() => toggleMenu("theme")}
-        />
-        <Link className="header-profile-link" href="/profile" aria-label={t.profile}>
-          <Avatar
-            alt={user.nickname ?? user.name}
-            className="header-avatar"
-            fallback={getUserInitials(user)}
-            src={resolveAvatarUrl(user.avatarUrl)}
-          />
+        <Link
+          aria-label={`AI Stock Advisor: ${t.dashboard}`}
+          className="app-brand"
+          href="/dashboard"
+        >
+          <span aria-hidden="true" className="app-brand-mark">
+            A
+          </span>
+          <span className="app-brand-copy">
+            <strong>AI Stock Advisor</strong>
+            <small>{t.dashboard}</small>
+          </span>
         </Link>
-        <div className="header-control">
-          <button
-            className="header-icon-button"
-            type="button"
-            aria-label={t.navLabel}
-            aria-expanded={openMenu === "navigation"}
-            aria-haspopup="menu"
-            onClick={() => toggleMenu("navigation")}
-          >
-            <MenuIcon className="header-action-icon" />
-          </button>
-          {openMenu === "navigation" ? (
-            <div className="header-popover header-navigation-menu" role="menu">
-              <Link
-                href="/dashboard"
-                role="menuitem"
-                onClick={() => setOpenMenu(null)}
-              >
-                <DashboardIcon className="header-menu-icon" />
-                <span>{t.dashboard}</span>
-              </Link>
-              <Link
-                href="/watchlist"
-                role="menuitem"
-                onClick={() => setOpenMenu(null)}
-              >
-                <WatchlistIcon className="header-menu-icon" />
-                <span>{t.watchlist}</span>
-              </Link>
-              <Link href="/" role="menuitem" onClick={() => setOpenMenu(null)}>
-                <HomeIcon className="header-menu-icon" />
-                <span>{t.homePage}</span>
-              </Link>
-              <button
-                className="header-sign-out"
-                type="button"
-                role="menuitem"
-                onClick={logout}
-              >
-                <SignOutIcon className="header-menu-icon" />
-                <span>{t.signOut}</span>
-              </button>
-            </div>
-          ) : null}
+        <div className="header-actions">
+          <HeaderLanguageSelector
+            isOpen={openMenu === "language"}
+            onToggle={() => toggleMenu("language")}
+          />
+          <HeaderThemeSelector
+            isOpen={openMenu === "theme"}
+            onToggle={() => toggleMenu("theme")}
+          />
+          <Link className="header-profile-link" href="/profile" aria-label={t.profile}>
+            <Avatar
+              alt={user.nickname ?? user.name}
+              className="header-avatar"
+              fallback={getUserInitials(user)}
+              src={resolveAvatarUrl(user.avatarUrl)}
+            />
+          </Link>
+          <div className="header-control">
+            <button
+              className="header-icon-button"
+              type="button"
+              aria-label={t.navLabel}
+              aria-expanded={openMenu === "navigation"}
+              onClick={() => toggleMenu("navigation")}
+            >
+              <MenuIcon className="header-action-icon" />
+            </button>
+            {openMenu === "navigation" ? (
+              <div className="header-popover header-navigation-menu">
+                <Link
+                  href="/dashboard"
+                  onClick={() => setOpenMenu(null)}
+                >
+                  <DashboardIcon className="header-menu-icon" />
+                  <span>{t.dashboard}</span>
+                </Link>
+                <Link
+                  href="/watchlist"
+                  onClick={() => setOpenMenu(null)}
+                >
+                  <WatchlistIcon className="header-menu-icon" />
+                  <span>{t.watchlist}</span>
+                </Link>
+                <Link href="/" onClick={() => setOpenMenu(null)}>
+                  <HomeIcon className="header-menu-icon" />
+                  <span>{t.homePage}</span>
+                </Link>
+                <button
+                  className="header-sign-out"
+                  type="button"
+                  onClick={logout}
+                >
+                  <SignOutIcon className="header-menu-icon" />
+                  <span>{t.signOut}</span>
+                </button>
+              </div>
+            ) : null}
+          </div>
         </div>
       </nav>
     </header>

@@ -17,6 +17,7 @@ import {
 import { useAuth } from "../components/auth/AuthProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
+import { EmptyState } from "../components/ui/EmptyState";
 import { StockCard } from "../components/watchlist/StockCard";
 import { StockDetailsModal } from "../components/watchlist/StockDetailsModal";
 import {
@@ -139,13 +140,13 @@ export function WatchlistPage() {
     <main>
       <AppHeader />
 
-      <header>
+      <header className="page-header">
         <p className="eyebrow">{t.watchlist}</p>
         <h1>{t.trackedStocks}</h1>
         <p className="subtitle">{t.watchlistSubtitle}</p>
       </header>
 
-      <section aria-labelledby="add-ticker-heading" className="watchlist-panel">
+      <section aria-labelledby="add-ticker-heading" className="page-section watchlist-panel">
         <h2 id="add-ticker-heading">{t.addStock}</h2>
         <form className="watchlist-form" onSubmit={onSubmit}>
           <div className="stock-search">
@@ -181,24 +182,21 @@ export function WatchlistPage() {
             {addMutation.isPending ? t.adding : t.add}
           </button>
         </form>
-        {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+        {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
       </section>
 
-      <section aria-labelledby="watchlist-heading">
+      <section aria-labelledby="watchlist-heading" className="page-section">
         <h2 id="watchlist-heading">{t.yourWatchlist}</h2>
         {quotesQuery.error instanceof Error ? (
-          <p className="error-text">{t.livePricesUnavailable}</p>
+          <p className="error-text" role="alert">{t.livePricesUnavailable}</p>
         ) : null}
 
         {watchlistQuery.isLoading ? (
-          <p>{t.loadingWatchlist}</p>
+          <p role="status">{t.loadingWatchlist}</p>
         ) : watchlistQuery.error instanceof Error ? (
-          <p className="error-text">{t.watchlistLoadError}</p>
+          <p className="error-text" role="alert">{t.watchlistLoadError}</p>
         ) : items.length === 0 ? (
-          <div className="empty-state">
-            <strong>{t.noStocksYet}</strong>
-            <p>{t.watchlistEmpty}</p>
-          </div>
+          <EmptyState description={t.watchlistEmpty} title={t.noStocksYet} />
         ) : (
           <div className="watchlist-list">
             {items.map((item) => (
@@ -250,12 +248,12 @@ function SearchResults({
   t,
 }: SearchResultsProps) {
   if (isLoading) {
-    return <p className="search-status">{t.searching}</p>;
+    return <p className="search-status" role="status">{t.searching}</p>;
   }
 
   if (error) {
     return (
-      <p className="search-status error-text">
+      <p className="search-status error-text" role="alert">
         {t.stockSearchUnavailable}
       </p>
     );

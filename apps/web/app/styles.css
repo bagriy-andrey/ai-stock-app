@@ -7,11 +7,13 @@
   --subtle-foreground: #94a3b8;
   --panel: #172235;
   --panel-hover: #24344d;
+  --panel-muted: #131e30;
   --border: #2c3c52;
   --control-border: #3b526f;
   --input-background: #0f172a;
   --link: #7dd3fc;
   --link-hover: #bae6fd;
+  --focus-ring: #38bdf8;
   --positive: #86efac;
   --positive-background: rgb(34 197 94 / 14%);
   --negative: #fca5a5;
@@ -30,11 +32,13 @@
   --subtle-foreground: #64748b;
   --panel: #ffffff;
   --panel-hover: #e2e8f0;
+  --panel-muted: #f1f5f9;
   --border: #cbd5e1;
   --control-border: #94a3b8;
   --input-background: #ffffff;
   --link: #0369a1;
   --link-hover: #075985;
+  --focus-ring: #0284c7;
   --positive: #15803d;
   --positive-background: #dcfce7;
   --negative: #b91c1c;
@@ -48,6 +52,7 @@
 }
 
 body {
+  min-height: 100vh;
   margin: 0;
   background: var(--background);
   color: var(--foreground);
@@ -63,6 +68,10 @@ button {
   font: inherit;
   font-weight: 700;
   padding: 0 14px;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    color 160ms ease;
 }
 
 button:hover {
@@ -84,6 +93,14 @@ a:hover {
   color: var(--link-hover);
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
 input,
 select {
   min-height: 40px;
@@ -94,6 +111,14 @@ select {
   color: var(--foreground);
   font: inherit;
   padding: 0 12px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+input:focus,
+select:focus {
+  border-color: var(--focus-ring);
 }
 
 label {
@@ -102,22 +127,26 @@ label {
 }
 
 main {
-  max-width: 960px;
+  max-width: 1080px;
   margin: 0 auto;
-  padding: 72px 24px;
+  padding: 32px 24px 72px;
 }
 
 h1 {
-  margin: 8px 0;
-  font-size: 4.5rem;
+  margin: 10px 0;
+  font-size: clamp(2.75rem, 7vw, 4.75rem);
+  letter-spacing: -0.07em;
+  line-height: 0.98;
 }
 
 h2 {
-  margin-top: 56px;
+  font-size: 1.4rem;
+  letter-spacing: -0.025em;
 }
 
 p {
   color: var(--muted-foreground);
+  line-height: 1.6;
 }
 
 .eyebrow {
@@ -134,39 +163,16 @@ p {
   line-height: 1.6;
 }
 
-.quote-grid {
-  display: grid;
-  gap: 16px;
+.page-header {
+  max-width: 760px;
 }
 
-.quote-card {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 20px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
+.page-section {
+  margin-top: 52px;
 }
 
-.quote-card p {
-  margin: 6px 0 0;
-}
-
-.quote-card small {
-  color: var(--subtle-foreground);
-}
-
-.quote-price {
-  display: grid;
-  gap: 6px;
-  text-align: right;
-}
-
-.quote-price span {
-  font-size: 1.3rem;
-  font-weight: 700;
+.page-section h2 {
+  margin: 0 0 18px;
 }
 
 .positive {
@@ -181,17 +187,67 @@ p {
   color: var(--neutral);
 }
 
-footer {
-  margin-top: 56px;
-  color: var(--subtle-foreground);
-}
-
 .top-nav {
   display: flex;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: 12px;
-  margin-bottom: 48px;
+  margin-bottom: 64px;
+}
+
+.app-brand,
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+.app-brand {
+  min-width: 0;
+  gap: 12px;
+  color: var(--foreground);
+}
+
+.app-brand:hover {
+  color: var(--foreground);
+}
+
+.app-brand-mark {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(145deg, #0ea5e9, #2563eb);
+  box-shadow: 0 10px 22px rgb(14 165 233 / 22%);
+  color: #f8fafc;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.app-brand-copy {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+
+.app-brand-copy strong {
+  overflow: hidden;
+  color: var(--foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.app-brand-copy small {
+  color: var(--subtle-foreground);
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.header-actions {
+  gap: 10px;
 }
 
 .header-control {
@@ -212,9 +268,9 @@ footer {
 .header-icon-button,
 .header-profile-link {
   display: grid;
-  width: 52px;
-  height: 52px;
-  min-height: 52px;
+  width: 46px;
+  height: 46px;
+  min-height: 46px;
   place-items: center;
   border: 1px solid var(--control-border);
   border-radius: 14px;
@@ -229,11 +285,11 @@ footer {
 }
 
 .header-language-button {
-  width: 66px;
+  width: 60px;
 }
 
 .header-flag {
-  font-size: 1.7rem;
+  font-size: 1.55rem;
   line-height: 1;
 }
 
@@ -254,8 +310,8 @@ footer {
 }
 
 .ui-avatar.header-avatar {
-  width: 52px;
-  height: 52px;
+  width: 46px;
+  height: 46px;
   border: 0;
   font-size: 0.95rem;
 }
@@ -296,7 +352,7 @@ footer {
   background: var(--panel-hover);
 }
 
-.header-popover-option[aria-checked="true"] {
+.header-popover-option[aria-pressed="true"] {
   color: var(--link);
 }
 
@@ -331,7 +387,7 @@ footer {
 .login-panel {
   width: min(100%, 520px);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 18px;
   background: var(--panel);
   padding: 32px;
 }
@@ -347,15 +403,18 @@ footer {
 }
 
 .error-text {
-  color: #fca5a5;
+  color: var(--negative);
 }
 
 .success-text {
-  color: #86efac;
+  color: var(--positive);
 }
 
 .watchlist-panel {
-  margin-top: 48px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-muted);
+  padding: 22px;
 }
 
 .watchlist-panel h2 {
@@ -382,13 +441,14 @@ footer {
 
 .search-results {
   position: absolute;
-  z-index: 1;
+  z-index: 3;
   top: calc(100% + 4px);
   width: 100%;
   padding: 0;
   border: 1px solid var(--control-border);
-  border-radius: 8px;
+  border-radius: 12px;
   background: var(--panel);
+  box-shadow: 0 16px 32px rgb(0 0 0 / 22%);
   list-style: none;
   overflow: hidden;
 }
@@ -429,7 +489,7 @@ footer {
   position: relative;
   min-height: 196px;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: 16px;
   background: var(--panel);
   transition:
     border-color 160ms ease,
@@ -449,7 +509,7 @@ footer {
   min-height: 194px;
   gap: 28px;
   border: 0;
-  border-radius: 18px;
+  border-radius: 16px;
   background: transparent;
   color: var(--foreground);
   padding: 20px;
@@ -461,7 +521,7 @@ footer {
 }
 
 .stock-card-open:focus-visible {
-  outline: 2px solid var(--link);
+  outline: 3px solid var(--focus-ring);
   outline-offset: -3px;
 }
 
@@ -602,7 +662,8 @@ footer {
   display: grid;
   overflow-y: auto;
   padding: 24px;
-  background: rgb(2 6 23 / 68%);
+  background: rgb(2 6 23 / 74%);
+  backdrop-filter: blur(8px);
   inset: 0;
   place-items: start center;
 }
@@ -611,7 +672,7 @@ footer {
   position: relative;
   width: min(100%, 760px);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 18px;
   background: var(--panel);
   box-shadow: 0 24px 56px rgb(0 0 0 / 30%);
   margin: auto 0;
@@ -793,14 +854,30 @@ footer {
 }
 
 .empty-state {
+  display: grid;
+  justify-items: start;
+  gap: 8px;
   border: 1px solid var(--border);
-  border-radius: 8px;
-  background: var(--panel);
-  padding: 24px;
+  border-radius: 16px;
+  background: var(--panel-muted);
+  padding: 28px;
 }
 
 .empty-state p {
-  margin-bottom: 0;
+  max-width: 620px;
+  margin: 0;
+}
+
+.empty-state-mark {
+  width: 38px;
+  height: 5px;
+  margin-bottom: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #2563eb);
+}
+
+.empty-state-action {
+  margin-top: 8px;
 }
 
 .profile-layout {
@@ -811,8 +888,9 @@ footer {
 
 .ui-card {
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: 16px;
   background: var(--panel);
+  overflow: hidden;
 }
 
 .ui-card-header,
@@ -910,21 +988,26 @@ footer {
 
 @media (max-width: 640px) {
   main {
-    padding: 40px 16px;
-  }
-
-  .quote-card,
-  .watchlist-form {
-    align-items: flex-start;
-    flex-direction: column;
+    padding: 20px 16px 52px;
   }
 
   .top-nav {
     gap: 8px;
+    margin-bottom: 48px;
+  }
+
+  .app-brand-copy {
+    display: none;
+  }
+
+  .header-actions {
+    gap: 7px;
   }
 
   .watchlist-form {
     display: flex;
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .watchlist-form button {
@@ -937,10 +1020,6 @@ footer {
 
   .profile-field {
     grid-column: 1;
-  }
-
-  .quote-price {
-    text-align: left;
   }
 
   .stock-modal-backdrop {
@@ -960,8 +1039,15 @@ footer {
     height: 180px;
   }
 
-  h1,
-  .login-panel h1 {
-    font-size: 2.75rem;
+  .stock-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .empty-state {
+    padding: 22px;
+  }
+
+  .watchlist-panel {
+    padding: 18px;
   }
 }

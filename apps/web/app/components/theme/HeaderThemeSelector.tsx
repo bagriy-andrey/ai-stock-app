@@ -39,21 +39,19 @@ export function HeaderThemeSelector({
         type="button"
         aria-label={t.themePreference}
         aria-expanded={isOpen}
-        aria-haspopup="menu"
         onClick={onToggle}
         disabled={mutation.isPending || !user}
       >
         <ThemeIcon className="header-action-icon" theme={theme} />
       </button>
       {isOpen ? (
-        <div className="header-popover header-theme-menu" role="menu">
+        <div className="header-popover header-theme-menu">
           {themes.map((option) => (
             <button
               className="header-popover-option"
               key={option}
               type="button"
-              role="menuitemradio"
-              aria-checked={option === theme}
+              aria-pressed={option === theme}
               aria-label={t[option]}
               title={t[option]}
               onClick={() => mutation.mutate(option)}

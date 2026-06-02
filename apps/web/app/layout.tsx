@@ -7,7 +7,7 @@ import "./styles.css";
 
 export const metadata: Metadata = {
   title: "AI Stock Advisor",
-  description: "Mock stock analysis dashboard",
+  description: "Track stocks and review market data from your personal watchlist.",
 };
 
 export default function RootLayout({

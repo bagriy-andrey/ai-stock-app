@@ -156,16 +156,16 @@ export function ProfilePage() {
     <main>
       <AppHeader />
 
-      <header>
+      <header className="page-header">
         <p className="eyebrow">{t.accountSettings}</p>
         <h1>{t.userProfile}</h1>
         <p className="subtitle">{t.profileSubtitle}</p>
       </header>
 
       {profileQuery.isLoading ? (
-        <p>{t.loadingProfile}</p>
+        <p role="status">{t.loadingProfile}</p>
       ) : profileQuery.error instanceof Error ? (
-        <p className="error-text">{t.profileLoadError}</p>
+        <p className="error-text" role="alert">{t.profileLoadError}</p>
       ) : profile ? (
         <div className="profile-layout">
           <Card>
@@ -289,9 +289,9 @@ export function ProfilePage() {
                   <Button type="submit" disabled={isSaving}>
                     {updateMutation.isPending ? t.saving : t.saveChanges}
                   </Button>
-                  {errorMessage ? <p className="error-text">{errorMessage}</p> : null}
+                  {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
                   {successMessage ? (
-                    <p className="success-text">{successMessage}</p>
+                    <p className="success-text" role="status">{successMessage}</p>
                   ) : null}
                 </div>
               </form>

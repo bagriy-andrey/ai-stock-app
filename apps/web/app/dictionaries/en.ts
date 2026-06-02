@@ -7,11 +7,14 @@ export const en = {
   signOut: "Sign out",
   language: "Language",
   languageUpdateError: "Could not update language. Try again.",
-  mvpDashboard: "MVP dashboard",
+  dashboardEyebrow: "Market overview",
   dashboardSubtitle:
-    "The dashboard still shows scaffold quotes. Open the watchlist to search stocks and view live Finnhub market data.",
-  mockWatchlist: "Mock watchlist",
-  nextMockEndpoint: "Next mock endpoint:",
+    "Build a focused watchlist and open any tracked stock for its latest market context.",
+  dashboardWatchlist: "Watchlist overview",
+  dashboardEmptyTitle: "Your dashboard is ready",
+  dashboardEmpty:
+    "Add stocks to your watchlist to start building your personal market overview.",
+  openWatchlist: "Open watchlist",
   trackedStocks: "Tracked Stocks",
   watchlistSubtitle:
     "Search stocks by company name or ticker and track their latest market price.",

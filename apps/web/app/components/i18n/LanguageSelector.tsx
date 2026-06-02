@@ -96,7 +96,6 @@ export function HeaderLanguageSelector({
         type="button"
         aria-label={t.language}
         aria-expanded={isOpen}
-        aria-haspopup="menu"
         onClick={onToggle}
         disabled={mutation.isPending || !user}
       >
@@ -105,14 +104,13 @@ export function HeaderLanguageSelector({
         </span>
       </button>
       {isOpen ? (
-        <div className="header-popover header-language-menu" role="menu">
+        <div className="header-popover header-language-menu">
           {profileLanguages.map((option) => (
             <button
               className="header-popover-option"
               key={option}
               type="button"
-              role="menuitemradio"
-              aria-checked={option === language}
+              aria-pressed={option === language}
               onClick={() => mutation.mutate(option)}
               disabled={mutation.isPending}
             >

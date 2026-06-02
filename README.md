@@ -2,8 +2,8 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The dashboard retains scaffold mock quotes, while the watchlist uses Finnhub
-for live company data and Yahoo Finance for historical chart candles. Google
+The dashboard links into a personal watchlist that uses Finnhub for live
+company data and Yahoo Finance for historical chart candles. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB.
 
@@ -11,7 +11,7 @@ MongoDB.
 
 ```text
 apps/
-  web/                    # Next.js app and mock web endpoint
+  web/                    # Next.js app
   api/                    # NestJS API, profiles, watchlist, and market data providers
 packages/
   shared/                 # Shared TypeScript request and response types
@@ -117,7 +117,6 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 
 | Service | Method | Endpoint | Purpose |
 | --- | --- | --- | --- |
-| Web | `GET` | `http://localhost:3000/api/stocks/mock` | Mock quotes from Next.js |
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
