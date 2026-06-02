@@ -109,7 +109,7 @@ docker build -t ai-stock-advisor-trading-agent services/trading-agent
 docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 ```
 
-## Mock Endpoints
+## Local Endpoints
 
 | Service | Method | Endpoint | Purpose |
 | --- | --- | --- | --- |
@@ -203,11 +203,13 @@ user. It requires an `Authorization: Bearer <jwt>` header and returns the shared
 
 Authenticated users can manage a persistent MongoDB-backed stock watchlist from
 the web app at `http://localhost:3000/watchlist`. The page uses the stored app
-JWT and calls the API with an `Authorization: Bearer <jwt>` header.
+JWT and calls the API with an `Authorization: Bearer <jwt>` header. The
+dashboard links to this protected page.
 
 Watchlist items are stored with `userId`, uppercase `ticker`, optional
 `companyName`, `createdAt`, and `updatedAt`. Duplicate tickers are rejected per
-user, and deletes only match items owned by the authenticated user.
+user, and deletes only match items owned by the authenticated user. Ticker
+input is trimmed, converted to uppercase, and validated before persistence.
 
 Example add request:
 
@@ -217,6 +219,15 @@ curl -X POST http://localhost:3001/watchlist \
   -H 'content-type: application/json' \
   -d '{"ticker":"aapl"}'
 ```
+
+Local browser check:
+
+1. Sign in through `http://localhost:3000/login`.
+2. Open `http://localhost:3000/watchlist` from the dashboard navigation.
+3. Add a ticker such as `aapl`. It should be displayed as `AAPL`.
+4. Refresh the page. The ticker should remain in the list.
+5. Try to add `AAPL` again. The page should show a duplicate-ticker error.
+6. Remove the ticker. It should disappear from the persistent list.
 
 ## Environment Variables
 

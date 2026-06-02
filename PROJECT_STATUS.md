@@ -107,6 +107,17 @@ Completed tasks:
 * MongoDB user creation/update from Google authentication added.
 * User domain added with `UsersModule`, `UsersService`, `UsersController`, and `GET /users/me`.
 * User schema added with `email`, `name`, `avatarUrl`, optional `telegramChatId`, `createdAt`, and `updatedAt`.
+* Persistent MongoDB-backed Watchlist domain added with `WatchlistModule`, `WatchlistService`, and `WatchlistController`.
+* Authenticated Watchlist API added with `GET /watchlist`, `POST /watchlist`, and `DELETE /watchlist/:id`.
+* Watchlist schema added with per-user ownership, ticker normalization, optional company name, timestamps, and a unique `{ userId, ticker }` index.
+* Watchlist input validation added for trimmed, uppercase stock tickers.
+* Watchlist service protects against duplicate tickers and only removes items owned by the authenticated user.
+* Shared Watchlist TypeScript request and response types added.
+* Protected `/watchlist` web page added with persistent list loading, ticker addition, ticker removal, empty state, and API error display.
+* Dashboard navigation link to the Watchlist page added.
+* React Query provider added for web data fetching and Watchlist cache invalidation.
+* JWT module export fixed so feature modules importing `AuthModule` can resolve `JwtService` for `JwtAuthGuard`.
+* Focused Watchlist service and DTO validation tests added.
 
 Technical cleanup:
 
@@ -139,6 +150,14 @@ Runtime validation:
 ✅ Session survives browser refresh
 
 ✅ Protected dashboard redirects unauthenticated users to `/login`
+
+✅ Protected Watchlist page opens from the dashboard
+
+✅ Watchlist items can be added, persisted after refresh, and removed
+
+✅ Duplicate Watchlist tickers are rejected per user
+
+✅ API starts with `WatchlistModule` and JWT guard dependencies resolved
 
 ---
 
@@ -186,9 +205,9 @@ Telegram:
 
 Phase 1
 
-* MongoDB integration
-* Domain models
-* Health endpoint
+* MongoDB integration ✅
+* Initial domain models ✅
+* Health endpoint ✅
 
 Phase 2
 
@@ -196,7 +215,7 @@ Phase 2
 
 Phase 3
 
-* Watchlist CRUD
+* Watchlist CRUD ✅
 
 Phase 4
 
