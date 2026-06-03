@@ -15,6 +15,7 @@ import {
   MenuIcon,
   PortfolioIcon,
   SignOutIcon,
+  TransactionsIcon,
   WatchlistIcon,
 } from "./HeaderIcons";
 
@@ -127,6 +128,14 @@ export function AppHeader() {
                 >
                   <PortfolioIcon className="header-menu-icon" />
                   <span>{t.portfolio}</span>
+                </Link>
+                <Link
+                  aria-current={getActivePage("/transactions")}
+                  href="/transactions"
+                  onClick={() => setOpenMenu(null)}
+                >
+                  <TransactionsIcon className="header-menu-icon" />
+                  <span>{t.transactions}</span>
                 </Link>
                 <Link
                   aria-current={getActivePage("/watchlist")}

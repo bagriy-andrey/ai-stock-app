@@ -13,6 +13,7 @@ import type {
 } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
 import { MarketDataService } from "../market-data/market-data.service";
+import { TransactionsService } from "../transactions/transactions.service";
 import type { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
 import type { UpdatePortfolioPositionDto } from "./dto/update-portfolio-position.dto";
 import {
@@ -36,6 +37,7 @@ export class PortfolioService implements OnModuleInit {
     @InjectModel(PortfolioPosition.name)
     private readonly portfolioPositionModel: Model<PortfolioPositionDocument>,
     private readonly marketDataService: MarketDataService,
+    private readonly transactionsService: TransactionsService,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -104,6 +106,17 @@ export class PortfolioService implements OnModuleInit {
       notes: this.normalizeOptionalString(input.notes),
     });
 
+    await this.transactionsService.createForUser(userId, {
+      ticker: position.ticker,
+      companyName: position.companyName,
+      type: "BUY",
+      quantity: position.quantity,
+      price: position.averagePurchasePrice,
+      currency: position.currency,
+      transactionDate: position.purchaseDate.toISOString(),
+      notes: position.notes,
+    });
+
     return this.toDto(position, quote);
   }
 
@@ -162,12 +175,31 @@ export class PortfolioService implements OnModuleInit {
       throw new NotFoundException("Portfolio position not found");
     }
 
+    await this.transactionsService.createForUser(userId, {
+      ticker: position.ticker,
+      companyName: position.companyName,
+      type: "UPDATE",
+      quantity: position.quantity,
+      price: position.averagePurchasePrice,
+      currency: position.currency,
+      transactionDate: new Date().toISOString(),
+      notes: position.notes,
+    });
+
     return this.toDto(position, quote);
   }
 
   async removeForUser(userId: string, positionId: string): Promise<void> {
     const ownerId = this.toUserObjectId(userId);
     const id = this.toPositionObjectId(positionId);
+    const existingPosition = await this.portfolioPositionModel
+      .findOne({ _id: id, userId: ownerId })
+      .exec();
+
+    if (!existingPosition) {
+      throw new NotFoundException("Portfolio position not found");
+    }
+
     const result = await this.portfolioPositionModel
       .deleteOne({ _id: id, userId: ownerId })
       .exec();
@@ -175,6 +207,17 @@ export class PortfolioService implements OnModuleInit {
     if (result.deletedCount !== 1) {
       throw new NotFoundException("Portfolio position not found");
     }
+
+    await this.transactionsService.createForUser(userId, {
+      ticker: existingPosition.ticker,
+      companyName: existingPosition.companyName,
+      type: "DELETE",
+      quantity: existingPosition.quantity,
+      price: existingPosition.averagePurchasePrice,
+      currency: existingPosition.currency,
+      transactionDate: new Date().toISOString(),
+      notes: existingPosition.notes,
+    });
   }
 
   private async addMarketValues(

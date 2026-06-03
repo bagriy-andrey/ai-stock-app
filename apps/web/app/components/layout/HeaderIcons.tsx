@@ -81,6 +81,15 @@ export function PortfolioIcon({ className = "" }: IconProps) {
   );
 }
 
+export function TransactionsIcon({ className = "" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M5 4h14v16H5V4Z" />
+      <path d="M8 8h8M8 12h8M8 16h5" />
+    </svg>
+  );
+}
+
 export function HomeIcon({ className = "" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">

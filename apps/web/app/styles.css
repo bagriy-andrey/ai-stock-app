@@ -1204,6 +1204,50 @@ p {
   text-overflow: ellipsis;
 }
 
+.transactions-filter-form {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 2fr 1fr 1fr;
+}
+
+.transactions-table {
+  min-width: 1040px;
+}
+
+.transactions-notes-cell {
+  max-width: 220px;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  text-overflow: ellipsis;
+}
+
+.transaction-type-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  border-radius: 999px;
+  padding: 0 10px;
+  font-size: 0.76rem;
+  font-weight: 900;
+  letter-spacing: 0.06em;
+}
+
+.transaction-type-buy {
+  background: var(--positive-background);
+  color: var(--positive);
+}
+
+.transaction-type-sell,
+.transaction-type-delete {
+  background: var(--negative-background);
+  color: var(--negative);
+}
+
+.transaction-type-update {
+  background: var(--neutral-background);
+  color: var(--neutral);
+}
+
 .portfolio-row-actions,
 .portfolio-modal-actions {
   display: flex;
@@ -1295,6 +1339,10 @@ p {
   }
 
   .portfolio-form {
+    grid-template-columns: 1fr;
+  }
+
+  .transactions-filter-form {
     grid-template-columns: 1fr;
   }
 

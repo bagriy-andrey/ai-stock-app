@@ -7,6 +7,7 @@ import { MarketDataModule } from "./market-data/market-data.module";
 import { PortfolioModule } from "./portfolio/portfolio.module";
 import { ProfileModule } from "./profile/profile.module";
 import { StocksModule } from "./stocks/stocks.module";
+import { TransactionsModule } from "./transactions/transactions.module";
 import { UsersModule } from "./users/users.module";
 import { WatchlistModule } from "./watchlist/watchlist.module";
 
@@ -18,6 +19,7 @@ import { WatchlistModule } from "./watchlist/watchlist.module";
     StocksModule,
     WatchlistModule,
     MarketDataModule,
+    TransactionsModule,
     PortfolioModule,
     ProfileModule,
   ],

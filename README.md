@@ -5,7 +5,8 @@ Telegram integration, scheduled jobs, and an isolated TradingAgents service.
 The protected home page shows Financial Modeling Prep market movers and links into a
 personal watchlist that uses Finnhub for live company data and Yahoo Finance
 for historical chart candles. Authenticated users can also manually maintain a
-portfolio and review live position values and profit/loss calculations. Google
+portfolio, review live position values and profit/loss calculations, and audit
+recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB.
 
@@ -14,7 +15,7 @@ MongoDB.
 ```text
 apps/
   web/                    # Next.js app
-  api/                    # NestJS API, profiles, watchlist, portfolio, and market data providers
+  api/                    # NestJS API, profiles, watchlist, portfolio, transactions, and market data providers
 packages/
   shared/                 # Shared TypeScript request and response types
 services/
@@ -135,6 +136,11 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
+| API | `GET` | `http://localhost:3001/transactions?ticker=AAPL&fromDate=2026-05-01&toDate=2026-05-31` | Return owned transaction records with optional filters |
+| API | `GET` | `http://localhost:3001/transactions/:id` | Return one owned transaction record |
+| API | `POST` | `http://localhost:3001/transactions` | Create one owned transaction record |
+| API | `PATCH` | `http://localhost:3001/transactions/:id` | Update one owned transaction record |
+| API | `DELETE` | `http://localhost:3001/transactions/:id` | Delete one owned transaction record |
 | API | `GET` | `http://localhost:3001/market-data/search?query=apple` | Search Finnhub symbols |
 | API | `GET` | `http://localhost:3001/market-data/quote/AAPL` | Return one live Finnhub quote |
 | API | `POST` | `http://localhost:3001/market-data/quotes` | Return live Finnhub quotes for `{ "tickers": ["AAPL"] }` |
@@ -242,8 +248,8 @@ after login. The compact authenticated header exposes flag-based language
 selection, icon-based theme selection, the profile avatar, and a burger menu
 with application navigation. Header theme changes are also persisted
 immediately through `PATCH /profile`. The burger menu contains Home page,
-Portfolio, Watchlist, and Sign out. The MVP redirects `/dashboard` to the
-authenticated home page at `/`.
+Portfolio, Transactions, Watchlist, and Sign out. The MVP redirects
+`/dashboard` to the authenticated home page at `/`.
 
 For the MVP, uploaded profile photos are written to the API filesystem under
 `uploads/avatars` and served from `/uploads/avatars`. The folder is ignored by
@@ -310,15 +316,17 @@ Local browser check:
 Authenticated users can manually manage a persistent MongoDB-backed portfolio
 from `http://localhost:3000/portfolio`. Open the page from the authenticated
 header menu. The page uses TanStack Query, shows portfolio summary cards and a
-purchase transactions table, and supports add, edit, and delete flows. Deletion
+positions table, and supports add, edit, and delete flows. Deletion
 updates the table optimistically and rolls back if the API rejects the request.
 
-Portfolio purchase transactions are stored with `userId`, uppercase `ticker`,
+Portfolio positions are stored with `userId`, uppercase `ticker`,
 `companyName`, positive `quantity`, positive `averagePurchasePrice`,
 three-letter `currency`, `purchaseDate`, optional `notes`, `createdAt`, and
 `updatedAt`. Users can add multiple purchases for the same ticker with
 different timestamps, quantities, and prices. Future purchase timestamps are
 rejected. All reads, updates, and deletes are scoped to the authenticated user.
+Creating, updating, and deleting portfolio positions also writes `BUY`,
+`UPDATE`, and `DELETE` records into the transaction history.
 
 `GET /portfolio` loads the latest cached Finnhub quote for each saved ticker
 and returns:
@@ -371,10 +379,45 @@ Local browser check:
 2. Select Add position, search for `AAPL`, and choose Apple from autocomplete.
 3. Confirm that the current market price and current local date-time are prefilled.
 4. Enter a positive quantity and adjust the purchase price or timestamp if needed. Future timestamps must be rejected.
-5. Save a second `AAPL` purchase with a different price and time. Both transactions should remain visible.
+5. Save a second `AAPL` purchase with a different price and time. Both positions should remain visible.
 6. Confirm that summary profit/loss includes both transactions while the position count remains one.
-7. Edit or delete one transaction and confirm that summary calculations update.
+7. Edit or delete one position and confirm that summary calculations update.
 8. Refresh the page and confirm that the saved portfolio state persists.
+
+## Transactions
+
+Authenticated users can review transaction history at
+`http://localhost:3000/transactions`. The page lists owned transaction records,
+supports ticker search and date range filters, and provides edit/delete actions
+for transaction records. Transaction record edits do not recalculate portfolio
+positions; portfolio position changes should still be made from
+`/portfolio`.
+
+Transaction records are stored with `userId`, uppercase `ticker`,
+`companyName`, `type` (`BUY`, `SELL`, `UPDATE`, or `DELETE`), positive
+`quantity`, positive `price`, three-letter `currency`, `transactionDate`,
+optional `notes`, `createdAt`, and `updatedAt`. All transaction endpoints
+require `Authorization: Bearer <jwt>` and only read, update, or delete records
+owned by the authenticated user. Date-only `toDate` filters include the full
+selected UTC day.
+
+Example manual transaction request:
+
+```bash
+curl -X POST http://localhost:3001/transactions \
+  -H 'authorization: Bearer your_app_jwt' \
+  -H 'content-type: application/json' \
+  -d '{"ticker":"AAPL","companyName":"Apple Inc.","type":"SELL","quantity":1,"price":190,"currency":"USD","transactionDate":"2026-05-15T14:30:00.000Z","notes":"Trimmed position"}'
+```
+
+Local browser check:
+
+1. Sign in and open `http://localhost:3000/portfolio`.
+2. Add, edit, or delete a portfolio position.
+3. Open `http://localhost:3000/transactions` from the header navigation.
+4. Confirm the corresponding `BUY`, `UPDATE`, or `DELETE` record is listed.
+5. Filter by ticker and date range, then clear filters.
+6. Edit or delete a transaction record and confirm the table updates.
 
 ## Market Data
 

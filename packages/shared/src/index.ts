@@ -196,3 +196,40 @@ export interface CreatePortfolioPositionRequest {
 
 export type UpdatePortfolioPositionRequest =
   Partial<CreatePortfolioPositionRequest>;
+
+export type PortfolioTransactionType = "BUY" | "SELL" | "UPDATE" | "DELETE";
+
+export interface PortfolioTransactionDto {
+  id: string;
+  userId: string;
+  ticker: string;
+  companyName: string;
+  type: PortfolioTransactionType;
+  quantity: number;
+  price: number;
+  currency: string;
+  transactionDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TransactionFilters {
+  ticker?: string;
+  fromDate?: string;
+  toDate?: string;
+}
+
+export interface CreatePortfolioTransactionRequest {
+  ticker: string;
+  companyName: string;
+  type: PortfolioTransactionType;
+  quantity: number;
+  price: number;
+  currency: string;
+  transactionDate: string;
+  notes?: string;
+}
+
+export type UpdatePortfolioTransactionRequest =
+  Partial<CreatePortfolioTransactionRequest>;

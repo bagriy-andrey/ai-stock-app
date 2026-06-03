@@ -2,6 +2,7 @@ import { BadRequestException, NotFoundException } from "@nestjs/common";
 import type { StockQuote } from "@ai-stock-advisor/shared";
 import { Types } from "mongoose";
 import type { MarketDataService } from "../market-data/market-data.service";
+import type { TransactionsService } from "../transactions/transactions.service";
 import { PortfolioService } from "./portfolio.service";
 import type { PortfolioPositionDocument } from "./schemas/portfolio-position.schema";
 
@@ -22,9 +23,13 @@ describe("PortfolioService", () => {
     getQuote: jest.fn(),
     getQuotes: jest.fn(),
   } as unknown as jest.Mocked<MarketDataService>;
+  const transactionsService = {
+    createForUser: jest.fn(),
+  } as unknown as jest.Mocked<TransactionsService>;
   const service = new PortfolioService(
     portfolioPositionModel as never,
     marketDataService,
+    transactionsService,
   );
   const userId = new Types.ObjectId("665daec06c456275631b7af1");
   const otherUserId = new Types.ObjectId("665daec06c456275631b7af2");
@@ -114,6 +119,19 @@ describe("PortfolioService", () => {
       purchaseDate: new Date("2026-05-01"),
       notes: "Core holding",
     });
+    expect(transactionsService.createForUser).toHaveBeenCalledWith(
+      userId.toString(),
+      {
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        type: "BUY",
+        quantity: 2,
+        price: 150,
+        currency: "USD",
+        transactionDate: "2026-05-01T00:00:00.000Z",
+        notes: "Core holding",
+      },
+    );
   });
 
   it("returns a valued portfolio summary across separate transactions", async () => {
@@ -191,6 +209,19 @@ describe("PortfolioService", () => {
       { quantity: 3 },
       { new: true, runValidators: true },
     );
+    expect(transactionsService.createForUser).toHaveBeenCalledWith(
+      userId.toString(),
+      {
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        type: "UPDATE",
+        quantity: 3,
+        price: 150,
+        currency: "USD",
+        transactionDate: expect.any(String),
+        notes: "Core holding",
+      },
+    );
   });
 
   it("rejects an update when the position is not owned by the user", async () => {
@@ -213,9 +244,13 @@ describe("PortfolioService", () => {
   });
 
   it("deletes only an owned position", async () => {
+    const findOneExec = jest
+      .fn<Promise<PortfolioPositionDocument | null>, []>()
+      .mockResolvedValue(position);
     const exec = jest
       .fn<Promise<{ deletedCount: number }>, []>()
       .mockResolvedValue({ deletedCount: 1 });
+    portfolioPositionModel.findOne.mockReturnValue({ exec: findOneExec });
     portfolioPositionModel.deleteOne.mockReturnValue({ exec });
 
     await expect(
@@ -226,17 +261,37 @@ describe("PortfolioService", () => {
       _id: positionId,
       userId,
     });
+    expect(transactionsService.createForUser).toHaveBeenCalledWith(
+      userId.toString(),
+      {
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        type: "DELETE",
+        quantity: 2,
+        price: 150,
+        currency: "USD",
+        transactionDate: expect.any(String),
+        notes: "Core holding",
+      },
+    );
   });
 
   it("rejects deletion when the position is not owned by the user", async () => {
     const exec = jest
-      .fn<Promise<{ deletedCount: number }>, []>()
-      .mockResolvedValue({ deletedCount: 0 });
-    portfolioPositionModel.deleteOne.mockReturnValue({ exec });
+      .fn<Promise<PortfolioPositionDocument | null>, []>()
+      .mockResolvedValue(null);
+    portfolioPositionModel.findOne.mockReturnValue({ exec });
 
     await expect(
       service.removeForUser(otherUserId.toString(), positionId.toString()),
     ).rejects.toThrow(NotFoundException);
+
+    expect(portfolioPositionModel.findOne).toHaveBeenCalledWith({
+      _id: positionId,
+      userId: otherUserId,
+    });
+    expect(portfolioPositionModel.deleteOne).not.toHaveBeenCalled();
+    expect(transactionsService.createForUser).not.toHaveBeenCalled();
   });
 
   it("allows separate transactions for the same ticker", async () => {
@@ -255,6 +310,7 @@ describe("PortfolioService", () => {
     ).resolves.toMatchObject({ ticker: "AAPL" });
 
     expect(portfolioPositionModel.create).toHaveBeenCalled();
+    expect(transactionsService.createForUser).toHaveBeenCalled();
   });
 
   it("rejects a future purchase date before creating a transaction", async () => {
@@ -271,6 +327,7 @@ describe("PortfolioService", () => {
 
     expect(marketDataService.getQuote).not.toHaveBeenCalled();
     expect(portfolioPositionModel.create).not.toHaveBeenCalled();
+    expect(transactionsService.createForUser).not.toHaveBeenCalled();
   });
 
   it("rejects a future purchase date before updating a transaction", async () => {
@@ -288,6 +345,7 @@ describe("PortfolioService", () => {
 
     expect(marketDataService.getQuote).not.toHaveBeenCalled();
     expect(portfolioPositionModel.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(transactionsService.createForUser).not.toHaveBeenCalled();
   });
 
   it("does not create a position when quote loading fails", async () => {
@@ -305,6 +363,7 @@ describe("PortfolioService", () => {
     ).rejects.toThrow("provider error");
 
     expect(portfolioPositionModel.create).not.toHaveBeenCalled();
+    expect(transactionsService.createForUser).not.toHaveBeenCalled();
   });
 
   it("does not update a position when quote loading fails", async () => {
@@ -321,6 +380,7 @@ describe("PortfolioService", () => {
     ).rejects.toThrow("provider error");
 
     expect(portfolioPositionModel.findOneAndUpdate).not.toHaveBeenCalled();
+    expect(transactionsService.createForUser).not.toHaveBeenCalled();
   });
 
   it("rejects invalid user and position ids", async () => {
