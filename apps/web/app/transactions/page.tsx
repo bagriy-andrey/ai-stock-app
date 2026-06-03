@@ -1,10 +1,21 @@
 import { ProtectedRoute } from "../components/auth/ProtectedRoute";
 import { TransactionsPage } from "./TransactionsPage";
 
-export default function Transactions() {
+interface TransactionsRouteProps {
+  searchParams?: Promise<{
+    ticker?: string | string[];
+  }>;
+}
+
+export default async function Transactions({ searchParams }: TransactionsRouteProps) {
+  const params = await searchParams;
+  const tickerParam = Array.isArray(params?.ticker)
+    ? params?.ticker[0]
+    : params?.ticker;
+
   return (
     <ProtectedRoute>
-      <TransactionsPage />
+      <TransactionsPage initialTicker={tickerParam ?? ""} />
     </ProtectedRoute>
   );
 }

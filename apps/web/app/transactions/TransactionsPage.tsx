@@ -52,11 +52,19 @@ const transactionTypes: PortfolioTransactionType[] = [
 ];
 const tablePageSize = 10;
 
-export function TransactionsPage() {
+export function TransactionsPage({
+  initialTicker = "",
+}: {
+  initialTicker?: string;
+}) {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
-  const [tickerFilter, setTickerFilter] = useState("");
+  const normalizedInitialTicker = initialTicker.trim().toUpperCase();
+  const [tickerFilter, setTickerFilter] = useState(normalizedInitialTicker);
+  const [appliedInitialTicker, setAppliedInitialTicker] = useState(
+    normalizedInitialTicker,
+  );
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
@@ -137,6 +145,14 @@ export function TransactionsPage() {
       setCurrentPage(validPage);
     }
   }, [currentPage, paginationMeta]);
+
+  useEffect(() => {
+    if (normalizedInitialTicker !== appliedInitialTicker) {
+      setTickerFilter(normalizedInitialTicker);
+      setAppliedInitialTicker(normalizedInitialTicker);
+      setCurrentPage(getPageAfterTransactionsFilterChange());
+    }
+  }, [appliedInitialTicker, normalizedInitialTicker]);
 
   const resetFiltersPage = () =>
     setCurrentPage(getPageAfterTransactionsFilterChange());

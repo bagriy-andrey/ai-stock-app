@@ -46,6 +46,8 @@ export const uk = {
   companyNameNotSet: "Назву компанії не вказано",
   removing: "Видалення...",
   remove: "Видалити",
+  addToWatchlist: "Додати до списку спостереження",
+  removeFromWatchlist: "Видалити зі списку спостереження",
   chooseStockError: "Знайдіть акцію та виберіть її з результатів.",
   addStockError: "Не вдалося додати акцію. Спробуйте ще раз.",
   removeStockError: "Не вдалося видалити акцію. Спробуйте ще раз.",

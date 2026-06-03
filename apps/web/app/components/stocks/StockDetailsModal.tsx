@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CreatePortfolioPositionRequest,
   MarketMoversResponse,
   PortfolioDto,
   ProfileLanguage,
@@ -8,9 +9,20 @@ import type {
   StockDetails,
   WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
-import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  type QueryClient,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
+import {
+  AddPurchaseModal,
+  type AddPurchasePrefill,
+} from "../portfolio/AddPurchaseModal";
+import { Button } from "../ui/button";
 import { useI18n } from "../i18n/I18nProvider";
 import type { Dictionary } from "../../dictionaries";
 import {
@@ -18,11 +30,17 @@ import {
   fetchStockDetails,
   type StockChartCandle,
 } from "../../lib/market-data-api";
+import { createPortfolioPosition } from "../../lib/portfolio-api";
 import {
   formatCurrency,
   formatPercent,
   getChangeVariant,
 } from "../../lib/stock-format";
+import {
+  addWatchlistItem,
+  fetchWatchlist,
+  removeWatchlistItem,
+} from "../../lib/watchlist-api";
 import { CompanyLogo } from "./CompanyLogo";
 
 const candleRanges: StockCandleRange[] = ["1d", "1w", "1m", "1y"];
@@ -41,12 +59,19 @@ export function StockDetailsModal({
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const pathname = usePathname();
   const headingId = useId();
   const chartHeadingId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
   const [range, setRange] = useState<StockCandleRange>("1d");
+  const [purchasePrefill, setPurchasePrefill] =
+    useState<AddPurchasePrefill | null>(null);
   const normalizedTicker = ticker.trim().toUpperCase();
+  const watchlistQueryKey = ["watchlist"] as const;
+  const portfolioQueryKey = ["portfolio"] as const;
+  const transactionsQueryKey = ["transactions"] as const;
   const detailsQuery = useQuery({
     queryKey: ["market", "stocks", normalizedTicker, "details"],
     queryFn: () => fetchStockDetails(accessToken ?? "", normalizedTicker),
@@ -59,12 +84,53 @@ export function StockDetailsModal({
     enabled: open && Boolean(accessToken) && normalizedTicker.length > 0,
     retry: false,
   });
+  const watchlistQuery = useQuery({
+    queryKey: watchlistQueryKey,
+    queryFn: () => fetchWatchlist(accessToken ?? ""),
+    enabled: open && Boolean(accessToken),
+  });
+  const watchlistItem = watchlistQuery.data?.find(
+    (item) => item.ticker.toUpperCase() === normalizedTicker,
+  );
+  const addWatchlistMutation = useMutation({
+    mutationFn: () =>
+      addWatchlistItem(accessToken ?? "", {
+        ticker: normalizedTicker,
+        companyName: getActionCompanyName(companyName, t),
+      }),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: watchlistQueryKey });
+    },
+  });
+  const removeWatchlistMutation = useMutation({
+    mutationFn: (id: string) => removeWatchlistItem(accessToken ?? "", id),
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: watchlistQueryKey });
+    },
+  });
+  const createPurchaseMutation = useMutation({
+    mutationFn: (input: CreatePortfolioPositionRequest) =>
+      createPortfolioPosition(accessToken ?? "", input),
+    onSuccess: async () => {
+      setPurchasePrefill(null);
+      await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
+      await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+    },
+  });
   const details = detailsQuery.data;
   const candles = candlesQuery.data ?? [];
   const companyName =
     details?.name ??
     getCachedCompanyName(queryClient, normalizedTicker) ??
     t.companyNameNotSet;
+  const isWatchlistMutationPending =
+    addWatchlistMutation.isPending || removeWatchlistMutation.isPending;
+  const watchlistActionError =
+    addWatchlistMutation.error instanceof Error
+      ? t.addStockError
+      : removeWatchlistMutation.error instanceof Error
+        ? t.removeStockError
+        : null;
 
   useEffect(() => {
     onCloseRef.current = onClose;
@@ -182,6 +248,62 @@ export function StockDetailsModal({
         ) : details ? (
           <StockSummary details={details} language={language} t={t} />
         ) : null}
+        <div className="stock-modal-actions" aria-label={t.actions}>
+          <Button
+            disabled={isWatchlistMutationPending || watchlistQuery.isLoading}
+            onClick={() => {
+              if (watchlistItem) {
+                removeWatchlistMutation.mutate(watchlistItem.id);
+                return;
+              }
+
+              addWatchlistMutation.mutate();
+            }}
+            type="button"
+            variant={watchlistItem ? "danger" : "default"}
+          >
+            {isWatchlistMutationPending
+              ? watchlistItem
+                ? t.removing
+                : t.adding
+              : watchlistItem
+                ? t.removeFromWatchlist
+                : t.addToWatchlist}
+          </Button>
+          <Button
+            onClick={() =>
+              setPurchasePrefill({
+                ticker: normalizedTicker,
+                companyName: getActionCompanyName(companyName, t),
+                currency: details?.currency,
+              })
+            }
+            type="button"
+            variant="outline"
+          >
+            {t.addPurchase}
+          </Button>
+          <Button
+            onClick={() => {
+              const target = `/transactions?ticker=${encodeURIComponent(
+                normalizedTicker,
+              )}`;
+
+              if (pathname === "/transactions") {
+                router.replace(target);
+              } else {
+                router.push(target);
+              }
+            }}
+            type="button"
+            variant="outline"
+          >
+            {t.viewTransactions}
+          </Button>
+        </div>
+        {watchlistActionError ? (
+          <p className="error-text" role="alert">{watchlistActionError}</p>
+        ) : null}
         <section
           aria-labelledby={chartHeadingId}
           className="stock-chart-section"
@@ -221,9 +343,27 @@ export function StockDetailsModal({
             />
           )}
         </section>
+        {purchasePrefill ? (
+          <AddPurchaseModal
+            accessToken={accessToken ?? ""}
+            error={createPurchaseMutation.error}
+            initialStock={purchasePrefill}
+            isPending={createPurchaseMutation.isPending}
+            onClose={() => setPurchasePrefill(null)}
+            onSubmit={(input) => createPurchaseMutation.mutate(input)}
+            t={t}
+          />
+        ) : null}
       </section>
     </div>
   );
+}
+
+function getActionCompanyName(
+  companyName: string,
+  t: Dictionary,
+): string | undefined {
+  return companyName === t.companyNameNotSet ? undefined : companyName;
 }
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {

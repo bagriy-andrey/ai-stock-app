@@ -43,6 +43,8 @@ export const en = {
   companyNameNotSet: "Company name not set",
   removing: "Removing...",
   remove: "Remove",
+  addToWatchlist: "Add to watchlist",
+  removeFromWatchlist: "Remove from watchlist",
   chooseStockError: "Search for a stock and select it from the results.",
   addStockError: "Could not add this stock. Try again.",
   removeStockError: "Could not remove this stock. Try again.",

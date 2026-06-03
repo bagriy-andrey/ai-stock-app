@@ -45,6 +45,8 @@ export const ru = {
   companyNameNotSet: "Название компании не указано",
   removing: "Удаление...",
   remove: "Удалить",
+  addToWatchlist: "Добавить в список наблюдения",
+  removeFromWatchlist: "Удалить из списка наблюдения",
   chooseStockError: "Найдите акцию и выберите ее из результатов.",
   addStockError: "Не удалось добавить акцию. Попробуйте снова.",
   removeStockError: "Не удалось удалить акцию. Попробуйте снова.",
