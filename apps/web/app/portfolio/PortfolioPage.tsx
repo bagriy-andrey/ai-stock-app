@@ -9,8 +9,12 @@ import type {
 } from "@ai-stock-advisor/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import type { CSSProperties, FormEvent } from "react";
-import { useEffect, useId, useState } from "react";
+import type {
+  CSSProperties,
+  FormEvent,
+  MouseEvent as ReactMouseEvent,
+} from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -250,6 +254,12 @@ interface AllocationSegment {
   ticker: string;
 }
 
+interface AllocationTooltip {
+  segment: AllocationSegment;
+  x: number;
+  y: number;
+}
+
 const allocationColors = [
   "#38bdf8",
   "#86efac",
@@ -270,7 +280,38 @@ function PortfolioAllocationChart({
 }: PortfolioAllocationChartProps) {
   const chartTitleId = useId();
   const chartDescriptionId = useId();
+  const tooltipId = useId();
+  const chartWrapRef = useRef<HTMLDivElement>(null);
+  const [tooltip, setTooltip] = useState<AllocationTooltip | null>(null);
   const segments = buildAllocationSegments(positions, totalCurrentValue);
+
+  const showTooltipAtPointer = (
+    segment: AllocationSegment,
+    event: ReactMouseEvent<SVGPathElement>,
+  ) => {
+    const bounds = chartWrapRef.current?.getBoundingClientRect();
+
+    if (!bounds) {
+      return;
+    }
+
+    setTooltip({
+      segment,
+      x: event.clientX - bounds.left,
+      y: event.clientY - bounds.top,
+    });
+  };
+
+  const showTooltipAtSegment = (segment: AllocationSegment) => {
+    const bounds = chartWrapRef.current?.getBoundingClientRect();
+    const position = getSegmentTooltipPosition(segment);
+
+    setTooltip({
+      segment,
+      x: ((bounds?.width ?? 220) * position.x) / 100,
+      y: ((bounds?.height ?? 220) * position.y) / 100,
+    });
+  };
 
   return (
     <Card className="portfolio-allocation-card">
@@ -287,31 +328,71 @@ function PortfolioAllocationChart({
         />
       ) : (
         <div className="portfolio-allocation-content">
-          <svg
-            aria-describedby={chartDescriptionId}
-            aria-labelledby={chartTitleId}
-            className="portfolio-allocation-chart"
-            role="img"
-            viewBox="0 0 220 220"
-          >
-            <circle
-              className="portfolio-allocation-ring"
-              cx="110"
-              cy="110"
-              r="74"
-            />
-            {segments.map((segment) => (
-              <path
-                d={describePieSegment(segment.startPercent, segment.endPercent)}
-                fill={segment.color}
-                key={segment.ticker}
+          <div className="portfolio-allocation-chart-wrap" ref={chartWrapRef}>
+            <svg
+              aria-describedby={chartDescriptionId}
+              aria-labelledby={chartTitleId}
+              className="portfolio-allocation-chart"
+              role="img"
+              viewBox="0 0 220 220"
+            >
+              <circle
+                className="portfolio-allocation-ring"
+                cx="110"
+                cy="110"
+                r="74"
+              />
+              {segments.map((segment) => (
+                <path
+                  aria-describedby={
+                    tooltip?.segment.ticker === segment.ticker
+                      ? tooltipId
+                      : undefined
+                  }
+                  aria-label={formatAllocationLabel(
+                    segment,
+                    currency,
+                    language,
+                  )}
+                  className="portfolio-allocation-segment"
+                  d={describePieSegment(
+                    segment.startPercent,
+                    segment.endPercent,
+                  )}
+                  fill={segment.color}
+                  key={segment.ticker}
+                  onBlur={() => setTooltip(null)}
+                  onFocus={() => showTooltipAtSegment(segment)}
+                  onMouseEnter={(event) => showTooltipAtPointer(segment, event)}
+                  onMouseLeave={() => setTooltip(null)}
+                  onMouseMove={(event) => showTooltipAtPointer(segment, event)}
+                  tabIndex={0}
+                />
+              ))}
+            </svg>
+            {tooltip ? (
+              <div
+                className="portfolio-allocation-tooltip"
+                id={tooltipId}
+                role="tooltip"
+                style={
+                  {
+                    "--tooltip-x": `${tooltip.x}px`,
+                    "--tooltip-y": `${tooltip.y}px`,
+                  } as CSSProperties
+                }
               >
-                <title>
-                  {formatAllocationLabel(segment, currency, language)}
-                </title>
-              </path>
-            ))}
-          </svg>
+                <strong>{tooltip.segment.ticker}</strong>
+                {tooltip.segment.companyName ? (
+                  <small>{tooltip.segment.companyName}</small>
+                ) : null}
+                <span>{formatPercent(tooltip.segment.percent, language)}</span>
+                <small>
+                  {formatCurrency(tooltip.segment.currentValue, currency, language)}
+                </small>
+              </div>
+            ) : null}
+          </div>
           <ul className="portfolio-allocation-list" aria-label={t.allocationLegend}>
             {segments.map((segment) => (
               <li key={segment.ticker}>
@@ -411,6 +492,19 @@ function pointOnCircle(
   return {
     x: center + radius * Math.cos(angle),
     y: center + radius * Math.sin(angle),
+  };
+}
+
+function getSegmentTooltipPosition(segment: AllocationSegment): {
+  x: number;
+  y: number;
+} {
+  const midpointPercent = (segment.startPercent + segment.endPercent) / 2;
+  const point = pointOnCircle(110, 58, midpointPercent);
+
+  return {
+    x: (point.x / 220) * 100,
+    y: (point.y / 220) * 100,
   };
 }
 
