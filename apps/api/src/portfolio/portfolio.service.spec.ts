@@ -1,10 +1,32 @@
 import { BadRequestException, NotFoundException } from "@nestjs/common";
-import type { StockQuote } from "@ai-stock-advisor/shared";
+import type {
+  PortfolioTransactionDto,
+  StockQuote,
+} from "@ai-stock-advisor/shared";
 import { Types } from "mongoose";
 import type { MarketDataService } from "../market-data/market-data.service";
 import type { TransactionsService } from "../transactions/transactions.service";
 import { PortfolioService } from "./portfolio.service";
 import type { PortfolioPositionDocument } from "./schemas/portfolio-position.schema";
+
+function buildTransaction(
+  overrides: Partial<PortfolioTransactionDto> = {},
+): PortfolioTransactionDto {
+  return {
+    id: "tx-1",
+    userId: "665daec06c456275631b7af1",
+    ticker: "AAPL",
+    companyName: "Apple Inc.",
+    type: "BUY",
+    quantity: 1,
+    price: 150,
+    currency: "USD",
+    transactionDate: "2026-05-01T00:00:00.000Z",
+    createdAt: "2026-05-01T00:00:00.000Z",
+    updatedAt: "2026-05-01T00:00:00.000Z",
+    ...overrides,
+  };
+}
 
 describe("PortfolioService", () => {
   const portfolioPositionModel = {
@@ -25,6 +47,7 @@ describe("PortfolioService", () => {
   } as unknown as jest.Mocked<MarketDataService>;
   const transactionsService = {
     createForUser: jest.fn(),
+    findAllForUser: jest.fn(),
   } as unknown as jest.Mocked<TransactionsService>;
   const service = new PortfolioService(
     portfolioPositionModel as never,
@@ -100,7 +123,6 @@ describe("PortfolioService", () => {
         notes: " Core holding ",
       }),
     ).resolves.toMatchObject({
-      id: positionId.toString(),
       ticker: "AAPL",
       currentPrice: 180,
       costBasis: 300,
@@ -134,52 +156,133 @@ describe("PortfolioService", () => {
     );
   });
 
-  it("returns a valued portfolio summary across separate transactions", async () => {
-    const secondPosition = {
-      ...position,
-      _id: new Types.ObjectId("665daec06c456275631b7af4"),
-      ticker: "AAPL",
-      companyName: "Apple Inc.",
-      quantity: 1,
-      averagePurchasePrice: 120,
-      purchaseDate: new Date("2026-05-02T10:30:00.000Z"),
-    } as unknown as PortfolioPositionDocument;
-    const exec = jest
-      .fn<Promise<PortfolioPositionDocument[]>, []>()
-      .mockResolvedValue([position, secondPosition]);
-    const sort = jest.fn().mockReturnValue({ exec });
-    portfolioPositionModel.find.mockReturnValue({ sort });
-    marketDataService.getQuotes.mockResolvedValue([quote]);
+  it("returns aggregated open positions from buy and sell transactions", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([
+      buildTransaction({
+        id: "tx-4",
+        ticker: "MSFT",
+        companyName: "Microsoft Corporation",
+        quantity: 1,
+        price: 200,
+        transactionDate: "2026-05-04T00:00:00.000Z",
+      }),
+      buildTransaction({
+        id: "tx-3",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        type: "SELL",
+        quantity: 1,
+        price: 320,
+        transactionDate: "2026-05-03T00:00:00.000Z",
+      }),
+      buildTransaction({
+        id: "tx-2",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        quantity: 1,
+        price: 310.2,
+        transactionDate: "2026-05-02T00:00:00.000Z",
+      }),
+      buildTransaction({
+        id: "tx-1",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        quantity: 1,
+        price: 315.2,
+        transactionDate: "2026-05-01T00:00:00.000Z",
+      }),
+      buildTransaction({
+        id: "tx-ignored",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        type: "UPDATE",
+        quantity: 10,
+        price: 1,
+        transactionDate: "2026-05-05T00:00:00.000Z",
+      }),
+    ]);
+    marketDataService.getQuotes.mockResolvedValue([
+      quote,
+      {
+        ...quote,
+        ticker: "MSFT",
+        currentPrice: 240,
+      },
+    ]);
 
     await expect(service.findAllForUser(userId.toString())).resolves.toEqual({
       positions: [
-        expect.objectContaining({
+        {
           ticker: "AAPL",
-          costBasis: 300,
-          currentValue: 360,
-          profitLoss: 60,
-          profitLossPercent: 20,
-        }),
-        expect.objectContaining({
-          ticker: "AAPL",
-          costBasis: 120,
+          companyName: "Apple Inc.",
+          quantity: 1,
+          averagePurchasePrice: 312.7,
+          currentPrice: 180,
+          costBasis: 312.7,
           currentValue: 180,
-          profitLoss: 60,
-          profitLossPercent: 50,
-        }),
+          profitLoss: -132.7,
+          profitLossPercent: (-132.7 / 312.7) * 100,
+          currency: "USD",
+        },
+        {
+          ticker: "MSFT",
+          companyName: "Microsoft Corporation",
+          quantity: 1,
+          averagePurchasePrice: 200,
+          currentPrice: 240,
+          costBasis: 200,
+          currentValue: 240,
+          profitLoss: 40,
+          profitLossPercent: 20,
+          currency: "USD",
+        },
       ],
       summary: {
-        totalCostBasis: 420,
-        totalCurrentValue: 540,
-        totalProfitLoss: 120,
-        totalProfitLossPercent: (120 / 420) * 100,
-        positionsCount: 1,
+        totalCostBasis: 512.7,
+        totalCurrentValue: 420,
+        totalProfitLoss: -92.69999999999999,
+        totalProfitLossPercent: (-92.69999999999999 / 512.7) * 100,
+        totalStocksCount: 2,
+        positionsCount: 2,
       },
     });
 
-    expect(portfolioPositionModel.find).toHaveBeenCalledWith({ userId });
-    expect(sort).toHaveBeenCalledWith({ createdAt: -1 });
-    expect(marketDataService.getQuotes).toHaveBeenCalledWith(["AAPL"]);
+    expect(portfolioPositionModel.find).not.toHaveBeenCalled();
+    expect(transactionsService.findAllForUser).toHaveBeenCalledWith(
+      userId.toString(),
+    );
+    expect(marketDataService.getQuotes).toHaveBeenCalledWith(["AAPL", "MSFT"]);
+  });
+
+  it("hides fully sold positions from the portfolio", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([
+      buildTransaction({
+        id: "tx-2",
+        type: "SELL",
+        quantity: 2,
+        transactionDate: "2026-05-02T00:00:00.000Z",
+      }),
+      buildTransaction({
+        id: "tx-1",
+        quantity: 2,
+        price: 150,
+        transactionDate: "2026-05-01T00:00:00.000Z",
+      }),
+    ]);
+
+    await expect(service.findAllForUser(userId.toString())).resolves.toEqual({
+      positions: [],
+      summary: {
+        totalCostBasis: 0,
+        totalCurrentValue: 0,
+        totalProfitLoss: 0,
+        totalProfitLossPercent: 0,
+        totalStocksCount: 0,
+        positionsCount: 0,
+      },
+    });
+
+    expect(marketDataService.getQuotes).not.toHaveBeenCalled();
   });
 
   it("updates only an owned position", async () => {

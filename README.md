@@ -132,7 +132,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
-| API | `GET` | `http://localhost:3001/portfolio` | Return the authenticated user's valued portfolio and summary |
+| API | `GET` | `http://localhost:3001/portfolio` | Return aggregated open positions and portfolio summary |
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
@@ -313,23 +313,23 @@ Local browser check:
 
 ## Portfolio
 
-Authenticated users can manually manage a persistent MongoDB-backed portfolio
-from `http://localhost:3000/portfolio`. Open the page from the authenticated
-header menu. The page uses TanStack Query, shows portfolio summary cards and a
-positions table, and supports add, edit, and delete flows. Deletion
-updates the table optimistically and rolls back if the API rejects the request.
+Authenticated users can review aggregated open positions at
+`http://localhost:3000/portfolio`. Open the page from the authenticated header
+menu. The page uses TanStack Query, shows portfolio summary cards, and renders
+one table row per open ticker. Detailed purchase, sale, adjustment, and delete
+records remain on the Transactions page.
 
-Portfolio positions are stored with `userId`, uppercase `ticker`,
-`companyName`, positive `quantity`, positive `averagePurchasePrice`,
-three-letter `currency`, `purchaseDate`, optional `notes`, `createdAt`, and
-`updatedAt`. Users can add multiple purchases for the same ticker with
-different timestamps, quantities, and prices. Future purchase timestamps are
-rejected. All reads, updates, and deletes are scoped to the authenticated user.
-Creating, updating, and deleting portfolio positions also writes `BUY`,
-`UPDATE`, and `DELETE` records into the transaction history.
+The portfolio summary and positions returned by `GET /portfolio` are derived
+from owned transaction records, not from individual purchase rows. Multiple
+`BUY` transactions for the same ticker are aggregated into one position.
+`SELL` quantities reduce open quantity and remaining cost basis. Tickers with
+`totalQuantity <= 0` are omitted. Average purchase price is the weighted average
+buy price applied to the remaining open quantity. `UPDATE` and `DELETE`
+transaction records are preserved in transaction history but are not included in
+portfolio aggregation.
 
-`GET /portfolio` loads the latest cached Finnhub quote for each saved ticker
-and returns:
+`GET /portfolio` loads the latest cached Finnhub quote for each open ticker and
+returns:
 
 ```json
 {
@@ -338,11 +338,11 @@ and returns:
     "totalCurrentValue": 360,
     "totalProfitLoss": 60,
     "totalProfitLossPercent": 20,
+    "totalStocksCount": 2,
     "positionsCount": 1
   },
   "positions": [
     {
-      "id": "665daec06c456275631b7af3",
       "ticker": "AAPL",
       "companyName": "Apple Inc.",
       "quantity": 2,
@@ -352,10 +352,7 @@ and returns:
       "currentValue": 360,
       "profitLoss": 60,
       "profitLossPercent": 20,
-      "currency": "USD",
-      "purchaseDate": "2026-05-01T10:30:00.000Z",
-      "createdAt": "2026-06-02T09:00:00.000Z",
-      "updatedAt": "2026-06-02T09:00:00.000Z"
+      "currency": "USD"
     }
   ]
 }
@@ -379,19 +376,18 @@ Local browser check:
 2. Select Add position, search for `AAPL`, and choose Apple from autocomplete.
 3. Confirm that the current market price and current local date-time are prefilled.
 4. Enter a positive quantity and adjust the purchase price or timestamp if needed. Future timestamps must be rejected.
-5. Save a second `AAPL` purchase with a different price and time. Both positions should remain visible.
-6. Confirm that summary profit/loss includes both transactions while the position count remains one.
-7. Edit or delete one position and confirm that summary calculations update.
-8. Refresh the page and confirm that the saved portfolio state persists.
+5. Save a second `AAPL` purchase with a different price and time. Portfolio should still show one `AAPL` row with aggregated quantity and weighted average purchase price.
+6. Add an `AAPL` `SELL` transaction through the Transactions API. Confirm that Portfolio quantity and cost basis decrease.
+7. Fully sell the remaining `AAPL` quantity. Confirm that `AAPL` disappears from Portfolio.
+8. Refresh the page and confirm that the aggregated portfolio state persists.
 
 ## Transactions
 
 Authenticated users can review transaction history at
 `http://localhost:3000/transactions`. The page lists owned transaction records,
 supports ticker search and date range filters, and provides edit/delete actions
-for transaction records. Transaction record edits do not recalculate portfolio
-positions; portfolio position changes should still be made from
-`/portfolio`.
+for transaction records. Because Portfolio is derived from transaction history,
+transaction record edits can change the aggregated Portfolio view.
 
 Transaction records are stored with `userId`, uppercase `ticker`,
 `companyName`, `type` (`BUY`, `SELL`, `UPDATE`, or `DELETE`), positive
@@ -413,11 +409,11 @@ curl -X POST http://localhost:3001/transactions \
 Local browser check:
 
 1. Sign in and open `http://localhost:3000/portfolio`.
-2. Add, edit, or delete a portfolio position.
+2. Add a portfolio purchase.
 3. Open `http://localhost:3000/transactions` from the header navigation.
-4. Confirm the corresponding `BUY`, `UPDATE`, or `DELETE` record is listed.
+4. Confirm the corresponding `BUY` record is listed.
 5. Filter by ticker and date range, then clear filters.
-6. Edit or delete a transaction record and confirm the table updates.
+6. Create a `SELL` transaction through the API or edit an existing transaction to `SELL`, then confirm the Portfolio page reflects the changed open quantity.
 
 ## Market Data
 
@@ -626,11 +622,12 @@ can add retryable, typed jobs without changing local infrastructure.
 
 The next product work is planned in this order:
 
-- [x] Portfolio CRUD
+- [x] Portfolio purchase creation
+- [x] Portfolio aggregated positions
 - [x] Portfolio P/L calculation
 - [x] Portfolio Dashboard
-- [ ] Stock Details Page
-- [ ] Improve Search
+- [x] Stock Details Page
+- [x] Improve Search
 - [ ] AI Stock Report
 - [ ] News + AI Summary
 - [ ] Telegram Bot

@@ -154,7 +154,6 @@ export interface CreateWatchlistItemRequest {
 }
 
 export interface PortfolioPositionDto {
-  id: string;
   ticker: string;
   companyName: string;
   quantity: number;
@@ -165,10 +164,6 @@ export interface PortfolioPositionDto {
   profitLoss: number;
   profitLossPercent: number;
   currency: string;
-  purchaseDate: string;
-  notes?: string;
-  createdAt: string;
-  updatedAt: string;
 }
 
 export interface PortfolioSummaryDto {
@@ -176,6 +171,7 @@ export interface PortfolioSummaryDto {
   totalCurrentValue: number;
   totalProfitLoss: number;
   totalProfitLossPercent: number;
+  totalStocksCount: number;
   positionsCount: number;
 }
 

@@ -153,6 +153,14 @@ Completed tasks:
 * Home page Market Movers lists include loading skeletons, empty states, safe provider-error states, green gainers styling, and red losers styling.
 * `FMP_API_KEY` added to the sanitized backend environment example.
 * Focused FMP provider tests added for normalization, percentage parsing, filtering, sorting, top-10 limiting, missing configuration, provider errors, and cache reuse.
+* Authenticated Portfolio page now shows aggregated open stock positions instead of individual purchase transactions.
+* `GET /portfolio` derives open positions from owned transaction history, grouping by ticker and aggregating multiple `BUY` rows into one position.
+* Portfolio aggregation applies `SELL` quantities to reduce open quantity and remaining weighted-average cost basis, and hides tickers where open quantity is zero or negative.
+* Portfolio summary now includes `totalCurrentValue`, `totalCostBasis`, `totalProfitLoss`, `totalProfitLossPercent`, `totalStocksCount`, and `positionsCount`.
+* Portfolio table now shows Name, Quantity, Current stock price, Current value, Profit/Loss (USD), Profit/Loss (%), and a link to Transactions for detailed history.
+* Transactions page remains responsible for transaction-level edit/delete history and can affect Portfolio because Portfolio is transaction-derived.
+* Shared Portfolio DTOs were simplified to the aggregated position contract and no longer expose purchase-row ids, purchase dates, notes, or timestamps.
+* Focused Portfolio service tests cover multiple same-ticker purchases, sell reductions, ignored history-only records, summary totals, and fully sold positions disappearing.
 
 Technical cleanup:
 
@@ -208,6 +216,12 @@ Runtime validation:
 
 ✅ Legacy FMP `/api/v3/stock_market/*` endpoint failure diagnosed and replaced with stable endpoints
 
+✅ Portfolio shows multiple purchases of the same ticker as one aggregated row
+
+✅ Portfolio sell transactions reduce quantity and remaining cost basis
+
+✅ Fully sold Portfolio positions disappear from the Portfolio table
+
 ---
 
 # MVP Scope
@@ -226,10 +240,10 @@ Watchlist:
 
 Portfolio:
 
-* Add position
-* Edit position
-* Remove position
-* Calculate profit/loss
+* Add purchase
+* Aggregate open positions by ticker
+* Calculate profit/loss from transaction history
+* Hide fully sold positions
 * Portfolio dashboard
 
 Market Data:
@@ -282,11 +296,12 @@ Completed foundation:
 
 Next TODO plan:
 
-* [ ] Portfolio CRUD
-* [ ] Portfolio P/L calculation
-* [ ] Portfolio Dashboard
-* [ ] Stock Details Page
-* [ ] Improve Search
+* [x] Portfolio purchase creation
+* [x] Portfolio aggregated positions
+* [x] Portfolio P/L calculation
+* [x] Portfolio Dashboard
+* [x] Stock Details Page
+* [x] Improve Search
 * [ ] AI Stock Report
 * [ ] News + AI Summary
 * [ ] Telegram Bot

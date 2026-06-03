@@ -8,6 +8,7 @@ import type {
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import Link from "next/link";
 import type { FormEvent } from "react";
 import { useEffect, useId, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
@@ -23,8 +24,6 @@ import { fetchMarketQuote, searchMarketSymbols } from "../lib/market-data-api";
 import {
   createPortfolioPosition,
   fetchPortfolio,
-  removePortfolioPosition,
-  updatePortfolioPosition,
 } from "../lib/portfolio-api";
 import {
   formatCurrency,
@@ -39,10 +38,6 @@ export function PortfolioPage() {
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
   const [isAddOpen, setIsAddOpen] = useState(false);
-  const [editingPosition, setEditingPosition] =
-    useState<PortfolioPositionDto | null>(null);
-  const [deletingPosition, setDeletingPosition] =
-    useState<PortfolioPositionDto | null>(null);
 
   const portfolioQuery = useQuery({
     queryKey: portfolioQueryKey,
@@ -57,49 +52,6 @@ export function PortfolioPage() {
       createPortfolioPosition(accessToken ?? "", input),
     onSuccess: async () => {
       setIsAddOpen(false);
-      await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({
-      id,
-      input,
-    }: {
-      id: string;
-      input: CreatePortfolioPositionRequest;
-    }) => updatePortfolioPosition(accessToken ?? "", id, input),
-    onSuccess: async () => {
-      setEditingPosition(null);
-      await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
-    },
-  });
-
-  const removeMutation = useMutation({
-    mutationFn: (id: string) => removePortfolioPosition(accessToken ?? "", id),
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: portfolioQueryKey });
-      const previousPortfolio =
-        queryClient.getQueryData<PortfolioDto>(portfolioQueryKey);
-
-      if (previousPortfolio) {
-        queryClient.setQueryData<PortfolioDto>(
-          portfolioQueryKey,
-          buildPortfolio(
-            previousPortfolio.positions.filter((position) => position.id !== id),
-          ),
-        );
-      }
-
-      return { previousPortfolio };
-    },
-    onError: (_error, _id, context) => {
-      if (context?.previousPortfolio) {
-        queryClient.setQueryData(portfolioQueryKey, context.previousPortfolio);
-      }
-    },
-    onSuccess: () => setDeletingPosition(null),
-    onSettled: async () => {
       await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
     },
   });
@@ -138,7 +90,7 @@ export function PortfolioPage() {
       </section>
 
       <section aria-labelledby="portfolio-positions-heading" className="page-section">
-        <h2 id="portfolio-positions-heading">{t.yourTransactions}</h2>
+        <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
         {portfolioQuery.isLoading ? (
           <p role="status">{t.loadingPositions}</p>
         ) : portfolioQuery.error instanceof Error ? (
@@ -151,8 +103,6 @@ export function PortfolioPage() {
         ) : (
           <PositionsTable
             language={language}
-            onDelete={setDeletingPosition}
-            onEdit={setEditingPosition}
             positions={positions}
             t={t}
           />
@@ -166,29 +116,6 @@ export function PortfolioPage() {
           isPending={createMutation.isPending}
           onClose={() => setIsAddOpen(false)}
           onSubmit={(input) => createMutation.mutate(input)}
-          t={t}
-        />
-      ) : null}
-      {editingPosition ? (
-        <PortfolioPositionModal
-          accessToken={accessToken ?? ""}
-          error={updateMutation.error}
-          isPending={updateMutation.isPending}
-          onClose={() => setEditingPosition(null)}
-          onSubmit={(input) =>
-            updateMutation.mutate({ id: editingPosition.id, input })
-          }
-          position={editingPosition}
-          t={t}
-        />
-      ) : null}
-      {deletingPosition ? (
-        <DeletePositionModal
-          error={removeMutation.error}
-          isPending={removeMutation.isPending}
-          onClose={() => setDeletingPosition(null)}
-          onConfirm={() => removeMutation.mutate(deletingPosition.id)}
-          position={deletingPosition}
           t={t}
         />
       ) : null}
@@ -230,6 +157,10 @@ function PortfolioSummary({
         label={t.numberOfPositions}
         value={String(summary.positionsCount)}
       />
+      <SummaryCard
+        label={t.totalStocks}
+        value={formatNumber(summary.totalStocksCount, language)}
+      />
     </div>
   );
 }
@@ -255,30 +186,24 @@ interface PositionsTableProps {
   language: ProfileLanguage;
   positions: PortfolioPositionDto[];
   t: Dictionary;
-  onDelete: (position: PortfolioPositionDto) => void;
-  onEdit: (position: PortfolioPositionDto) => void;
 }
 
 function PositionsTable({
   language,
   positions,
   t,
-  onDelete,
-  onEdit,
 }: PositionsTableProps) {
   return (
     <div className="portfolio-table-wrap">
       <table className="portfolio-table">
         <thead>
           <tr>
-            <th>{t.ticker}</th>
+            <th>{t.name}</th>
             <th>{t.quantity}</th>
-            <th>{t.averagePrice}</th>
-            <th>{t.currentPrice}</th>
+            <th>{t.currentStockPrice}</th>
             <th>{t.currentValue}</th>
-            <th>{t.profitLoss}</th>
+            <th>{t.profitLossUsd}</th>
             <th>{t.profitLossPercent}</th>
-            <th>{t.purchaseDate}</th>
             <th><span className="visually-hidden">{t.actions}</span></th>
           </tr>
         </thead>
@@ -287,19 +212,12 @@ function PositionsTable({
             const variant = getChangeVariant(position.profitLoss);
 
             return (
-              <tr key={position.id}>
+              <tr key={position.ticker}>
                 <td>
                   <strong>{position.ticker}</strong>
                   <small>{position.companyName}</small>
                 </td>
                 <td>{formatNumber(position.quantity, language)}</td>
-                <td>
-                  {formatCurrency(
-                    position.averagePurchasePrice,
-                    position.currency,
-                    language,
-                  )}
-                </td>
                 <td>
                   {formatCurrency(
                     position.currentPrice,
@@ -325,15 +243,14 @@ function PositionsTable({
                 <td className={variant}>
                   {formatPercent(position.profitLossPercent, language)}
                 </td>
-                <td>{formatTransactionDate(position.purchaseDate, language)}</td>
                 <td>
                   <div className="portfolio-row-actions">
-                    <Button variant="outline" onClick={() => onEdit(position)}>
-                      {t.edit}
-                    </Button>
-                    <Button variant="danger" onClick={() => onDelete(position)}>
-                      {t.delete}
-                    </Button>
+                    <Link
+                      className="ui-button ui-button-outline"
+                      href="/transactions"
+                    >
+                      {t.viewTransactions}
+                    </Link>
                   </div>
                 </td>
               </tr>
@@ -382,11 +299,7 @@ function PortfolioPositionModal({
     String(position?.averagePurchasePrice ?? ""),
   );
   const [currency, setCurrency] = useState(position?.currency ?? "USD");
-  const [purchaseDate, setPurchaseDate] = useState(
-    position
-      ? formatDateTimeLocalValue(new Date(position.purchaseDate))
-      : getCurrentLocalDateTime(),
-  );
+  const [purchaseDate, setPurchaseDate] = useState(getCurrentLocalDateTime());
   const [formError, setFormError] = useState<string | null>(null);
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
   const searchQuery = useQuery({
@@ -585,74 +498,6 @@ function PositionSearchResults({
   );
 }
 
-function DeletePositionModal({
-  error,
-  isPending,
-  position,
-  t,
-  onClose,
-  onConfirm,
-}: {
-  error: Error | null;
-  isPending: boolean;
-  position: PortfolioPositionDto;
-  t: Dictionary;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const headingId = useId();
-  useModalEffects(onClose);
-
-  return (
-    <div className="stock-modal-backdrop">
-      <section
-        aria-labelledby={headingId}
-        aria-modal="true"
-        className="stock-modal portfolio-delete-modal"
-        role="dialog"
-      >
-        <h2 id={headingId}>{t.deletePosition}</h2>
-        <p>{t.deletePositionConfirmation.replace("{ticker}", position.ticker)}</p>
-        <div className="portfolio-modal-actions">
-          <Button disabled={isPending} onClick={onConfirm} variant="danger">
-            {isPending ? t.deleting : t.delete}
-          </Button>
-          <Button disabled={isPending} onClick={onClose} variant="outline">
-            {t.cancel}
-          </Button>
-        </div>
-        {error instanceof Error ? (
-          <p className="error-text" role="alert">{t.positionDeleteError}</p>
-        ) : null}
-      </section>
-    </div>
-  );
-}
-
-function buildPortfolio(positions: PortfolioPositionDto[]): PortfolioDto {
-  const summary = positions.reduce(
-    (currentSummary, position) => ({
-      totalCostBasis: currentSummary.totalCostBasis + position.costBasis,
-      totalCurrentValue:
-        currentSummary.totalCurrentValue + position.currentValue,
-      totalProfitLoss: currentSummary.totalProfitLoss + position.profitLoss,
-    }),
-    { totalCostBasis: 0, totalCurrentValue: 0, totalProfitLoss: 0 },
-  );
-
-  return {
-    positions,
-    summary: {
-      ...summary,
-      totalProfitLossPercent:
-        summary.totalCostBasis === 0
-          ? 0
-          : (summary.totalProfitLoss / summary.totalCostBasis) * 100,
-      positionsCount: new Set(positions.map((position) => position.ticker)).size,
-    },
-  };
-}
-
 function useDebouncedValue(value: string, delayMilliseconds: number): string {
   const [debouncedValue, setDebouncedValue] = useState(value);
 
@@ -691,16 +536,6 @@ function formatNumber(value: number, language: ProfileLanguage): string {
   return new Intl.NumberFormat(language, {
     maximumFractionDigits: 6,
   }).format(value);
-}
-
-function formatTransactionDate(
-  value: string,
-  language: ProfileLanguage,
-): string {
-  return new Intl.DateTimeFormat(language, {
-    dateStyle: "medium",
-    timeStyle: "short",
-  }).format(new Date(value));
 }
 
 function getCurrentLocalDateTime(): string {

@@ -9,6 +9,7 @@ import type {
   PortfolioDto,
   PortfolioPositionDto,
   PortfolioSummaryDto,
+  PortfolioTransactionDto,
   StockQuote,
 } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
@@ -29,6 +30,15 @@ interface MongoIndex {
 
 interface MongoError {
   code?: number;
+}
+
+interface PositionAccumulator {
+  ticker: string;
+  companyName: string;
+  buyQuantity: number;
+  buyCostBasis: number;
+  sellQuantity: number;
+  currency: string;
 }
 
 @Injectable()
@@ -73,12 +83,10 @@ export class PortfolioService implements OnModuleInit {
   }
 
   async findAllForUser(userId: string): Promise<PortfolioDto> {
-    const ownerId = this.toUserObjectId(userId);
-    const positions = await this.portfolioPositionModel
-      .find({ userId: ownerId })
-      .sort({ createdAt: -1 })
-      .exec();
-    const valuedPositions = await this.addMarketValues(positions);
+    this.toUserObjectId(userId);
+    const transactions = await this.transactionsService.findAllForUser(userId);
+    const openPositions = this.aggregateTransactions(transactions);
+    const valuedPositions = await this.addMarketValues(openPositions);
 
     return {
       positions: valuedPositions,
@@ -221,22 +229,26 @@ export class PortfolioService implements OnModuleInit {
   }
 
   private async addMarketValues(
-    positions: PortfolioPositionDocument[],
+    positions: PortfolioPositionDto[],
   ): Promise<PortfolioPositionDto[]> {
+    if (positions.length === 0) {
+      return [];
+    }
+
     const quotes = await this.marketDataService.getQuotes(
       [...new Set(positions.map((position) => position.ticker))],
     );
     const quotesByTicker = new Map(
-      quotes.map((quote) => [quote.ticker, quote] as const),
+      quotes.map((quote) => [this.normalizeTicker(quote.ticker), quote] as const),
     );
 
     return positions.map((position) =>
-      this.toDto(position, this.getQuote(position, quotesByTicker)),
+      this.withMarketValue(position, this.getQuote(position, quotesByTicker)),
     );
   }
 
   private getQuote(
-    position: PortfolioPositionDocument,
+    position: PortfolioPositionDto,
     quotesByTicker: Map<string, StockQuote>,
   ): StockQuote {
     const quote = quotesByTicker.get(position.ticker);
@@ -248,6 +260,100 @@ export class PortfolioService implements OnModuleInit {
     return quote;
   }
 
+  private aggregateTransactions(
+    transactions: PortfolioTransactionDto[],
+  ): PortfolioPositionDto[] {
+    const positionsByTicker = new Map<string, PositionAccumulator>();
+    const sortedTransactions = [...transactions].sort((left, right) => {
+      const dateDifference =
+        new Date(left.transactionDate).getTime() -
+        new Date(right.transactionDate).getTime();
+
+      if (dateDifference !== 0) {
+        return dateDifference;
+      }
+
+      return left.createdAt.localeCompare(right.createdAt);
+    });
+
+    for (const transaction of sortedTransactions) {
+      if (transaction.type !== "BUY" && transaction.type !== "SELL") {
+        continue;
+      }
+
+      const ticker = this.normalizeTicker(transaction.ticker);
+      const position =
+        positionsByTicker.get(ticker) ??
+        ({
+          ticker,
+          companyName: transaction.companyName,
+          buyQuantity: 0,
+          buyCostBasis: 0,
+          sellQuantity: 0,
+          currency: this.normalizeCurrency(transaction.currency),
+        } satisfies PositionAccumulator);
+
+      position.companyName = transaction.companyName;
+      position.currency = this.normalizeCurrency(transaction.currency);
+
+      if (transaction.type === "BUY") {
+        position.buyQuantity += transaction.quantity;
+        position.buyCostBasis += transaction.quantity * transaction.price;
+      } else {
+        position.sellQuantity += transaction.quantity;
+      }
+
+      positionsByTicker.set(ticker, position);
+    }
+
+    return [...positionsByTicker.values()]
+      .map((position) => {
+        const quantity = position.buyQuantity - position.sellQuantity;
+        const averagePurchasePrice =
+          position.buyQuantity === 0
+            ? 0
+            : position.buyCostBasis / position.buyQuantity;
+        const costBasis = quantity * averagePurchasePrice;
+
+        return {
+          ticker: position.ticker,
+          companyName: position.companyName,
+          quantity,
+          averagePurchasePrice,
+          currentPrice: 0,
+          costBasis,
+          currentValue: 0,
+          profitLoss: 0,
+          profitLossPercent: 0,
+          currency: position.currency,
+        };
+      })
+      .filter((position) => position.quantity > 0)
+      .sort((left, right) => left.ticker.localeCompare(right.ticker));
+  }
+
+  private withMarketValue(
+    position: PortfolioPositionDto,
+    quote: StockQuote,
+  ): PortfolioPositionDto {
+    const currentValue = position.quantity * quote.currentPrice;
+    const profitLoss = currentValue - position.costBasis;
+
+    return {
+      ...position,
+      currentPrice: quote.currentPrice,
+      currentValue,
+      profitLoss,
+      profitLossPercent:
+        position.costBasis === 0
+          ? 0
+          : (profitLoss / position.costBasis) * 100,
+      currency: quote.currency
+        ? this.normalizeCurrency(quote.currency)
+        : position.currency,
+    };
+  }
+
   private toDto(
     position: PortfolioPositionDocument,
     quote: StockQuote,
@@ -257,7 +363,6 @@ export class PortfolioService implements OnModuleInit {
     const profitLoss = currentValue - costBasis;
 
     return {
-      id: position._id.toString(),
       ticker: position.ticker,
       companyName: position.companyName,
       quantity: position.quantity,
@@ -267,11 +372,9 @@ export class PortfolioService implements OnModuleInit {
       currentValue,
       profitLoss,
       profitLossPercent: (profitLoss / costBasis) * 100,
-      currency: position.currency,
-      purchaseDate: position.purchaseDate.toISOString(),
-      notes: position.notes,
-      createdAt: position.createdAt.toISOString(),
-      updatedAt: position.updatedAt.toISOString(),
+      currency: quote.currency
+        ? this.normalizeCurrency(quote.currency)
+        : position.currency,
     };
   }
 
@@ -296,7 +399,11 @@ export class PortfolioService implements OnModuleInit {
         summary.totalCostBasis === 0
           ? 0
           : (summary.totalProfitLoss / summary.totalCostBasis) * 100,
-      positionsCount: new Set(positions.map((position) => position.ticker)).size,
+      totalStocksCount: positions.reduce(
+        (totalQuantity, position) => totalQuantity + position.quantity,
+        0,
+      ),
+      positionsCount: positions.length,
     };
   }
 
