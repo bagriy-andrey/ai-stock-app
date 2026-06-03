@@ -7,7 +7,12 @@ import type {
   TransactionFilters,
   UpdatePortfolioTransactionRequest,
 } from "@ai-stock-advisor/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type { FormEvent } from "react";
 import { useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
@@ -17,6 +22,7 @@ import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
 import type { Dictionary } from "../dictionaries";
 import {
@@ -32,6 +38,7 @@ const transactionTypes: PortfolioTransactionType[] = [
   "UPDATE",
   "DELETE",
 ];
+const tablePageSize = 10;
 
 export function TransactionsPage() {
   const queryClient = useQueryClient();
@@ -40,6 +47,7 @@ export function TransactionsPage() {
   const [tickerFilter, setTickerFilter] = useState("");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [editingTransaction, setEditingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
   const [deletingTransaction, setDeletingTransaction] =
@@ -53,11 +61,21 @@ export function TransactionsPage() {
     [fromDate, tickerFilter, toDate],
   );
   const hasFilters = Boolean(filters.ticker || filters.fromDate || filters.toDate);
-  const transactionsQueryKey = ["transactions", filters] as const;
+  const transactionsQueryKey = [
+    "transactions",
+    filters,
+    { limit: tablePageSize, page: currentPage },
+  ] as const;
   const transactionsQuery = useQuery({
     queryKey: transactionsQueryKey,
-    queryFn: () => fetchTransactions(accessToken ?? "", filters),
+    queryFn: () =>
+      fetchTransactions(accessToken ?? "", {
+        ...filters,
+        limit: tablePageSize,
+        page: currentPage,
+      }),
     enabled: Boolean(accessToken),
+    placeholderData: keepPreviousData,
     retry: false,
   });
 
@@ -86,6 +104,21 @@ export function TransactionsPage() {
   });
 
   const transactions = transactionsQuery.data?.items ?? [];
+  const paginationMeta = transactionsQuery.data?.meta;
+  const showPagination =
+    paginationMeta !== undefined && paginationMeta.totalItems > tablePageSize;
+
+  useEffect(() => {
+    if (
+      paginationMeta &&
+      paginationMeta.totalPages > 0 &&
+      currentPage > paginationMeta.totalPages
+    ) {
+      setCurrentPage(paginationMeta.totalPages);
+    }
+  }, [currentPage, paginationMeta]);
+
+  const resetFiltersPage = () => setCurrentPage(1);
 
   return (
     <main>
@@ -108,6 +141,7 @@ export function TransactionsPage() {
               type="button"
               variant="outline"
               onClick={() => {
+                resetFiltersPage();
                 setTickerFilter("");
                 setFromDate("");
                 setToDate("");
@@ -122,7 +156,10 @@ export function TransactionsPage() {
             <Label htmlFor="transactions-ticker-filter">{t.searchByTicker}</Label>
             <Input
               id="transactions-ticker-filter"
-              onChange={(event) => setTickerFilter(event.target.value)}
+              onChange={(event) => {
+                resetFiltersPage();
+                setTickerFilter(event.target.value);
+              }}
               placeholder="AAPL"
               value={tickerFilter}
             />
@@ -131,7 +168,10 @@ export function TransactionsPage() {
             <Label htmlFor="transactions-from-date">{t.fromDate}</Label>
             <Input
               id="transactions-from-date"
-              onChange={(event) => setFromDate(event.target.value)}
+              onChange={(event) => {
+                resetFiltersPage();
+                setFromDate(event.target.value);
+              }}
               type="date"
               value={fromDate}
             />
@@ -140,7 +180,10 @@ export function TransactionsPage() {
             <Label htmlFor="transactions-to-date">{t.toDate}</Label>
             <Input
               id="transactions-to-date"
-              onChange={(event) => setToDate(event.target.value)}
+              onChange={(event) => {
+                resetFiltersPage();
+                setToDate(event.target.value);
+              }}
               type="date"
               value={toDate}
             />
@@ -160,13 +203,28 @@ export function TransactionsPage() {
             title={t.noTransactionsYet}
           />
         ) : (
-          <TransactionsTable
-            language={language}
-            onDelete={setDeletingTransaction}
-            onEdit={setEditingTransaction}
-            t={t}
-            transactions={transactions}
-          />
+          <>
+            <TransactionsTable
+              language={language}
+              onDelete={setDeletingTransaction}
+              onEdit={setEditingTransaction}
+              t={t}
+              transactions={transactions}
+            />
+            {showPagination ? (
+              <PaginationControls
+                ariaLabel={t.paginationNavigation}
+                currentPage={currentPage}
+                isBusy={transactionsQuery.isFetching}
+                nextLabel={t.paginationNext}
+                onNext={() => setCurrentPage((page) => page + 1)}
+                onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                pageLabel={t.paginationPageIndicator}
+                previousLabel={t.paginationPrevious}
+                totalPages={paginationMeta.totalPages}
+              />
+            ) : null}
+          </>
         )}
       </section>
 

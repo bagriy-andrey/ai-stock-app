@@ -138,6 +138,10 @@ export const ru = {
   savePosition: "Сохранить покупку",
   positionSaveError: "Не удалось сохранить покупку. Попробуйте снова.",
   positionDeleteError: "Не удалось удалить покупку. Попробуйте снова.",
+  paginationNavigation: "Пагинация",
+  paginationPrevious: "Назад",
+  paginationNext: "Далее",
+  paginationPageIndicator: "Страница {page} из {totalPages}",
   transactionsTitle: "Сделки",
   transactionsSubtitle:
     "Просматривайте все покупки, продажи, ручные корректировки и удаленные позиции портфеля.",

@@ -136,6 +136,10 @@ export const en = {
   savePosition: "Save purchase",
   positionSaveError: "Could not save this purchase. Try again.",
   positionDeleteError: "Could not delete this purchase. Try again.",
+  paginationNavigation: "Pagination",
+  paginationPrevious: "Previous",
+  paginationNext: "Next",
+  paginationPageIndicator: "Page {page} of {totalPages}",
   transactionsTitle: "Transactions",
   transactionsSubtitle:
     "Review every buy, sell, manual adjustment, and deleted position recorded for your portfolio.",

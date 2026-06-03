@@ -139,6 +139,10 @@ export const uk = {
   savePosition: "Зберегти покупку",
   positionSaveError: "Не вдалося зберегти покупку. Спробуйте ще раз.",
   positionDeleteError: "Не вдалося видалити покупку. Спробуйте ще раз.",
+  paginationNavigation: "Пагінація",
+  paginationPrevious: "Назад",
+  paginationNext: "Далі",
+  paginationPageIndicator: "Сторінка {page} з {totalPages}",
   transactionsTitle: "Угоди",
   transactionsSubtitle:
     "Переглядайте всі купівлі, продажі, ручні коригування та видалені позиції портфеля.",

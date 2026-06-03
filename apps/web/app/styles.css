@@ -1390,6 +1390,30 @@ p {
   text-overflow: ellipsis;
 }
 
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.pagination-controls[aria-busy="true"] {
+  opacity: 0.82;
+}
+
+.pagination-current-page {
+  min-width: 120px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+  font-weight: 800;
+  padding: 9px 14px;
+  text-align: center;
+}
+
 .transactions-filter-form {
   display: grid;
   gap: 16px;
@@ -1564,6 +1588,16 @@ p {
 
   .transactions-filter-form {
     grid-template-columns: 1fr;
+  }
+
+  .pagination-controls {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pagination-controls .ui-button,
+  .pagination-current-page {
+    width: 100%;
   }
 
   .profile-field {

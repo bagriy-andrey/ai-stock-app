@@ -10,7 +10,12 @@ import type {
   ProfileLanguage,
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  keepPreviousData,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import type {
   CSSProperties,
   FormEvent,
@@ -25,6 +30,7 @@ import { Card } from "../components/ui/card";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
 import type { Dictionary } from "../dictionaries";
 import { fetchMarketQuote, searchMarketSymbols } from "../lib/market-data-api";
@@ -45,6 +51,7 @@ import {
 
 const portfolioQueryKey = ["portfolio"] as const;
 const transactionsQueryKey = ["transactions"] as const;
+const tablePageSize = 10;
 
 type PortfolioAction = "add" | "edit" | "sell" | "delete";
 type DeletePositionMode = "partial" | "close";
@@ -56,12 +63,18 @@ export function PortfolioPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [actionPosition, setActionPosition] =
     useState<PortfolioPositionDto | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
 
   const portfolioQuery = useQuery({
-    queryKey: portfolioQueryKey,
-    queryFn: () => fetchPortfolio(accessToken ?? ""),
+    queryKey: [...portfolioQueryKey, { limit: tablePageSize, page: currentPage }],
+    queryFn: () =>
+      fetchPortfolio(accessToken ?? "", {
+        limit: tablePageSize,
+        page: currentPage,
+      }),
     enabled: Boolean(accessToken),
+    placeholderData: keepPreviousData,
     refetchInterval: 2 * 60 * 1_000,
     retry: false,
   });
@@ -71,6 +84,7 @@ export function PortfolioPage() {
       createPortfolioPosition(accessToken ?? "", input),
     onSuccess: async () => {
       setIsAddOpen(false);
+      setCurrentPage(1);
       setStatusMessage(t.portfolioActionSuccess);
       await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
       await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
@@ -79,7 +93,20 @@ export function PortfolioPage() {
 
   const portfolio = portfolioQuery.data;
   const positions = portfolio?.items ?? [];
+  const paginationMeta = portfolio?.meta;
+  const showPagination =
+    paginationMeta !== undefined && paginationMeta.totalItems > tablePageSize;
   const summaryCurrency = positions[0]?.currency ?? "USD";
+
+  useEffect(() => {
+    if (
+      paginationMeta &&
+      paginationMeta.totalPages > 0 &&
+      currentPage > paginationMeta.totalPages
+    ) {
+      setCurrentPage(paginationMeta.totalPages);
+    }
+  }, [currentPage, paginationMeta]);
 
   return (
     <main>
@@ -131,15 +158,30 @@ export function PortfolioPage() {
             title={t.noPortfolioPositionsYet}
           />
         ) : (
-          <PositionsTable
-            language={language}
-            onEdit={(position) => {
-              setStatusMessage(null);
-              setActionPosition(position);
-            }}
-            positions={positions}
-            t={t}
-          />
+          <>
+            <PositionsTable
+              language={language}
+              onEdit={(position) => {
+                setStatusMessage(null);
+                setActionPosition(position);
+              }}
+              positions={positions}
+              t={t}
+            />
+            {showPagination ? (
+              <PaginationControls
+                ariaLabel={t.paginationNavigation}
+                currentPage={currentPage}
+                isBusy={portfolioQuery.isFetching}
+                nextLabel={t.paginationNext}
+                onNext={() => setCurrentPage((page) => page + 1)}
+                onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                pageLabel={t.paginationPageIndicator}
+                previousLabel={t.paginationPrevious}
+                totalPages={paginationMeta.totalPages}
+              />
+            ) : null}
+          </>
         )}
         {statusMessage ? (
           <p className="portfolio-action-status" role="status">
@@ -163,6 +205,7 @@ export function PortfolioPage() {
           accessToken={accessToken ?? ""}
           language={language}
           onClose={() => setActionPosition(null)}
+          onDataRefresh={() => setCurrentPage(1)}
           onSuccess={() => {
             setActionPosition(null);
             setStatusMessage(t.portfolioActionSuccess);
@@ -868,6 +911,7 @@ function PortfolioActionModal({
   position,
   t,
   onClose,
+  onDataRefresh,
   onSuccess,
 }: {
   accessToken: string;
@@ -875,6 +919,7 @@ function PortfolioActionModal({
   position: PortfolioPositionDto;
   t: Dictionary;
   onClose: () => void;
+  onDataRefresh: () => void;
   onSuccess: () => void;
 }) {
   const headingId = useId();
@@ -882,6 +927,7 @@ function PortfolioActionModal({
   const [action, setAction] = useState<PortfolioAction>("add");
   const [deleteMode, setDeleteMode] = useState<DeletePositionMode>("close");
   const invalidatePortfolioData = async () => {
+    onDataRefresh();
     await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
     await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
   };
