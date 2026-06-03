@@ -921,6 +921,34 @@ p {
   font-weight: 800;
 }
 
+.stock-fundamentals-section {
+  margin-top: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--panel-muted);
+  padding: 18px;
+}
+
+.stock-fundamentals-section h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.stock-fundamentals-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.stock-fundamentals-grid div {
+  background: var(--panel);
+  padding: 12px;
+}
+
+.stock-fundamentals-grid dd {
+  overflow-wrap: anywhere;
+  font-size: 0.95rem;
+}
+
 .stock-chart-section {
   margin-top: 32px;
   border-top: 1px solid var(--border);
@@ -1646,6 +1674,10 @@ p {
   }
 
   .stock-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .stock-fundamentals-grid {
     grid-template-columns: 1fr;
   }
 

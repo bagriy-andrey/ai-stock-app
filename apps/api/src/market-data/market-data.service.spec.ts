@@ -10,6 +10,7 @@ describe("MarketDataService", () => {
     getQuote: jest.fn(),
     getQuotes: jest.fn(),
     getCompanyProfile: jest.fn(),
+    getCompanyFundamentals: jest.fn(),
   } as jest.Mocked<MarketDataProvider>;
   const historicalProvider = {
     getCandles: jest.fn(),
@@ -21,6 +22,7 @@ describe("MarketDataService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    provider.getCompanyFundamentals.mockResolvedValue({});
     service = new MarketDataService(
       provider,
       historicalProvider,
@@ -135,7 +137,17 @@ describe("MarketDataService", () => {
       exchange: "NASDAQ NMS - GLOBAL MARKET",
       currency: "USD",
       country: "US",
+      sector: "Technology",
+      industry: "Consumer Electronics",
       logo: "https://example.com/apple.png",
+      marketCapitalization: 3_100_000_000_000,
+    });
+    provider.getCompanyFundamentals.mockResolvedValue({
+      marketCap: 3_120_000_000_000,
+      peRatio: 30.2,
+      eps: 6.91,
+      fiftyTwoWeekHigh: 237.49,
+      fiftyTwoWeekLow: 164.08,
     });
 
     await expect(service.getStockDetails(" aapl ")).resolves.toEqual({
@@ -151,6 +163,67 @@ describe("MarketDataService", () => {
       open: 209,
       high: 211,
       low: 208,
+      fundamentals: {
+        marketCap: 3_120_000_000_000,
+        peRatio: 30.2,
+        eps: 6.91,
+        fiftyTwoWeekHigh: 237.49,
+        fiftyTwoWeekLow: 164.08,
+        sector: "Technology",
+        industry: "Consumer Electronics",
+        exchange: "NASDAQ NMS - GLOBAL MARKET",
+        currency: "USD",
+      },
+    });
+  });
+
+  it("keeps stock details available when fundamentals metrics fail", async () => {
+    provider.getQuote.mockResolvedValue({
+      ticker: "AAPL",
+      currentPrice: 210.42,
+      change: 1.83,
+      changePercent: 0.88,
+      previousClose: 208.59,
+      openPrice: 209,
+      highPrice: 211,
+      lowPrice: 208,
+      timestamp: "2026-06-02T09:00:00.000Z",
+    });
+    provider.getCompanyProfile.mockResolvedValue({
+      ticker: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      country: "US",
+      industry: "Consumer Electronics",
+      marketCapitalization: 3_100_000_000_000,
+    });
+    provider.getCompanyFundamentals.mockRejectedValue(new Error("provider error"));
+
+    await expect(service.getStockDetails("AAPL")).resolves.toEqual({
+      symbol: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      logoUrl: undefined,
+      currentPrice: 210.42,
+      change: 1.83,
+      percentChange: 0.88,
+      previousClose: 208.59,
+      open: 209,
+      high: 211,
+      low: 208,
+      fundamentals: {
+        marketCap: 3_100_000_000_000,
+        peRatio: undefined,
+        eps: undefined,
+        fiftyTwoWeekHigh: undefined,
+        fiftyTwoWeekLow: undefined,
+        sector: undefined,
+        industry: "Consumer Electronics",
+        exchange: "NASDAQ NMS - GLOBAL MARKET",
+        currency: "USD",
+      },
     });
   });
 

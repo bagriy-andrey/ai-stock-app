@@ -1,5 +1,6 @@
 import type {
   CompanyProfile,
+  StockFundamentals,
   StockQuote,
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
@@ -11,4 +12,5 @@ export interface MarketDataProvider {
   getQuote(ticker: string): Promise<StockQuote>;
   getQuotes(tickers: string[]): Promise<StockQuote[]>;
   getCompanyProfile(ticker: string): Promise<CompanyProfile>;
+  getCompanyFundamentals(ticker: string): Promise<Partial<StockFundamentals>>;
 }

@@ -5,6 +5,7 @@ import {
 } from "@nestjs/common";
 import type {
   CompanyProfile,
+  StockFundamentals,
   StockQuote,
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
@@ -44,11 +45,22 @@ interface FinnhubCompanyProfileResponse {
   currency?: string;
   exchange?: string;
   finnhubIndustry?: string;
+  gicsSector?: string;
   logo?: string;
   marketCapitalization?: number;
   name?: string;
   ticker?: string;
   weburl?: string;
+}
+
+interface FinnhubFinancialMetricsResponse {
+  metric?: {
+    "52WeekHigh"?: number;
+    "52WeekLow"?: number;
+    epsBasicExclExtraItemsTTM?: number;
+    marketCapitalization?: number;
+    peBasicExclExtraTTM?: number;
+  };
 }
 
 @Injectable()
@@ -114,10 +126,33 @@ export class FinnhubMarketDataProvider implements MarketDataProvider {
       exchange: response.exchange ?? "",
       currency: response.currency ?? "",
       country: response.country ?? "",
+      sector: response.gicsSector || undefined,
       industry: response.finnhubIndustry || undefined,
       logo: response.logo || undefined,
-      marketCapitalization: response.marketCapitalization,
+      marketCapitalization: normalizeFinnhubMarketCapitalization(
+        response.marketCapitalization,
+      ),
       webUrl: response.weburl || undefined,
+    };
+  }
+
+  async getCompanyFundamentals(
+    ticker: string,
+  ): Promise<Partial<StockFundamentals>> {
+    const response = await this.request<FinnhubFinancialMetricsResponse>(
+      "stock/metric",
+      { symbol: ticker, metric: "all" },
+    );
+    const metric = response.metric ?? {};
+
+    return {
+      marketCap: normalizeFinnhubMarketCapitalization(
+        metric.marketCapitalization,
+      ),
+      peRatio: finiteNumberOrUndefined(metric.peBasicExclExtraTTM),
+      eps: finiteNumberOrUndefined(metric.epsBasicExclExtraItemsTTM),
+      fiftyTwoWeekHigh: finiteNumberOrUndefined(metric["52WeekHigh"]),
+      fiftyTwoWeekLow: finiteNumberOrUndefined(metric["52WeekLow"]),
     };
   }
 
@@ -152,4 +187,15 @@ export class FinnhubMarketDataProvider implements MarketDataProvider {
       );
     }
   }
+}
+
+function normalizeFinnhubMarketCapitalization(
+  marketCapitalization: number | undefined,
+): number | undefined {
+  const value = finiteNumberOrUndefined(marketCapitalization);
+  return value === undefined ? undefined : value * 1_000_000;
+}
+
+function finiteNumberOrUndefined(value: number | undefined): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
 }

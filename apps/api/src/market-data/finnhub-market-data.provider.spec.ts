@@ -50,6 +50,64 @@ describe("FinnhubMarketDataProvider", () => {
     );
   });
 
+  it("maps Finnhub company profiles to the provider-neutral contract", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        country: "US",
+        currency: "USD",
+        exchange: "NASDAQ NMS - GLOBAL MARKET",
+        finnhubIndustry: "Technology",
+        gicsSector: "Information Technology",
+        logo: "https://example.com/apple.png",
+        marketCapitalization: 3_120_000,
+        name: "Apple Inc.",
+        ticker: "aapl",
+        weburl: "https://www.apple.com",
+      }),
+    );
+    const provider = new FinnhubMarketDataProvider();
+
+    await expect(provider.getCompanyProfile("AAPL")).resolves.toEqual({
+      ticker: "AAPL",
+      name: "Apple Inc.",
+      exchange: "NASDAQ NMS - GLOBAL MARKET",
+      currency: "USD",
+      country: "US",
+      sector: "Information Technology",
+      industry: "Technology",
+      logo: "https://example.com/apple.png",
+      marketCapitalization: 3_120_000_000_000,
+      webUrl: "https://www.apple.com",
+    });
+  });
+
+  it("maps Finnhub financial metrics to stock fundamentals", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        metric: {
+          "52WeekHigh": 237.49,
+          "52WeekLow": 164.08,
+          epsBasicExclExtraItemsTTM: 6.91,
+          marketCapitalization: 3_120_000,
+          peBasicExclExtraTTM: 30.2,
+        },
+      }),
+    );
+    const provider = new FinnhubMarketDataProvider();
+
+    await expect(provider.getCompanyFundamentals("AAPL")).resolves.toEqual({
+      marketCap: 3_120_000_000_000,
+      peRatio: 30.2,
+      eps: 6.91,
+      fiftyTwoWeekHigh: 237.49,
+      fiftyTwoWeekLow: 164.08,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "https://finnhub.io/api/v1/stock/metric?symbol=AAPL&metric=all&token=test-finnhub-key",
+      expect.objectContaining({ signal: expect.any(AbortSignal) }),
+    );
+  });
+
   it("maps provider failures to a user-safe service unavailable error", async () => {
     fetchMock.mockRejectedValue(new Error("connection failed"));
     const provider = new FinnhubMarketDataProvider();

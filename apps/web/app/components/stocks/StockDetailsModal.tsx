@@ -309,7 +309,83 @@ function StockSummary({ details, language, t }: StockSummaryProps) {
           value={formatPrice(details.low, details.currency, language)}
         />
       </dl>
+      <StockFundamentalsSection
+        details={details}
+        language={language}
+        t={t}
+      />
     </>
+  );
+}
+
+interface StockFundamentalsSectionProps {
+  details: StockDetails;
+  language: ProfileLanguage;
+  t: Dictionary;
+}
+
+function StockFundamentalsSection({
+  details,
+  language,
+  t,
+}: StockFundamentalsSectionProps) {
+  const fundamentals = details.fundamentals ?? {};
+
+  return (
+    <section className="stock-fundamentals-section">
+      <h3>{t.fundamentals}</h3>
+      <dl className="stock-detail-grid stock-fundamentals-grid">
+        <StockDetail
+          label={t.marketCap}
+          value={formatMarketCap(
+            fundamentals.marketCap,
+            fundamentals.currency ?? details.currency,
+            language,
+          )}
+        />
+        <StockDetail
+          label={t.peRatio}
+          value={formatOptionalNumber(fundamentals.peRatio, language)}
+        />
+        <StockDetail
+          label={t.eps}
+          value={formatOptionalPrice(
+            fundamentals.eps,
+            fundamentals.currency ?? details.currency,
+            language,
+          )}
+        />
+        <StockDetail
+          label={t.fiftyTwoWeekHigh}
+          value={formatOptionalPrice(
+            fundamentals.fiftyTwoWeekHigh,
+            fundamentals.currency ?? details.currency,
+            language,
+          )}
+        />
+        <StockDetail
+          label={t.fiftyTwoWeekLow}
+          value={formatOptionalPrice(
+            fundamentals.fiftyTwoWeekLow,
+            fundamentals.currency ?? details.currency,
+            language,
+          )}
+        />
+        <StockDetail label={t.sector} value={formatOptionalText(fundamentals.sector)} />
+        <StockDetail
+          label={t.industry}
+          value={formatOptionalText(fundamentals.industry)}
+        />
+        <StockDetail
+          label={t.exchange}
+          value={formatOptionalText(fundamentals.exchange)}
+        />
+        <StockDetail
+          label={t.currency}
+          value={formatOptionalText(fundamentals.currency)}
+        />
+      </dl>
+    </section>
   );
 }
 
@@ -406,6 +482,58 @@ function formatPrice(
         maximumFractionDigits: 2,
         signDisplay: withSign ? "always" : "auto",
       }).format(price);
+}
+
+function formatMarketCap(
+  value: number | undefined,
+  currency: string | undefined,
+  language: ProfileLanguage,
+): string {
+  if (!isFiniteNumber(value)) {
+    return "N/A";
+  }
+
+  try {
+    return new Intl.NumberFormat(language, {
+      style: currency ? "currency" : "decimal",
+      currency,
+      notation: "compact",
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return new Intl.NumberFormat(language, {
+      notation: "compact",
+      maximumFractionDigits: 2,
+    }).format(value);
+  }
+}
+
+function formatOptionalPrice(
+  value: number | undefined,
+  currency: string | undefined,
+  language: ProfileLanguage,
+): string {
+  return isFiniteNumber(value) ? formatPrice(value, currency, language) : "N/A";
+}
+
+function formatOptionalNumber(
+  value: number | undefined,
+  language: ProfileLanguage,
+): string {
+  return isFiniteNumber(value)
+    ? new Intl.NumberFormat(language, {
+        maximumFractionDigits: 2,
+      }).format(value)
+    : "N/A";
+}
+
+function formatOptionalText(value: string | undefined): string {
+  const normalizedValue = value?.trim();
+  return normalizedValue ? normalizedValue : "N/A";
+}
+
+function isFiniteNumber(value: number | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function formatCandleDate(

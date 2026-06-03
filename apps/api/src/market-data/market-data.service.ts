@@ -6,6 +6,7 @@ import type {
   StockCandleRange,
   StockCandlesResponse,
   StockDetails,
+  StockFundamentals,
   StockQuote,
   StockSearchResult,
 } from "@ai-stock-advisor/shared";
@@ -25,6 +26,7 @@ import {
 
 const QUOTE_TTL_MS = 2 * 60 * 1_000;
 const COMPANY_PROFILE_TTL_MS = 24 * 60 * 60 * 1_000;
+const COMPANY_FUNDAMENTALS_TTL_MS = 24 * 60 * 60 * 1_000;
 const SEARCH_TTL_MS = 60 * 60 * 1_000;
 const CANDLES_TTL_MS = 5 * 60 * 1_000;
 const MARKET_MOVERS_TTL_MS = 5 * 60 * 1_000;
@@ -96,10 +98,23 @@ export class MarketDataService {
     );
   }
 
+  getCompanyFundamentals(ticker: string): Promise<Partial<StockFundamentals>> {
+    const normalizedTicker = this.normalizeTicker(ticker);
+
+    return this.cache.getOrSet(
+      `market-data:fundamentals:${normalizedTicker}`,
+      COMPANY_FUNDAMENTALS_TTL_MS,
+      () => this.provider.getCompanyFundamentals(normalizedTicker),
+    );
+  }
+
   async getStockDetails(ticker: string): Promise<StockDetails> {
-    const [profile, quote] = await Promise.all([
+    const [profile, quote, fundamentals] = await Promise.all([
       this.getCompanyProfile(ticker),
       this.getQuote(ticker),
+      this.getCompanyFundamentals(ticker).catch<Partial<StockFundamentals>>(
+        () => ({}),
+      ),
     ]);
 
     return {
@@ -115,6 +130,18 @@ export class MarketDataService {
       low: quote.lowPrice,
       open: quote.openPrice,
       previousClose: quote.previousClose,
+      fundamentals: {
+        marketCap:
+          fundamentals.marketCap ?? profile.marketCapitalization ?? undefined,
+        peRatio: fundamentals.peRatio,
+        eps: fundamentals.eps,
+        fiftyTwoWeekHigh: fundamentals.fiftyTwoWeekHigh,
+        fiftyTwoWeekLow: fundamentals.fiftyTwoWeekLow,
+        sector: fundamentals.sector ?? profile.sector,
+        industry: fundamentals.industry ?? profile.industry,
+        exchange: fundamentals.exchange ?? profile.exchange,
+        currency: fundamentals.currency ?? profile.currency,
+      },
     };
   }
 

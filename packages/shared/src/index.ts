@@ -36,10 +36,23 @@ export interface CompanyProfile {
   exchange: string;
   currency: string;
   country: string;
+  sector?: string;
   industry?: string;
   logo?: string;
   marketCapitalization?: number;
   webUrl?: string;
+}
+
+export interface StockFundamentals {
+  marketCap?: number;
+  peRatio?: number;
+  eps?: number;
+  fiftyTwoWeekHigh?: number;
+  fiftyTwoWeekLow?: number;
+  sector?: string;
+  industry?: string;
+  exchange?: string;
+  currency?: string;
 }
 
 export interface StockDetails {
@@ -55,6 +68,7 @@ export interface StockDetails {
   low: number;
   open: number;
   previousClose: number;
+  fundamentals: StockFundamentals;
 }
 
 export type StockCandleRange = "1d" | "1w" | "1m" | "1y";
