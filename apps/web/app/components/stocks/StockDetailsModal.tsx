@@ -1,13 +1,17 @@
 "use client";
 
 import type {
+  MarketMoversResponse,
+  PortfolioDto,
   ProfileLanguage,
   StockCandleRange,
   StockDetails,
   WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
-import { useQuery } from "@tanstack/react-query";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useId, useRef, useState } from "react";
+import { useAuth } from "../auth/AuthProvider";
+import { useI18n } from "../i18n/I18nProvider";
 import type { Dictionary } from "../../dictionaries";
 import {
   fetchStockCandles,
@@ -19,51 +23,64 @@ import {
   formatPercent,
   getChangeVariant,
 } from "../../lib/stock-format";
-import { CompanyLogo } from "./StockCard";
+import { CompanyLogo } from "./CompanyLogo";
 
 const candleRanges: StockCandleRange[] = ["1d", "1w", "1m", "1y"];
 
 interface StockDetailsModalProps {
-  accessToken: string;
-  item: WatchlistItemDto;
-  language: ProfileLanguage;
-  t: Dictionary;
+  ticker: string;
+  open: boolean;
   onClose: () => void;
 }
 
 export function StockDetailsModal({
-  accessToken,
-  item,
-  language,
-  t,
+  ticker,
+  open,
   onClose,
 }: StockDetailsModalProps) {
+  const { accessToken } = useAuth();
+  const { language, t } = useI18n();
+  const queryClient = useQueryClient();
   const headingId = useId();
   const chartHeadingId = useId();
   const dialogRef = useRef<HTMLElement>(null);
   const onCloseRef = useRef(onClose);
   const [range, setRange] = useState<StockCandleRange>("1d");
+  const normalizedTicker = ticker.trim().toUpperCase();
   const detailsQuery = useQuery({
-    queryKey: ["market", "stocks", item.ticker, "details"],
-    queryFn: () => fetchStockDetails(accessToken, item.ticker),
-    enabled: Boolean(accessToken),
+    queryKey: ["market", "stocks", normalizedTicker, "details"],
+    queryFn: () => fetchStockDetails(accessToken ?? "", normalizedTicker),
+    enabled: open && Boolean(accessToken) && normalizedTicker.length > 0,
     retry: false,
   });
   const candlesQuery = useQuery({
-    queryKey: ["market", "stocks", item.ticker, "candles", range],
-    queryFn: () => fetchStockCandles(accessToken, item.ticker, range),
-    enabled: Boolean(accessToken),
+    queryKey: ["market", "stocks", normalizedTicker, "candles", range],
+    queryFn: () => fetchStockCandles(accessToken ?? "", normalizedTicker, range),
+    enabled: open && Boolean(accessToken) && normalizedTicker.length > 0,
     retry: false,
   });
   const details = detailsQuery.data;
   const candles = candlesQuery.data ?? [];
-  const companyName = details?.name ?? item.companyName ?? t.companyNameNotSet;
+  const companyName =
+    details?.name ??
+    getCachedCompanyName(queryClient, normalizedTicker) ??
+    t.companyNameNotSet;
 
   useEffect(() => {
     onCloseRef.current = onClose;
   }, [onClose]);
 
   useEffect(() => {
+    if (open) {
+      setRange("1d");
+    }
+  }, [open, normalizedTicker]);
+
+  useEffect(() => {
+    if (!open || normalizedTicker.length === 0) {
+      return;
+    }
+
     const dialog = dialogRef.current;
     const previouslyFocusedElement =
       document.activeElement instanceof HTMLElement
@@ -111,7 +128,11 @@ export function StockDetailsModal({
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocusedElement?.focus();
     };
-  }, []);
+  }, [open, normalizedTicker]);
+
+  if (!open || normalizedTicker.length === 0) {
+    return null;
+  }
 
   return (
     <div
@@ -142,11 +163,11 @@ export function StockDetailsModal({
           <CompanyLogo
             companyName={companyName}
             logoUrl={details?.logoUrl}
-            ticker={item.ticker}
+            ticker={normalizedTicker}
           />
           <div>
             <p className="stock-modal-ticker">
-              {t.stockDetails} / {item.ticker}
+              {t.stockDetails} / {normalizedTicker}
             </p>
             <h2 id={headingId}>{companyName}</h2>
             <p className="stock-modal-metadata">
@@ -211,6 +232,47 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
       'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
     ),
   );
+}
+
+function getCachedCompanyName(
+  queryClient: QueryClient,
+  ticker: string,
+): string | undefined {
+  const watchlistItem = queryClient
+    .getQueryData<WatchlistItemDto[]>(["watchlist"])
+    ?.find((item) => item.ticker.toUpperCase() === ticker);
+
+  if (watchlistItem?.companyName) {
+    return watchlistItem.companyName;
+  }
+
+  const marketMovers = queryClient.getQueryData<MarketMoversResponse>([
+    "market",
+    "movers",
+  ]);
+  const marketMover = [
+    ...(marketMovers?.gainers ?? []),
+    ...(marketMovers?.losers ?? []),
+  ].find((mover) => mover.symbol.toUpperCase() === ticker);
+
+  if (marketMover?.name) {
+    return marketMover.name;
+  }
+
+  for (const query of queryClient
+    .getQueryCache()
+    .findAll({ queryKey: ["portfolio"] })) {
+    const portfolio = query.state.data as PortfolioDto | undefined;
+    const position = portfolio?.items.find(
+      (item) => item.ticker.toUpperCase() === ticker,
+    );
+
+    if (position?.companyName) {
+      return position.companyName;
+    }
+  }
+
+  return undefined;
 }
 
 interface StockSummaryProps {

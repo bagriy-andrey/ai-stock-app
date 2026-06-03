@@ -25,6 +25,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
+import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -76,6 +77,7 @@ export function PortfolioPage() {
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [actionPosition, setActionPosition] =
     useState<PortfolioPositionDto | null>(null);
+  const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const portfolioQueryState = buildPortfolioQueryState({
@@ -176,6 +178,7 @@ export function PortfolioPage() {
                 setStatusMessage(null);
                 setActionPosition(position);
               }}
+              onOpenStock={setDetailsTicker}
               positions={positions}
               t={t}
             />
@@ -223,6 +226,13 @@ export function PortfolioPage() {
           }}
           position={actionPosition}
           t={t}
+        />
+      ) : null}
+      {detailsTicker ? (
+        <StockDetailsModal
+          onClose={() => setDetailsTicker(null)}
+          open={Boolean(detailsTicker)}
+          ticker={detailsTicker}
         />
       ) : null}
     </main>
@@ -634,6 +644,7 @@ function SummaryCard({
 interface PositionsTableProps {
   language: ProfileLanguage;
   onEdit: (position: PortfolioPositionDto) => void;
+  onOpenStock: (ticker: string) => void;
   positions: PortfolioPositionDto[];
   t: Dictionary;
 }
@@ -641,6 +652,7 @@ interface PositionsTableProps {
 function PositionsTable({
   language,
   onEdit,
+  onOpenStock,
   positions,
   t,
 }: PositionsTableProps) {
@@ -663,7 +675,22 @@ function PositionsTable({
             const variant = getChangeVariant(position.profitLoss);
 
             return (
-              <tr key={position.ticker}>
+              <tr
+                className="portfolio-table-row-open"
+                key={position.ticker}
+                onClick={() => onOpenStock(position.ticker)}
+                tabIndex={0}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpenStock(position.ticker);
+                  }
+                }}
+              >
                 <td>
                   <strong>{position.ticker}</strong>
                   <small>{position.companyName}</small>
@@ -696,7 +723,13 @@ function PositionsTable({
                 </td>
                 <td>
                   <div className="portfolio-row-actions">
-                    <Button variant="outline" onClick={() => onEdit(position)}>
+                    <Button
+                      variant="outline"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        onEdit(position);
+                      }}
+                    >
                       {t.edit}
                     </Button>
                   </div>

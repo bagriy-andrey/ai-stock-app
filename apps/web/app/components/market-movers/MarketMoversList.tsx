@@ -8,6 +8,7 @@ interface MarketMoversListProps {
   isLoading: boolean;
   language: ProfileLanguage;
   movers: MarketMover[];
+  onOpenStock: (ticker: string) => void;
   t: Dictionary;
   title: string;
   variant: "gainers" | "losers";
@@ -17,6 +18,7 @@ export function MarketMoversList({
   isLoading,
   language,
   movers,
+  onOpenStock,
   t,
   title,
   variant,
@@ -32,18 +34,25 @@ export function MarketMoversList({
         <ol className="market-movers-list">
           {movers.map((mover, index) => (
             <li key={mover.symbol}>
-              <span className="market-mover-rank">{index + 1}</span>
-              <div className="market-mover-identity">
-                <strong>{mover.symbol}</strong>
-                <span>{mover.name}</span>
-              </div>
-              <strong className="market-mover-price">
-                {formatCurrency(mover.price, "USD", language)}
-              </strong>
-              <span className={`market-mover-change market-mover-change-${variant}`}>
-                {formatCurrency(mover.change, "USD", language, true)}
-                <small>{formatPercent(mover.changesPercentage, language)}</small>
-              </span>
+              <button
+                aria-label={`${mover.symbol}: ${mover.name}`}
+                className="market-mover-open"
+                onClick={() => onOpenStock(mover.symbol)}
+                type="button"
+              >
+                <span className="market-mover-rank">{index + 1}</span>
+                <span className="market-mover-identity">
+                  <strong>{mover.symbol}</strong>
+                  <span>{mover.name}</span>
+                </span>
+                <strong className="market-mover-price">
+                  {formatCurrency(mover.price, "USD", language)}
+                </strong>
+                <span className={`market-mover-change market-mover-change-${variant}`}>
+                  {formatCurrency(mover.change, "USD", language, true)}
+                  <small>{formatPercent(mover.changesPercentage, language)}</small>
+                </span>
+              </button>
             </li>
           ))}
         </ol>

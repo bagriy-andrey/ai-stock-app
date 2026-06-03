@@ -3,7 +3,6 @@
 import type {
   CompanyProfile,
   StockSearchResult,
-  WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
@@ -19,7 +18,7 @@ import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { EmptyState } from "../components/ui/EmptyState";
 import { StockCard } from "../components/watchlist/StockCard";
-import { StockDetailsModal } from "../components/watchlist/StockDetailsModal";
+import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import {
   fetchCompanyProfile,
   fetchMarketQuotes,
@@ -41,7 +40,7 @@ export function WatchlistPage() {
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
     null,
   );
-  const [detailsItem, setDetailsItem] = useState<WatchlistItemDto | null>(null);
+  const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
 
@@ -209,7 +208,7 @@ export function WatchlistPage() {
                 item={item}
                 key={item.id}
                 language={language}
-                onOpen={() => setDetailsItem(item)}
+                onOpen={() => setDetailsTicker(item.ticker)}
                 onRemove={() => removeMutation.mutate(item.id)}
                 profile={profilesByTicker.get(item.ticker)}
                 quote={quotesByTicker.get(item.ticker)}
@@ -219,13 +218,11 @@ export function WatchlistPage() {
           </div>
         )}
       </section>
-      {detailsItem ? (
+      {detailsTicker ? (
         <StockDetailsModal
-          accessToken={accessToken ?? ""}
-          item={detailsItem}
-          language={language}
-          onClose={() => setDetailsItem(null)}
-          t={t}
+          onClose={() => setDetailsTicker(null)}
+          open={Boolean(detailsTicker)}
+          ticker={detailsTicker}
         />
       ) : null}
     </main>

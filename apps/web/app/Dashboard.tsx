@@ -1,16 +1,19 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { useAuth } from "./components/auth/AuthProvider";
 import { MarketMoversList } from "./components/market-movers/MarketMoversList";
 import { AppHeader } from "./components/layout/AppHeader";
 import { useI18n } from "./components/i18n/I18nProvider";
+import { StockDetailsModal } from "./components/stocks/StockDetailsModal";
 import { EmptyState } from "./components/ui/EmptyState";
 import { fetchMarketMovers } from "./lib/market-data-api";
 
 export function Dashboard() {
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
+  const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const marketMoversQuery = useQuery({
     queryKey: ["market", "movers"],
     queryFn: () => fetchMarketMovers(accessToken ?? ""),
@@ -55,6 +58,7 @@ export function Dashboard() {
               isLoading={marketMoversQuery.isLoading}
               language={language}
               movers={marketMovers?.gainers ?? []}
+              onOpenStock={setDetailsTicker}
               t={t}
               title={t.topGainers}
               variant="gainers"
@@ -63,6 +67,7 @@ export function Dashboard() {
               isLoading={marketMoversQuery.isLoading}
               language={language}
               movers={marketMovers?.losers ?? []}
+              onOpenStock={setDetailsTicker}
               t={t}
               title={t.topLosers}
               variant="losers"
@@ -80,6 +85,13 @@ export function Dashboard() {
           title={t.dashboardEmptyTitle}
         />
       </section>
+      {detailsTicker ? (
+        <StockDetailsModal
+          onClose={() => setDetailsTicker(null)}
+          open={Boolean(detailsTicker)}
+          ticker={detailsTicker}
+        />
+      ) : null}
     </main>
   );
 }

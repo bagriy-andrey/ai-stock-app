@@ -231,13 +231,28 @@ p {
 }
 
 .market-movers-list li {
+  border-bottom: 1px solid var(--border);
+}
+
+.market-mover-open {
   display: grid;
+  width: 100%;
   min-height: 70px;
   grid-template-columns: 24px minmax(0, 1fr) auto;
   gap: 4px 10px;
   align-items: center;
-  border-bottom: 1px solid var(--border);
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font: inherit;
   padding: 12px 16px;
+  text-align: left;
+}
+
+.market-mover-open:hover,
+.market-mover-open:focus-visible {
+  background: var(--panel-hover);
 }
 
 .market-movers-list li:last-child {
@@ -1376,6 +1391,15 @@ p {
 
 .portfolio-table tbody tr:last-child td {
   border-bottom: 0;
+}
+
+.portfolio-table-row-open {
+  cursor: pointer;
+}
+
+.portfolio-table-row-open:hover,
+.portfolio-table-row-open:focus-visible {
+  background: var(--panel-hover);
 }
 
 .portfolio-table td:first-child {
