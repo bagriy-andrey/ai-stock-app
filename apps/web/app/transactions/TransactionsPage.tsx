@@ -17,6 +17,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
+import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/EmptyState";
 import { Input } from "../components/ui/input";
@@ -72,6 +73,7 @@ export function TransactionsPage({
     useState<PortfolioTransactionDto | null>(null);
   const [deletingTransaction, setDeletingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
+  const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const queryState = useMemo(
     () =>
       buildTransactionsQueryState({
@@ -245,6 +247,7 @@ export function TransactionsPage({
               language={language}
               onDelete={setDeletingTransaction}
               onEdit={setEditingTransaction}
+              onOpenStock={setDetailsTicker}
               t={t}
               transactions={transactions}
             />
@@ -287,6 +290,13 @@ export function TransactionsPage({
           transaction={deletingTransaction}
         />
       ) : null}
+      {detailsTicker ? (
+        <StockDetailsModal
+          onClose={() => setDetailsTicker(null)}
+          open={Boolean(detailsTicker)}
+          ticker={detailsTicker}
+        />
+      ) : null}
     </main>
   );
 }
@@ -297,12 +307,14 @@ function TransactionsTable({
   t,
   onDelete,
   onEdit,
+  onOpenStock,
 }: {
   language: ProfileLanguage;
   transactions: PortfolioTransactionDto[];
   t: Dictionary;
   onDelete: (transaction: PortfolioTransactionDto) => void;
   onEdit: (transaction: PortfolioTransactionDto) => void;
+  onOpenStock: (ticker: string) => void;
 }) {
   return (
     <div className="portfolio-table-wrap transactions-table-wrap">
@@ -323,8 +335,15 @@ function TransactionsTable({
           {transactions.map((transaction) => (
             <tr key={transaction.id}>
               <td>
-                <strong>{transaction.ticker}</strong>
-                <small>{transaction.companyName}</small>
+                <button
+                  aria-label={`${t.stockDetails}: ${transaction.ticker}, ${transaction.companyName}`}
+                  className="transaction-stock-open"
+                  onClick={() => onOpenStock(transaction.ticker)}
+                  type="button"
+                >
+                  <strong>{transaction.ticker}</strong>
+                  <small>{transaction.companyName}</small>
+                </button>
               </td>
               <td>
                 <span className={`transaction-type-badge transaction-type-${transaction.type.toLowerCase()}`}>
