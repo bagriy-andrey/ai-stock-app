@@ -9,7 +9,7 @@ import type {
 } from "@ai-stock-advisor/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
-import type { FormEvent } from "react";
+import type { CSSProperties, FormEvent } from "react";
 import { useEffect, useId, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
@@ -76,11 +76,20 @@ export function PortfolioPage() {
           <Button onClick={() => setIsAddOpen(true)}>{t.addPosition}</Button>
         </div>
         {portfolioQuery.isLoading ? (
-          <p role="status">{t.loadingPortfolio}</p>
+          <PortfolioOverviewState
+            message={t.loadingPortfolio}
+            role="status"
+            title={t.portfolioAllocation}
+          />
         ) : portfolioQuery.error instanceof Error ? (
-          <p className="error-text" role="alert">{t.portfolioLoadError}</p>
+          <PortfolioOverviewState
+            message={t.portfolioLoadError}
+            role="alert"
+            title={t.portfolioAllocation}
+            variant="error"
+          />
         ) : portfolio ? (
-          <PortfolioSummary
+          <PortfolioOverview
             currency={summaryCurrency}
             language={language}
             portfolio={portfolio}
@@ -130,6 +139,64 @@ interface PortfolioSummaryProps {
   t: Dictionary;
 }
 
+function PortfolioOverview({
+  currency,
+  language,
+  portfolio,
+  t,
+}: PortfolioSummaryProps) {
+  return (
+    <div className="portfolio-overview-grid">
+      <PortfolioSummary
+        currency={currency}
+        language={language}
+        portfolio={portfolio}
+        t={t}
+      />
+      <PortfolioAllocationChart
+        currency={currency}
+        language={language}
+        positions={portfolio.positions}
+        totalCurrentValue={portfolio.summary.totalCurrentValue}
+        t={t}
+      />
+    </div>
+  );
+}
+
+function PortfolioOverviewState({
+  message,
+  role,
+  title,
+  variant,
+}: {
+  message: string;
+  role: "alert" | "status";
+  title: string;
+  variant?: "error";
+}) {
+  return (
+    <div className="portfolio-overview-grid">
+      <div>
+        <p className={variant === "error" ? "error-text" : undefined} role={role}>
+          {message}
+        </p>
+      </div>
+      <Card className="portfolio-allocation-card">
+        <h3>{title}</h3>
+        <p
+          className={`portfolio-allocation-status${
+            variant === "error" ? " error-text" : ""
+          }`}
+          role={role}
+        >
+          {message}
+        </p>
+      </Card>
+    </div>
+  );
+}
+
 function PortfolioSummary({
   currency,
   language,
@@ -163,6 +230,201 @@ function PortfolioSummary({
       />
     </div>
   );
+}
+
+interface PortfolioAllocationChartProps {
+  currency: string;
+  language: ProfileLanguage;
+  positions: PortfolioPositionDto[];
+  totalCurrentValue: number;
+  t: Dictionary;
+}
+
+interface AllocationSegment {
+  color: string;
+  companyName: string;
+  currentValue: number;
+  endPercent: number;
+  percent: number;
+  startPercent: number;
+  ticker: string;
+}
+
+const allocationColors = [
+  "#38bdf8",
+  "#86efac",
+  "#fbbf24",
+  "#f472b6",
+  "#a78bfa",
+  "#fb7185",
+  "#2dd4bf",
+  "#c084fc",
+];
+
+function PortfolioAllocationChart({
+  currency,
+  language,
+  positions,
+  totalCurrentValue,
+  t,
+}: PortfolioAllocationChartProps) {
+  const chartTitleId = useId();
+  const chartDescriptionId = useId();
+  const segments = buildAllocationSegments(positions, totalCurrentValue);
+
+  return (
+    <Card className="portfolio-allocation-card">
+      <div className="portfolio-allocation-header">
+        <div>
+          <h3 id={chartTitleId}>{t.portfolioAllocation}</h3>
+          <p id={chartDescriptionId}>{t.allocationByCurrentValue}</p>
+        </div>
+      </div>
+      {segments.length === 0 ? (
+        <EmptyState
+          description={t.portfolioEmpty}
+          title={t.noAllocationData}
+        />
+      ) : (
+        <div className="portfolio-allocation-content">
+          <svg
+            aria-describedby={chartDescriptionId}
+            aria-labelledby={chartTitleId}
+            className="portfolio-allocation-chart"
+            role="img"
+            viewBox="0 0 220 220"
+          >
+            <circle
+              className="portfolio-allocation-ring"
+              cx="110"
+              cy="110"
+              r="74"
+            />
+            {segments.map((segment) => (
+              <path
+                d={describePieSegment(segment.startPercent, segment.endPercent)}
+                fill={segment.color}
+                key={segment.ticker}
+              >
+                <title>
+                  {formatAllocationLabel(segment, currency, language)}
+                </title>
+              </path>
+            ))}
+          </svg>
+          <ul className="portfolio-allocation-list" aria-label={t.allocationLegend}>
+            {segments.map((segment) => (
+              <li key={segment.ticker}>
+                <span
+                  aria-hidden="true"
+                  className="portfolio-allocation-marker"
+                  style={{ "--segment-color": segment.color } as CSSProperties}
+                />
+                <div>
+                  <strong>{segment.ticker}</strong>
+                  {segment.companyName ? <small>{segment.companyName}</small> : null}
+                </div>
+                <span>
+                  {formatPercent(segment.percent, language)}
+                  <small>
+                    {formatCurrency(segment.currentValue, currency, language)}
+                  </small>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </Card>
+  );
+}
+
+function buildAllocationSegments(
+  positions: PortfolioPositionDto[],
+  totalCurrentValue: number,
+): AllocationSegment[] {
+  if (totalCurrentValue <= 0) {
+    return [];
+  }
+
+  let accumulatedPercent = 0;
+  const allocationPositions = positions.filter(
+    (position) => position.currentValue > 0,
+  );
+
+  return allocationPositions
+    .map((position, index) => {
+      const percent = (position.currentValue / totalCurrentValue) * 100;
+      const startPercent = accumulatedPercent;
+      const endPercent =
+        index === allocationPositions.length - 1
+          ? 100
+          : accumulatedPercent + percent;
+
+      accumulatedPercent = endPercent;
+
+      return {
+        color: allocationColors[index % allocationColors.length],
+        companyName: position.companyName,
+        currentValue: position.currentValue,
+        endPercent,
+        percent,
+        startPercent,
+        ticker: position.ticker,
+      };
+    });
+}
+
+function describePieSegment(startPercent: number, endPercent: number): string {
+  const center = 110;
+  const radius = 74;
+
+  if (endPercent - startPercent >= 99.999) {
+    return [
+      `M ${center} ${center}`,
+      `m 0 -${radius}`,
+      `a ${radius} ${radius} 0 1 1 0 ${radius * 2}`,
+      `a ${radius} ${radius} 0 1 1 0 -${radius * 2}`,
+      "Z",
+    ].join(" ");
+  }
+
+  const start = pointOnCircle(center, radius, startPercent);
+  const end = pointOnCircle(center, radius, endPercent);
+  const largeArcFlag = endPercent - startPercent > 50 ? 1 : 0;
+
+  return [
+    `M ${center} ${center}`,
+    `L ${start.x} ${start.y}`,
+    `A ${radius} ${radius} 0 ${largeArcFlag} 1 ${end.x} ${end.y}`,
+    "Z",
+  ].join(" ");
+}
+
+function pointOnCircle(
+  center: number,
+  radius: number,
+  percent: number,
+): { x: number; y: number } {
+  const angle = (percent / 100) * 2 * Math.PI - Math.PI / 2;
+
+  return {
+    x: center + radius * Math.cos(angle),
+    y: center + radius * Math.sin(angle),
+  };
+}
+
+function formatAllocationLabel(
+  segment: AllocationSegment,
+  currency: string,
+  language: ProfileLanguage,
+): string {
+  const companyName = segment.companyName ? `, ${segment.companyName}` : "";
+
+  return `${segment.ticker}${companyName}: ${formatPercent(
+    segment.percent,
+    language,
+  )}, ${formatCurrency(segment.currentValue, currency, language)}`;
 }
 
 function SummaryCard({

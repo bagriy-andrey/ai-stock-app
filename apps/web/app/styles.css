@@ -1150,6 +1150,13 @@ p {
   align-items: center;
 }
 
+.portfolio-overview-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, 0.78fr);
+  align-items: stretch;
+}
+
 .portfolio-summary-grid {
   display: grid;
   gap: 16px;
@@ -1173,6 +1180,113 @@ p {
 .portfolio-summary-card strong {
   font-size: 1.35rem;
   letter-spacing: -0.04em;
+}
+
+.portfolio-allocation-card {
+  display: grid;
+  align-content: start;
+  gap: 18px;
+  padding: 20px;
+}
+
+.portfolio-allocation-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.portfolio-allocation-header h3 {
+  margin: 0;
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
+.portfolio-allocation-header p {
+  margin: 5px 0 0;
+  color: var(--subtle-foreground);
+  font-size: 0.9rem;
+}
+
+.portfolio-allocation-content {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(150px, 220px) minmax(0, 1fr);
+  align-items: center;
+}
+
+.portfolio-allocation-chart {
+  display: block;
+  width: 100%;
+  min-width: 150px;
+  filter: drop-shadow(0 18px 28px rgb(0 0 0 / 18%));
+}
+
+.portfolio-allocation-ring {
+  fill: var(--panel-muted);
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.portfolio-allocation-list {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.portfolio-allocation-list li {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.portfolio-allocation-marker {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--segment-color);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--segment-color), transparent 76%);
+}
+
+.portfolio-allocation-list div,
+.portfolio-allocation-list span:last-child {
+  display: grid;
+  gap: 3px;
+}
+
+.portfolio-allocation-list strong {
+  font-size: 0.92rem;
+}
+
+.portfolio-allocation-list small {
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--subtle-foreground);
+  font-size: 0.78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.portfolio-allocation-list span:last-child {
+  justify-items: end;
+  color: var(--foreground);
+  font-weight: 900;
+}
+
+.portfolio-allocation-status {
+  display: grid;
+  min-height: 180px;
+  margin: 0;
+  place-items: center;
+  text-align: center;
+}
+
+.portfolio-allocation-card .empty-state {
+  min-height: 180px;
+  padding: 18px;
 }
 
 .portfolio-table-wrap {
@@ -1352,6 +1466,16 @@ p {
 
   .portfolio-summary-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-overview-grid,
+  .portfolio-allocation-content {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-allocation-chart {
+    max-width: 240px;
+    margin: 0 auto;
   }
 
   .portfolio-form {

@@ -5,8 +5,8 @@ Telegram integration, scheduled jobs, and an isolated TradingAgents service.
 The protected home page shows Financial Modeling Prep market movers and links into a
 personal watchlist that uses Finnhub for live company data and Yahoo Finance
 for historical chart candles. Authenticated users can also manually maintain a
-portfolio, review live position values and profit/loss calculations, and audit
-recorded portfolio transactions. Google
+portfolio, review live position values, profit/loss calculations, and allocation
+by ticker, and audit recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB.
 
@@ -315,9 +315,10 @@ Local browser check:
 
 Authenticated users can review aggregated open positions at
 `http://localhost:3000/portfolio`. Open the page from the authenticated header
-menu. The page uses TanStack Query, shows portfolio summary cards, and renders
-one table row per open ticker. Detailed purchase, sale, adjustment, and delete
-records remain on the Transactions page.
+menu. The page uses TanStack Query, shows portfolio summary cards, renders a
+responsive allocation pie chart, and renders one table row per open ticker.
+Detailed purchase, sale, adjustment, and delete records remain on the
+Transactions page.
 
 The portfolio summary and positions returned by `GET /portfolio` are derived
 from owned transaction records, not from individual purchase rows. Multiple
@@ -327,6 +328,19 @@ from owned transaction records, not from individual purchase rows. Multiple
 buy price applied to the remaining open quantity. `UPDATE` and `DELETE`
 transaction records are preserved in transaction history but are not included in
 portfolio aggregation.
+
+The allocation pie chart uses the same aggregated open positions as the
+positions table, not individual transactions. Each segment represents one ticker
+and is calculated as:
+
+```text
+allocationPercent = position.currentValue / summary.totalCurrentValue * 100
+```
+
+The chart legend displays ticker, company name when available, allocation
+percentage, and current value. It supports loading, empty, and API error states.
+When the portfolio has no open positions or total current value is zero, the
+chart shows an empty state instead of rendering segments.
 
 `GET /portfolio` loads the latest cached Finnhub quote for each open ticker and
 returns:
@@ -377,9 +391,11 @@ Local browser check:
 3. Confirm that the current market price and current local date-time are prefilled.
 4. Enter a positive quantity and adjust the purchase price or timestamp if needed. Future timestamps must be rejected.
 5. Save a second `AAPL` purchase with a different price and time. Portfolio should still show one `AAPL` row with aggregated quantity and weighted average purchase price.
-6. Add an `AAPL` `SELL` transaction through the Transactions API. Confirm that Portfolio quantity and cost basis decrease.
-7. Fully sell the remaining `AAPL` quantity. Confirm that `AAPL` disappears from Portfolio.
-8. Refresh the page and confirm that the aggregated portfolio state persists.
+6. Confirm that the allocation chart shows one `AAPL` segment and the legend percentage is approximately `100%`.
+7. Add another ticker purchase. Confirm that the allocation chart shows one segment per ticker and the displayed percentages add up to approximately `100%`.
+8. Add an `AAPL` `SELL` transaction through the Transactions API. Confirm that Portfolio quantity, cost basis, and allocation percentage update.
+9. Fully sell the remaining `AAPL` quantity. Confirm that `AAPL` disappears from Portfolio and from the allocation chart.
+10. Refresh the page and confirm that the aggregated portfolio state persists.
 
 ## Transactions
 
@@ -626,6 +642,7 @@ The next product work is planned in this order:
 - [x] Portfolio aggregated positions
 - [x] Portfolio P/L calculation
 - [x] Portfolio Dashboard
+- [x] Portfolio allocation pie chart
 - [x] Stock Details Page
 - [x] Improve Search
 - [ ] AI Stock Report
