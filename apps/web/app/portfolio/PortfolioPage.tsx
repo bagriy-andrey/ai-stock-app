@@ -35,14 +35,27 @@ import { Select } from "../components/ui/select";
 import type { Dictionary } from "../dictionaries";
 import { fetchMarketQuote, searchMarketSymbols } from "../lib/market-data-api";
 import {
+  resolveValidPage,
+  shouldShowPagination,
+} from "../lib/pagination-state";
+import {
   createPortfolioPosition,
   fetchPortfolio,
 } from "../lib/portfolio-api";
+import {
+  buildPortfolioQueryKey,
+  buildPortfolioQueryState,
+} from "../lib/portfolio-query-state";
 import {
   createTransaction,
   fetchTransactions,
   updateTransaction,
 } from "../lib/transactions-api";
+import {
+  buildTransactionsQueryKey,
+  buildTransactionsQueryState,
+  toTransactionFilters,
+} from "../lib/transactions-query-state";
 import {
   formatCurrency,
   formatPercent,
@@ -65,14 +78,15 @@ export function PortfolioPage() {
     useState<PortfolioPositionDto | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const portfolioQueryState = buildPortfolioQueryState({
+    page: currentPage,
+    limit: tablePageSize,
+  });
 
   const portfolioQuery = useQuery({
-    queryKey: [...portfolioQueryKey, { limit: tablePageSize, page: currentPage }],
+    queryKey: buildPortfolioQueryKey(portfolioQueryState),
     queryFn: () =>
-      fetchPortfolio(accessToken ?? "", {
-        limit: tablePageSize,
-        page: currentPage,
-      }),
+      fetchPortfolio(accessToken ?? "", portfolioQueryState),
     enabled: Boolean(accessToken),
     placeholderData: keepPreviousData,
     refetchInterval: 2 * 60 * 1_000,
@@ -94,17 +108,14 @@ export function PortfolioPage() {
   const portfolio = portfolioQuery.data;
   const positions = portfolio?.items ?? [];
   const paginationMeta = portfolio?.meta;
-  const showPagination =
-    paginationMeta !== undefined && paginationMeta.totalItems > tablePageSize;
+  const showPagination = shouldShowPagination(paginationMeta, tablePageSize);
   const summaryCurrency = positions[0]?.currency ?? "USD";
 
   useEffect(() => {
-    if (
-      paginationMeta &&
-      paginationMeta.totalPages > 0 &&
-      currentPage > paginationMeta.totalPages
-    ) {
-      setCurrentPage(paginationMeta.totalPages);
+    const validPage = resolveValidPage(currentPage, paginationMeta);
+
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
     }
   }, [currentPage, paginationMeta]);
 
@@ -168,7 +179,7 @@ export function PortfolioPage() {
               positions={positions}
               t={t}
             />
-            {showPagination ? (
+            {showPagination && paginationMeta ? (
               <PaginationControls
                 ariaLabel={t.paginationNavigation}
                 currentPage={currentPage}
@@ -926,15 +937,22 @@ function PortfolioActionModal({
   const queryClient = useQueryClient();
   const [action, setAction] = useState<PortfolioAction>("add");
   const [deleteMode, setDeleteMode] = useState<DeletePositionMode>("close");
+  const tickerTransactionsQueryState = buildTransactionsQueryState({
+    page: 1,
+    limit: 100,
+    ticker: position.ticker,
+    fromDate: "",
+    toDate: "",
+  });
   const invalidatePortfolioData = async () => {
     onDataRefresh();
     await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
     await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
   };
   const tickerTransactionsQuery = useQuery({
-    queryKey: ["transactions", { ticker: position.ticker }],
+    queryKey: buildTransactionsQueryKey(tickerTransactionsQueryState),
     queryFn: () =>
-      fetchTransactions(accessToken, { ticker: position.ticker, limit: 100 }),
+      fetchTransactions(accessToken, toTransactionFilters(tickerTransactionsQueryState)),
     enabled: Boolean(accessToken),
     retry: false,
   });

@@ -17,6 +17,17 @@ export function fetchPortfolio(
   accessToken: string,
   pagination: PaginationQuery = {},
 ): Promise<PortfolioDto> {
+  const params = buildPortfolioSearchParams(pagination);
+  const query = params.toString();
+
+  return apiRequest<PortfolioDto>(`/portfolio${query ? `?${query}` : ""}`, {
+    headers: authHeaders(accessToken),
+  });
+}
+
+export function buildPortfolioSearchParams(
+  pagination: PaginationQuery = {},
+): URLSearchParams {
   const params = new URLSearchParams();
 
   if (pagination.page !== undefined) {
@@ -27,10 +38,7 @@ export function fetchPortfolio(
     params.set("limit", String(pagination.limit));
   }
 
-  const query = params.toString();
-  return apiRequest<PortfolioDto>(`/portfolio${query ? `?${query}` : ""}`, {
-    headers: authHeaders(accessToken),
-  });
+  return params;
 }
 
 export function createPortfolioPosition(

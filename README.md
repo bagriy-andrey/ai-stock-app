@@ -158,6 +158,8 @@ parameters. Defaults are `page=1` and `limit=10`; `limit` cannot exceed `100`.
 Both endpoints return `{ items, meta }`, where `meta` includes `totalItems`,
 `totalPages`, `hasNextPage`, and `hasPreviousPage`. Portfolio also includes the
 full portfolio `summary`; pagination is applied after transaction aggregation.
+Transaction pagination metadata is calculated after active `ticker`, `fromDate`,
+and `toDate` filters are applied.
 
 Example placeholder analysis request:
 

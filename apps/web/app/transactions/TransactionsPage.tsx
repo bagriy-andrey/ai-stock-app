@@ -4,7 +4,6 @@ import type {
   PortfolioTransactionDto,
   PortfolioTransactionType,
   ProfileLanguage,
-  TransactionFilters,
   UpdatePortfolioTransactionRequest,
 } from "@ai-stock-advisor/shared";
 import {
@@ -26,10 +25,23 @@ import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
 import type { Dictionary } from "../dictionaries";
 import {
+  getPageAfterRemovingCurrentItem,
+  resolveValidPage,
+  shouldShowPagination,
+} from "../lib/pagination-state";
+import {
   fetchTransactions,
   removeTransaction,
   updateTransaction,
 } from "../lib/transactions-api";
+import {
+  buildTransactionsQueryKey,
+  buildTransactionsQueryState,
+  getPageAfterTransactionsFilterChange,
+  hasTransactionFilters,
+  transactionMatchesFilters,
+  toTransactionFilters,
+} from "../lib/transactions-query-state";
 import { formatCurrency } from "../lib/stock-format";
 
 const transactionTypes: PortfolioTransactionType[] = [
@@ -52,32 +64,29 @@ export function TransactionsPage() {
     useState<PortfolioTransactionDto | null>(null);
   const [deletingTransaction, setDeletingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
-  const filters = useMemo<TransactionFilters>(
-    () => ({
-      ...(tickerFilter.trim() ? { ticker: tickerFilter.trim().toUpperCase() } : {}),
-      ...(fromDate ? { fromDate } : {}),
-      ...(toDate ? { toDate } : {}),
-    }),
-    [fromDate, tickerFilter, toDate],
+  const queryState = useMemo(
+    () =>
+      buildTransactionsQueryState({
+        page: currentPage,
+        limit: tablePageSize,
+        ticker: tickerFilter,
+        fromDate,
+        toDate,
+      }),
+    [currentPage, fromDate, tickerFilter, toDate],
   );
-  const hasFilters = Boolean(filters.ticker || filters.fromDate || filters.toDate);
-  const transactionsQueryKey = [
-    "transactions",
-    filters,
-    { limit: tablePageSize, page: currentPage },
-  ] as const;
+  const hasFilters = hasTransactionFilters(queryState);
+  const transactionsQueryKey = buildTransactionsQueryKey(queryState);
   const transactionsQuery = useQuery({
     queryKey: transactionsQueryKey,
     queryFn: () =>
-      fetchTransactions(accessToken ?? "", {
-        ...filters,
-        limit: tablePageSize,
-        page: currentPage,
-      }),
+      fetchTransactions(accessToken ?? "", toTransactionFilters(queryState)),
     enabled: Boolean(accessToken),
     placeholderData: keepPreviousData,
     retry: false,
   });
+  const transactions = transactionsQuery.data?.items ?? [];
+  const paginationMeta = transactionsQuery.data?.meta;
 
   const updateMutation = useMutation({
     mutationFn: ({
@@ -87,8 +96,17 @@ export function TransactionsPage() {
       id: string;
       input: UpdatePortfolioTransactionRequest;
     }) => updateTransaction(accessToken ?? "", id, input),
-    onSuccess: async () => {
+    onSuccess: async (updatedTransaction) => {
       setEditingTransaction(null);
+      if (!transactionMatchesFilters(updatedTransaction, queryState)) {
+        setCurrentPage((page) =>
+          getPageAfterRemovingCurrentItem({
+            currentPage: page,
+            currentItemsCount: transactions.length,
+            meta: paginationMeta,
+          }),
+        );
+      }
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });
       await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
     },
@@ -98,27 +116,30 @@ export function TransactionsPage() {
     mutationFn: (id: string) => removeTransaction(accessToken ?? "", id),
     onSuccess: async () => {
       setDeletingTransaction(null);
+      setCurrentPage((page) =>
+        getPageAfterRemovingCurrentItem({
+          currentPage: page,
+          currentItemsCount: transactions.length,
+          meta: paginationMeta,
+        }),
+      );
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });
       await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
     },
   });
 
-  const transactions = transactionsQuery.data?.items ?? [];
-  const paginationMeta = transactionsQuery.data?.meta;
-  const showPagination =
-    paginationMeta !== undefined && paginationMeta.totalItems > tablePageSize;
+  const showPagination = shouldShowPagination(paginationMeta, tablePageSize);
 
   useEffect(() => {
-    if (
-      paginationMeta &&
-      paginationMeta.totalPages > 0 &&
-      currentPage > paginationMeta.totalPages
-    ) {
-      setCurrentPage(paginationMeta.totalPages);
+    const validPage = resolveValidPage(currentPage, paginationMeta);
+
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
     }
   }, [currentPage, paginationMeta]);
 
-  const resetFiltersPage = () => setCurrentPage(1);
+  const resetFiltersPage = () =>
+    setCurrentPage(getPageAfterTransactionsFilterChange());
 
   return (
     <main>
@@ -211,7 +232,7 @@ export function TransactionsPage() {
               t={t}
               transactions={transactions}
             />
-            {showPagination ? (
+            {showPagination && paginationMeta ? (
               <PaginationControls
                 ariaLabel={t.paginationNavigation}
                 currentPage={currentPage}

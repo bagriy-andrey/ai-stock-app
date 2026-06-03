@@ -17,6 +17,20 @@ export function fetchTransactions(
   accessToken: string,
   filters: TransactionFilters = {},
 ): Promise<PaginatedTransactionsDto> {
+  const params = buildTransactionsSearchParams(filters);
+  const query = params.toString();
+
+  return apiRequest<PaginatedTransactionsDto>(
+    `/transactions${query ? `?${query}` : ""}`,
+    {
+      headers: authHeaders(accessToken),
+    },
+  );
+}
+
+export function buildTransactionsSearchParams(
+  filters: TransactionFilters = {},
+): URLSearchParams {
   const params = new URLSearchParams();
 
   if (filters.ticker) {
@@ -39,13 +53,7 @@ export function fetchTransactions(
     params.set("limit", String(filters.limit));
   }
 
-  const query = params.toString();
-  return apiRequest<PaginatedTransactionsDto>(
-    `/transactions${query ? `?${query}` : ""}`,
-    {
-      headers: authHeaders(accessToken),
-    },
-  );
+  return params;
 }
 
 export function createTransaction(
