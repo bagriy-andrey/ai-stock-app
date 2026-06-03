@@ -32,7 +32,7 @@ Backend:
 Market Data:
 
 * Finnhub for symbol search, company profiles, and current quotes
-* Financial Modeling Prep stable API for dashboard top gainers and losers
+* Financial Modeling Prep stable API for home page top gainers and losers
 * Yahoo Finance through `yahoo-finance2` for historical OHLCV chart candles
 
 Database:
@@ -106,7 +106,8 @@ Completed tasks:
 * Test pipeline validated.
 * Google authentication implemented.
 * Login page added.
-* Protected dashboard route added.
+* Protected home page route added.
+* `/dashboard` route redirects to the protected home page at `/`.
 * Browser session persistence added through JWT local storage and `/users/me`.
 * API Google ID token validation added.
 * API JWT generation added.
@@ -120,7 +121,7 @@ Completed tasks:
 * Watchlist service protects against duplicate tickers and only removes items owned by the authenticated user.
 * Shared Watchlist TypeScript request and response types added.
 * Protected `/watchlist` web page added with persistent list loading, ticker addition, ticker removal, empty state, and API error display.
-* Dashboard navigation link to the Watchlist page added.
+* Header navigation includes Home page, Portfolio, Watchlist, and Sign out in that order.
 * React Query provider added for web data fetching and Watchlist cache invalidation.
 * JWT module export fixed so feature modules importing `AuthModule` can resolve `JwtService` for `JwtAuthGuard`.
 * Focused Watchlist service and DTO validation tests added.
@@ -143,13 +144,13 @@ Completed tasks:
 * Stock details modal extended with responsive historical chart, `1D`, `1W`, `1M`, and `1Y` selectors, loading state, empty state, and provider-error state.
 * Historical chart color now reflects the selected range trend: green for positive, red for negative, and gray for unchanged.
 * Focused Yahoo Finance provider tests added for range mapping, candle normalization, invalid candle filtering, invalid symbols, and provider failures.
-* Dashboard Market Movers section added with separate Top Gainers and Top Losers lists.
+* Home page Market Movers section added with separate Top Gainers and Top Losers lists.
 * `FmpMarketMoversProvider` added for Financial Modeling Prep market movers without changing the existing Finnhub and Yahoo Finance integrations.
 * Authenticated Market Movers API added with `GET /market/movers`.
 * FMP integration uses the current `/stable/biggest-gainers` and `/stable/biggest-losers` endpoints. Legacy `/api/v3/stock_market/*` endpoints are intentionally not used.
 * FMP market mover records are normalized into typed shared contracts, including safe percentage parsing, invalid-record filtering, deterministic sorting, and a top-10 limit.
 * FMP market movers are cached in memory for 5 minutes.
-* Market Movers dashboard lists include loading skeletons, empty states, safe provider-error states, green gainers styling, and red losers styling.
+* Home page Market Movers lists include loading skeletons, empty states, safe provider-error states, green gainers styling, and red losers styling.
 * `FMP_API_KEY` added to the sanitized backend environment example.
 * Focused FMP provider tests added for normalization, percentage parsing, filtering, sorting, top-10 limiting, missing configuration, provider errors, and cache reuse.
 
@@ -177,15 +178,15 @@ Runtime validation:
 
 ✅ Google Sign In opens from `http://localhost:3000/login`
 
-✅ Successful login redirects to the dashboard
+✅ Successful login redirects to the protected home page
 
 ✅ User document is created in MongoDB
 
 ✅ Session survives browser refresh
 
-✅ Protected dashboard redirects unauthenticated users to `/login`
+✅ Protected home page redirects unauthenticated users to `/login`
 
-✅ Protected Watchlist page opens from the dashboard
+✅ Protected Watchlist page opens from the header navigation
 
 ✅ Watchlist items can be added, persisted after refresh, and removed
 
@@ -201,7 +202,7 @@ Runtime validation:
 
 ✅ Real Yahoo Finance `AAPL` chart request returns OHLCV candles without Finnhub premium access
 
-✅ Dashboard shows Financial Modeling Prep Top Gainers and Top Losers
+✅ Home page shows Financial Modeling Prep Top Gainers and Top Losers
 
 ✅ Real FMP `/stable/biggest-gainers` and `/stable/biggest-losers` requests return market mover data
 
@@ -235,7 +236,7 @@ Market Data:
 
 * Current stock price
 * Daily change
-* Dashboard Top Gainers and Top Losers
+* Home page Top Gainers and Top Losers
 * Historical chart with `1D`, `1W`, `1M`, and `1Y` ranges
 * Portfolio performance
 * Dedicated stock details page

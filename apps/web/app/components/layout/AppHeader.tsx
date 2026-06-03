@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { useAuth } from "../auth/AuthProvider";
 import { useI18n } from "../i18n/I18nProvider";
@@ -10,7 +11,6 @@ import { resolveAvatarUrl } from "../../lib/profile-api";
 import { getUserInitials } from "../../lib/profile-display";
 import { HeaderThemeSelector } from "../theme/HeaderThemeSelector";
 import {
-  DashboardIcon,
   HomeIcon,
   MenuIcon,
   PortfolioIcon,
@@ -23,6 +23,7 @@ type OpenMenu = "language" | "theme" | "navigation" | null;
 export function AppHeader() {
   const { logout, user } = useAuth();
   const { t } = useI18n();
+  const pathname = usePathname();
   const headerRef = useRef<HTMLElement>(null);
   const [openMenu, setOpenMenu] = useState<OpenMenu>(null);
 
@@ -63,20 +64,23 @@ export function AppHeader() {
     setOpenMenu((current) => current === menu ? null : menu);
   };
 
+  const getActivePage = (href: string) =>
+    pathname === href ? "page" : undefined;
+
   return (
     <header className="app-header" ref={headerRef}>
       <nav className="top-nav" aria-label={t.navLabel}>
         <Link
-          aria-label={`AI Stock Advisor: ${t.dashboard}`}
+          aria-label={`AI Stock Advisor: ${t.homePage}`}
           className="app-brand"
-          href="/dashboard"
+          href="/"
         >
           <span aria-hidden="true" className="app-brand-mark">
             A
           </span>
           <span className="app-brand-copy">
             <strong>AI Stock Advisor</strong>
-            <small>{t.dashboard}</small>
+            <small>{t.homePage}</small>
           </span>
         </Link>
         <div className="header-actions">
@@ -109,29 +113,28 @@ export function AppHeader() {
             {openMenu === "navigation" ? (
               <div className="header-popover header-navigation-menu">
                 <Link
-                  href="/dashboard"
+                  aria-current={getActivePage("/")}
+                  href="/"
                   onClick={() => setOpenMenu(null)}
                 >
-                  <DashboardIcon className="header-menu-icon" />
-                  <span>{t.dashboard}</span>
+                  <HomeIcon className="header-menu-icon" />
+                  <span>{t.homePage}</span>
                 </Link>
                 <Link
-                  href="/watchlist"
-                  onClick={() => setOpenMenu(null)}
-                >
-                  <WatchlistIcon className="header-menu-icon" />
-                  <span>{t.watchlist}</span>
-                </Link>
-                <Link
+                  aria-current={getActivePage("/portfolio")}
                   href="/portfolio"
                   onClick={() => setOpenMenu(null)}
                 >
                   <PortfolioIcon className="header-menu-icon" />
                   <span>{t.portfolio}</span>
                 </Link>
-                <Link href="/" onClick={() => setOpenMenu(null)}>
-                  <HomeIcon className="header-menu-icon" />
-                  <span>{t.homePage}</span>
+                <Link
+                  aria-current={getActivePage("/watchlist")}
+                  href="/watchlist"
+                  onClick={() => setOpenMenu(null)}
+                >
+                  <WatchlistIcon className="header-menu-icon" />
+                  <span>{t.watchlist}</span>
                 </Link>
                 <button
                   className="header-sign-out"

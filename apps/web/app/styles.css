@@ -501,6 +501,11 @@ p {
   background: var(--panel-hover);
 }
 
+.header-navigation-menu a[aria-current="page"] {
+  background: var(--panel-hover);
+  color: var(--link);
+}
+
 .header-popover-option[aria-pressed="true"] {
   color: var(--link);
 }

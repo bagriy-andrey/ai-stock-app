@@ -2,7 +2,7 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The dashboard shows Financial Modeling Prep market movers and links into a
+The protected home page shows Financial Modeling Prep market movers and links into a
 personal watchlist that uses Finnhub for live company data and Yahoo Finance
 for historical chart candles. Authenticated users can also manually maintain a
 portfolio and review live position values and profit/loss calculations. Google
@@ -161,7 +161,7 @@ The login page uses Google Identity Services to obtain a Google ID token. The
 web app posts that token to the API, the API verifies it against
 `GOOGLE_CLIENT_ID`, creates or updates the MongoDB user record, and returns an
 application JWT. The browser stores the JWT in local storage and validates it
-with `GET /users/me` after page refreshes. Dashboard routes redirect to
+with `GET /users/me` after page refreshes. Protected app routes redirect to
 `/login` when no valid session is present.
 
 Local browser check:
@@ -171,7 +171,7 @@ Local browser check:
 3. Start the web app with `npm run dev:web`.
 4. Open `http://localhost:3000/login`.
 5. Sign in with Google.
-6. After login, the app redirects to the protected dashboard at
+6. After login, the app redirects to the protected home page at
    `http://localhost:3000`.
 7. Refresh the page. The session should remain active.
 8. Sign out. Opening `http://localhost:3000` should redirect back to
@@ -241,10 +241,9 @@ after the API confirms the update, and restored from the saved user profile
 after login. The compact authenticated header exposes flag-based language
 selection, icon-based theme selection, the profile avatar, and a burger menu
 with application navigation. Header theme changes are also persisted
-immediately through `PATCH /profile`. The MVP exposes `/dashboard` as an alias
-for the current authenticated home dashboard so the burger menu can keep
-separate Dashboard and Home page destinations while the dedicated landing page
-is still pending.
+immediately through `PATCH /profile`. The burger menu contains Home page,
+Portfolio, Watchlist, and Sign out. The MVP redirects `/dashboard` to the
+authenticated home page at `/`.
 
 For the MVP, uploaded profile photos are written to the API filesystem under
 `uploads/avatars` and served from `/uploads/avatars`. The folder is ignored by
@@ -267,7 +266,7 @@ Local browser check:
 Authenticated users can manage a persistent MongoDB-backed stock watchlist from
 the web app at `http://localhost:3000/watchlist`. The page uses the stored app
 JWT and calls the API with an `Authorization: Bearer <jwt>` header. The
-dashboard links to this protected page.
+home page links to this protected page.
 
 Watchlist items are stored with `userId`, uppercase `ticker`, optional
 `companyName`, `createdAt`, and `updatedAt`. Duplicate tickers are rejected per
@@ -297,7 +296,7 @@ curl -X POST http://localhost:3001/watchlist \
 Local browser check:
 
 1. Sign in through `http://localhost:3000/login`.
-2. Open `http://localhost:3000/watchlist` from the dashboard navigation.
+2. Open `http://localhost:3000/watchlist` from the header navigation.
 3. Search for `apple` or `AAPL`, then select Apple from the autocomplete list.
 4. Add the selected stock. Its card should show a company logo or fallback initials, company name, current market price, and colored price change.
 5. Select the stock card. A stock details modal should open with the latest quote values and a historical chart.
@@ -384,7 +383,7 @@ Local browser check:
 | Provider | Responsibility |
 | --- | --- |
 | Finnhub | Symbol search, company profiles, and current quotes |
-| Financial Modeling Prep | Dashboard top gainers and losers |
+| Financial Modeling Prep | Home page top gainers and losers |
 | Yahoo Finance through `yahoo-finance2` | Historical OHLCV candles for stock charts |
 
 Finnhub is exposed behind the provider-neutral `MarketDataProvider` interface.
@@ -468,7 +467,7 @@ curl http://localhost:3001/market/movers \
 }
 ```
 
-The dashboard requests this endpoint through TanStack Query and renders
+The home page requests this endpoint through TanStack Query and renders
 separate Top Gainers and Top Losers lists. It shows loading skeletons while the
 request is pending, an empty state when FMP returns no valid records, and a
 safe error state when the provider request fails.
@@ -507,7 +506,7 @@ return `503`.
 
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
-Set `FMP_API_KEY` to load dashboard market movers. `JWT_EXPIRES_IN` defaults to
+Set `FMP_API_KEY` to load home page market movers. `JWT_EXPIRES_IN` defaults to
 `7d` when omitted. `PROFILE_UPLOAD_DIR` optionally changes the writable local
 avatar directory. The web app requires `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and
 `NEXT_PUBLIC_API_URL`. Telegram and Redis configuration remains reserved for
