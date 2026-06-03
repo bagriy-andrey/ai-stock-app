@@ -72,6 +72,7 @@ export function TransactionsPage() {
     onSuccess: async () => {
       setEditingTransaction(null);
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
     },
   });
 
@@ -80,6 +81,7 @@ export function TransactionsPage() {
     onSuccess: async () => {
       setDeletingTransaction(null);
       await queryClient.invalidateQueries({ queryKey: ["transactions"] });
+      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
     },
   });
 

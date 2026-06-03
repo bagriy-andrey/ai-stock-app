@@ -1455,6 +1455,30 @@ p {
   margin-top: 0;
 }
 
+.portfolio-action-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 18px;
+}
+
+.portfolio-action-header p {
+  margin: 6px 0 0;
+  color: var(--subtle-foreground);
+}
+
+.portfolio-action-header span,
+.portfolio-form-help,
+.portfolio-action-status {
+  color: var(--subtle-foreground);
+}
+
+.portfolio-delete-options {
+  display: grid;
+  gap: 18px;
+}
+
 .portfolio-form {
   display: grid;
   gap: 18px;
