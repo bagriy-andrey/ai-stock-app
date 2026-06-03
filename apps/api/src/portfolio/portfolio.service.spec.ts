@@ -211,7 +211,7 @@ describe("PortfolioService", () => {
     ]);
 
     await expect(service.findAllForUser(userId.toString())).resolves.toEqual({
-      positions: [
+      items: [
         {
           ticker: "AAPL",
           companyName: "Apple Inc.",
@@ -237,6 +237,14 @@ describe("PortfolioService", () => {
           currency: "USD",
         },
       ],
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 2,
+        totalPages: 1,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
       summary: {
         totalCostBasis: 512.7,
         totalCurrentValue: 420,
@@ -252,6 +260,68 @@ describe("PortfolioService", () => {
       userId.toString(),
     );
     expect(marketDataService.getQuotes).toHaveBeenCalledWith(["AAPL", "MSFT"]);
+  });
+
+  it("paginates portfolio positions after ticker aggregation", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([
+      buildTransaction({
+        id: "tx-aapl-1",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        quantity: 1,
+        price: 100,
+      }),
+      buildTransaction({
+        id: "tx-aapl-2",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        quantity: 2,
+        price: 200,
+      }),
+      buildTransaction({
+        id: "tx-msft",
+        ticker: "MSFT",
+        companyName: "Microsoft Corporation",
+        quantity: 1,
+        price: 300,
+      }),
+      buildTransaction({
+        id: "tx-nvda",
+        ticker: "NVDA",
+        companyName: "NVIDIA Corporation",
+        quantity: 1,
+        price: 400,
+      }),
+    ]);
+    marketDataService.getQuotes.mockResolvedValue([
+      { ...quote, ticker: "AAPL", currentPrice: 150 },
+      { ...quote, ticker: "MSFT", currentPrice: 350 },
+      { ...quote, ticker: "NVDA", currentPrice: 450 },
+    ]);
+
+    await expect(
+      service.findAllForUser(userId.toString(), { page: 2, limit: 2 }),
+    ).resolves.toMatchObject({
+      items: [{ ticker: "NVDA", quantity: 1 }],
+      meta: {
+        page: 2,
+        limit: 2,
+        totalItems: 3,
+        totalPages: 2,
+        hasNextPage: false,
+        hasPreviousPage: true,
+      },
+      summary: {
+        positionsCount: 3,
+        totalStocksCount: 5,
+      },
+    });
+
+    expect(marketDataService.getQuotes).toHaveBeenCalledWith([
+      "AAPL",
+      "MSFT",
+      "NVDA",
+    ]);
   });
 
   it("hides fully sold positions from the portfolio", async () => {
@@ -271,7 +341,15 @@ describe("PortfolioService", () => {
     ]);
 
     await expect(service.findAllForUser(userId.toString())).resolves.toEqual({
-      positions: [],
+      items: [],
+      meta: {
+        page: 1,
+        limit: 10,
+        totalItems: 0,
+        totalPages: 0,
+        hasNextPage: false,
+        hasPreviousPage: false,
+      },
       summary: {
         totalCostBasis: 0,
         totalCurrentValue: 0,
@@ -493,5 +571,15 @@ describe("PortfolioService", () => {
     await expect(
       service.removeForUser(userId.toString(), "invalid-position-id"),
     ).rejects.toThrow(NotFoundException);
+  });
+
+  it("uses the authenticated user when loading transactions for portfolio pagination", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([]);
+
+    await service.findAllForUser(otherUserId.toString(), { page: 1, limit: 10 });
+
+    expect(transactionsService.findAllForUser).toHaveBeenCalledWith(
+      otherUserId.toString(),
+    );
   });
 });

@@ -1,5 +1,6 @@
 import type {
   CreatePortfolioTransactionRequest,
+  PaginatedTransactionsDto,
   PortfolioTransactionDto,
   TransactionFilters,
   UpdatePortfolioTransactionRequest,
@@ -15,7 +16,7 @@ function authHeaders(accessToken: string): HeadersInit {
 export function fetchTransactions(
   accessToken: string,
   filters: TransactionFilters = {},
-): Promise<PortfolioTransactionDto[]> {
+): Promise<PaginatedTransactionsDto> {
   const params = new URLSearchParams();
 
   if (filters.ticker) {
@@ -30,8 +31,16 @@ export function fetchTransactions(
     params.set("toDate", filters.toDate);
   }
 
+  if (filters.page !== undefined) {
+    params.set("page", String(filters.page));
+  }
+
+  if (filters.limit !== undefined) {
+    params.set("limit", String(filters.limit));
+  }
+
   const query = params.toString();
-  return apiRequest<PortfolioTransactionDto[]>(
+  return apiRequest<PaginatedTransactionsDto>(
     `/transactions${query ? `?${query}` : ""}`,
     {
       headers: authHeaders(accessToken),

@@ -1,5 +1,6 @@
 import type {
   CreatePortfolioPositionRequest,
+  PaginationQuery,
   PortfolioDto,
   PortfolioPositionDto,
   UpdatePortfolioPositionRequest,
@@ -12,8 +13,22 @@ function authHeaders(accessToken: string): HeadersInit {
   };
 }
 
-export function fetchPortfolio(accessToken: string): Promise<PortfolioDto> {
-  return apiRequest<PortfolioDto>("/portfolio", {
+export function fetchPortfolio(
+  accessToken: string,
+  pagination: PaginationQuery = {},
+): Promise<PortfolioDto> {
+  const params = new URLSearchParams();
+
+  if (pagination.page !== undefined) {
+    params.set("page", String(pagination.page));
+  }
+
+  if (pagination.limit !== undefined) {
+    params.set("limit", String(pagination.limit));
+  }
+
+  const query = params.toString();
+  return apiRequest<PortfolioDto>(`/portfolio${query ? `?${query}` : ""}`, {
     headers: authHeaders(accessToken),
   });
 }

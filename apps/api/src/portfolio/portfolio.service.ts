@@ -13,6 +13,10 @@ import type {
   StockQuote,
 } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
+import {
+  paginateItems,
+  type PaginationOptions,
+} from "../common/pagination";
 import { MarketDataService } from "../market-data/market-data.service";
 import { TransactionsService } from "../transactions/transactions.service";
 import type { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
@@ -82,14 +86,19 @@ export class PortfolioService implements OnModuleInit {
     );
   }
 
-  async findAllForUser(userId: string): Promise<PortfolioDto> {
+  async findAllForUser(
+    userId: string,
+    paginationOptions: PaginationOptions = {},
+  ): Promise<PortfolioDto> {
     this.toUserObjectId(userId);
     const transactions = await this.transactionsService.findAllForUser(userId);
     const openPositions = this.aggregateTransactions(transactions);
     const valuedPositions = await this.addMarketValues(openPositions);
+    const paginatedPositions = paginateItems(valuedPositions, paginationOptions);
 
     return {
-      positions: valuedPositions,
+      items: paginatedPositions.items,
+      meta: paginatedPositions.meta,
       summary: this.toSummary(valuedPositions),
     };
   }

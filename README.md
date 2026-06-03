@@ -132,11 +132,11 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
-| API | `GET` | `http://localhost:3001/portfolio` | Return aggregated open positions and portfolio summary |
+| API | `GET` | `http://localhost:3001/portfolio?page=1&limit=10` | Return paginated aggregated open positions and portfolio summary |
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
-| API | `GET` | `http://localhost:3001/transactions?ticker=AAPL&fromDate=2026-05-01&toDate=2026-05-31` | Return owned transaction records with optional filters |
+| API | `GET` | `http://localhost:3001/transactions?page=1&limit=10&ticker=AAPL&fromDate=2026-05-01&toDate=2026-05-31` | Return paginated owned transaction records with optional filters |
 | API | `GET` | `http://localhost:3001/transactions/:id` | Return one owned transaction record |
 | API | `POST` | `http://localhost:3001/transactions` | Create one owned transaction record |
 | API | `PATCH` | `http://localhost:3001/transactions/:id` | Update one owned transaction record |
@@ -152,6 +152,12 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/stocks/mock/AAPL` | Mock quote by symbol |
 | Trading agent | `GET` | `http://localhost:8000/health` | FastAPI health check |
 | Trading agent | `POST` | `http://localhost:8000/analysis/mock` | Placeholder analysis |
+
+`GET /portfolio` and `GET /transactions` accept `page` and `limit` query
+parameters. Defaults are `page=1` and `limit=10`; `limit` cannot exceed `100`.
+Both endpoints return `{ items, meta }`, where `meta` includes `totalItems`,
+`totalPages`, `hasNextPage`, and `hasPreviousPage`. Portfolio also includes the
+full portfolio `summary`; pagination is applied after transaction aggregation.
 
 Example placeholder analysis request:
 

@@ -11,7 +11,10 @@ import {
   Request,
   UseGuards,
 } from "@nestjs/common";
-import type { PortfolioTransactionDto } from "@ai-stock-advisor/shared";
+import type {
+  PaginatedTransactionsDto,
+  PortfolioTransactionDto,
+} from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
@@ -28,8 +31,8 @@ export class TransactionsController {
   getTransactions(
     @Request() request: AuthenticatedRequest,
     @Query() query: ListTransactionsQueryDto,
-  ): Promise<PortfolioTransactionDto[]> {
-    return this.transactionsService.findAllForUser(
+  ): Promise<PaginatedTransactionsDto> {
+    return this.transactionsService.findPageForUser(
       this.getAuthenticatedUserId(request),
       query,
     );

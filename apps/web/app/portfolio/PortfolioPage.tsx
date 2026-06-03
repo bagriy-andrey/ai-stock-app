@@ -78,7 +78,7 @@ export function PortfolioPage() {
   });
 
   const portfolio = portfolioQuery.data;
-  const positions = portfolio?.positions ?? [];
+  const positions = portfolio?.items ?? [];
   const summaryCurrency = positions[0]?.currency ?? "USD";
 
   return (
@@ -199,7 +199,7 @@ function PortfolioOverview({
       <PortfolioAllocationChart
         currency={currency}
         language={language}
-        positions={portfolio.positions}
+        positions={portfolio.items}
         totalCurrentValue={portfolio.summary.totalCurrentValue}
         t={t}
       />
@@ -887,7 +887,8 @@ function PortfolioActionModal({
   };
   const tickerTransactionsQuery = useQuery({
     queryKey: ["transactions", { ticker: position.ticker }],
-    queryFn: () => fetchTransactions(accessToken, { ticker: position.ticker }),
+    queryFn: () =>
+      fetchTransactions(accessToken, { ticker: position.ticker, limit: 100 }),
     enabled: Boolean(accessToken),
     retry: false,
   });
@@ -1001,7 +1002,7 @@ function PortfolioActionModal({
             queryError={tickerTransactionsQuery.error}
             queryIsLoading={tickerTransactionsQuery.isLoading}
             t={t}
-            transactions={tickerTransactionsQuery.data ?? []}
+            transactions={tickerTransactionsQuery.data?.items ?? []}
           />
         ) : null}
 

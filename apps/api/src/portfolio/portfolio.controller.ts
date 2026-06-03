@@ -7,6 +7,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -17,6 +18,7 @@ import type {
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
+import { ListPortfolioQueryDto } from "./dto/list-portfolio-query.dto";
 import { UpdatePortfolioPositionDto } from "./dto/update-portfolio-position.dto";
 import { PortfolioService } from "./portfolio.service";
 
@@ -26,9 +28,13 @@ export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}
 
   @Get()
-  getPortfolio(@Request() request: AuthenticatedRequest): Promise<PortfolioDto> {
+  getPortfolio(
+    @Request() request: AuthenticatedRequest,
+    @Query() query: ListPortfolioQueryDto,
+  ): Promise<PortfolioDto> {
     return this.portfolioService.findAllForUser(
       this.getAuthenticatedUserId(request),
+      query,
     );
   }
 

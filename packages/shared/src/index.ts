@@ -153,6 +153,25 @@ export interface CreateWatchlistItemRequest {
   companyName?: string;
 }
 
+export interface PaginationMetaDto {
+  page: number;
+  limit: number;
+  totalItems: number;
+  totalPages: number;
+  hasNextPage: boolean;
+  hasPreviousPage: boolean;
+}
+
+export interface PaginatedResponseDto<T> {
+  items: T[];
+  meta: PaginationMetaDto;
+}
+
+export interface PaginationQuery {
+  page?: number;
+  limit?: number;
+}
+
 export interface PortfolioPositionDto {
   ticker: string;
   companyName: string;
@@ -176,8 +195,9 @@ export interface PortfolioSummaryDto {
 }
 
 export interface PortfolioDto {
+  items: PortfolioPositionDto[];
+  meta: PaginationMetaDto;
   summary: PortfolioSummaryDto;
-  positions: PortfolioPositionDto[];
 }
 
 export interface CreatePortfolioPositionRequest {
@@ -214,7 +234,12 @@ export interface TransactionFilters {
   ticker?: string;
   fromDate?: string;
   toDate?: string;
+  page?: number;
+  limit?: number;
 }
+
+export type PaginatedTransactionsDto =
+  PaginatedResponseDto<PortfolioTransactionDto>;
 
 export interface CreatePortfolioTransactionRequest {
   ticker: string;

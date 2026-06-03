@@ -5,10 +5,15 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
+  PaginatedTransactionsDto,
   PortfolioTransactionDto,
   PortfolioTransactionType,
 } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
+import {
+  createPaginatedResponse,
+  normalizePagination,
+} from "../common/pagination";
 import type { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
 import type { ListTransactionsQueryDto } from "./dto/list-transactions-query.dto";
 import type { UpdatePortfolioTransactionDto } from "./dto/update-portfolio-transaction.dto";
@@ -37,7 +42,7 @@ export class TransactionsService {
 
   async findAllForUser(
     userId: string,
-    filters: ListTransactionsQueryDto = {},
+    filters: Partial<ListTransactionsQueryDto> = {},
   ): Promise<PortfolioTransactionDto[]> {
     const ownerId = this.toUserObjectId(userId);
     const query = this.buildFindQuery(ownerId, filters);
@@ -47,6 +52,31 @@ export class TransactionsService {
       .exec();
 
     return transactions.map((transaction) => this.toDto(transaction));
+  }
+
+  async findPageForUser(
+    userId: string,
+    filters: Partial<ListTransactionsQueryDto> = {},
+  ): Promise<PaginatedTransactionsDto> {
+    const ownerId = this.toUserObjectId(userId);
+    const pagination = normalizePagination(filters);
+    const query = this.buildFindQuery(ownerId, filters);
+    const skip = (pagination.page - 1) * pagination.limit;
+    const [totalItems, transactions] = await Promise.all([
+      this.portfolioTransactionModel.countDocuments(query).exec(),
+      this.portfolioTransactionModel
+        .find(query)
+        .sort({ transactionDate: -1, createdAt: -1 })
+        .skip(skip)
+        .limit(pagination.limit)
+        .exec(),
+    ]);
+
+    return createPaginatedResponse(
+      transactions.map((transaction) => this.toDto(transaction)),
+      totalItems,
+      pagination,
+    );
   }
 
   async findOneForUser(
@@ -144,7 +174,7 @@ export class TransactionsService {
 
   private buildFindQuery(
     userId: Types.ObjectId,
-    filters: ListTransactionsQueryDto,
+    filters: Partial<ListTransactionsQueryDto>,
   ): Record<string, unknown> {
     const query: Record<string, unknown> = { userId };
 

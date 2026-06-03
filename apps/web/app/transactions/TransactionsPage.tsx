@@ -85,7 +85,7 @@ export function TransactionsPage() {
     },
   });
 
-  const transactions = transactionsQuery.data ?? [];
+  const transactions = transactionsQuery.data?.items ?? [];
 
   return (
     <main>
