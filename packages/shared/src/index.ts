@@ -152,3 +152,47 @@ export interface CreateWatchlistItemRequest {
   ticker: string;
   companyName?: string;
 }
+
+export interface PortfolioPositionDto {
+  id: string;
+  ticker: string;
+  companyName: string;
+  quantity: number;
+  averagePurchasePrice: number;
+  currentPrice: number;
+  costBasis: number;
+  currentValue: number;
+  profitLoss: number;
+  profitLossPercent: number;
+  currency: string;
+  purchaseDate: string;
+  notes?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PortfolioSummaryDto {
+  totalCostBasis: number;
+  totalCurrentValue: number;
+  totalProfitLoss: number;
+  totalProfitLossPercent: number;
+  positionsCount: number;
+}
+
+export interface PortfolioDto {
+  summary: PortfolioSummaryDto;
+  positions: PortfolioPositionDto[];
+}
+
+export interface CreatePortfolioPositionRequest {
+  ticker: string;
+  companyName: string;
+  quantity: number;
+  averagePurchasePrice: number;
+  currency: string;
+  purchaseDate: string;
+  notes?: string;
+}
+
+export type UpdatePortfolioPositionRequest =
+  Partial<CreatePortfolioPositionRequest>;

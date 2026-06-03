@@ -1125,6 +1125,115 @@ p {
   margin: 0;
 }
 
+.portfolio-heading {
+  align-items: center;
+}
+
+.portfolio-summary-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.portfolio-summary-card {
+  display: grid;
+  gap: 12px;
+  padding: 20px;
+}
+
+.portfolio-summary-card span {
+  color: var(--subtle-foreground);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.portfolio-summary-card strong {
+  font-size: 1.35rem;
+  letter-spacing: -0.04em;
+}
+
+.portfolio-table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+}
+
+.portfolio-table {
+  width: 100%;
+  min-width: 960px;
+  border-collapse: collapse;
+  background: var(--panel);
+  text-align: left;
+}
+
+.portfolio-table th,
+.portfolio-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 14px;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.portfolio-table th {
+  color: var(--subtle-foreground);
+  font-size: 0.74rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.portfolio-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.portfolio-table td:first-child {
+  display: grid;
+  gap: 4px;
+}
+
+.portfolio-table small {
+  max-width: 180px;
+  overflow: hidden;
+  color: var(--subtle-foreground);
+  text-overflow: ellipsis;
+}
+
+.portfolio-row-actions,
+.portfolio-modal-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.portfolio-row-actions .ui-button {
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 0.8rem;
+}
+
+.portfolio-modal {
+  width: min(100%, 640px);
+}
+
+.portfolio-modal h2,
+.portfolio-delete-modal h2 {
+  margin-top: 0;
+}
+
+.portfolio-form {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.portfolio-delete-modal {
+  width: min(100%, 480px);
+}
+
+.portfolio-field-status {
+  color: var(--subtle-foreground);
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1173,6 +1282,14 @@ p {
   }
 
   .profile-form {
+    grid-template-columns: 1fr;
+  }
+
+  .portfolio-summary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .portfolio-form {
     grid-template-columns: 1fr;
   }
 

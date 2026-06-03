@@ -4,15 +4,17 @@ AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
 The dashboard shows Financial Modeling Prep market movers and links into a
 personal watchlist that uses Finnhub for live company data and Yahoo Finance
-for historical chart candles. Google authentication is wired for the web app
-and NestJS API, with users stored in MongoDB.
+for historical chart candles. Authenticated users can also manually maintain a
+portfolio and review live position values and profit/loss calculations. Google
+authentication is wired for the web app and NestJS API, with users stored in
+MongoDB.
 
 ## Repository Layout
 
 ```text
 apps/
   web/                    # Next.js app
-  api/                    # NestJS API, profiles, watchlist, and market data providers
+  api/                    # NestJS API, profiles, watchlist, portfolio, and market data providers
 packages/
   shared/                 # Shared TypeScript request and response types
 services/
@@ -129,6 +131,10 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
+| API | `GET` | `http://localhost:3001/portfolio` | Return the authenticated user's valued portfolio and summary |
+| API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
+| API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
+| API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
 | API | `GET` | `http://localhost:3001/market-data/search?query=apple` | Search Finnhub symbols |
 | API | `GET` | `http://localhost:3001/market-data/quote/AAPL` | Return one live Finnhub quote |
 | API | `POST` | `http://localhost:3001/market-data/quotes` | Return live Finnhub quotes for `{ "tickers": ["AAPL"] }` |
@@ -299,6 +305,77 @@ Local browser check:
 7. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
 8. Try to add `AAPL` again. The page should show a duplicate-ticker error.
 9. Remove the ticker. It should disappear without opening the details modal.
+
+## Portfolio
+
+Authenticated users can manually manage a persistent MongoDB-backed portfolio
+from `http://localhost:3000/portfolio`. Open the page from the authenticated
+header menu. The page uses TanStack Query, shows portfolio summary cards and a
+purchase transactions table, and supports add, edit, and delete flows. Deletion
+updates the table optimistically and rolls back if the API rejects the request.
+
+Portfolio purchase transactions are stored with `userId`, uppercase `ticker`,
+`companyName`, positive `quantity`, positive `averagePurchasePrice`,
+three-letter `currency`, `purchaseDate`, optional `notes`, `createdAt`, and
+`updatedAt`. Users can add multiple purchases for the same ticker with
+different timestamps, quantities, and prices. Future purchase timestamps are
+rejected. All reads, updates, and deletes are scoped to the authenticated user.
+
+`GET /portfolio` loads the latest cached Finnhub quote for each saved ticker
+and returns:
+
+```json
+{
+  "summary": {
+    "totalCostBasis": 300,
+    "totalCurrentValue": 360,
+    "totalProfitLoss": 60,
+    "totalProfitLossPercent": 20,
+    "positionsCount": 1
+  },
+  "positions": [
+    {
+      "id": "665daec06c456275631b7af3",
+      "ticker": "AAPL",
+      "companyName": "Apple Inc.",
+      "quantity": 2,
+      "averagePurchasePrice": 150,
+      "currentPrice": 180,
+      "costBasis": 300,
+      "currentValue": 360,
+      "profitLoss": 60,
+      "profitLossPercent": 20,
+      "currency": "USD",
+      "purchaseDate": "2026-05-01T10:30:00.000Z",
+      "createdAt": "2026-06-02T09:00:00.000Z",
+      "updatedAt": "2026-06-02T09:00:00.000Z"
+    }
+  ]
+}
+```
+
+The MVP does not perform FX conversion. Keep positions in one currency when
+using aggregate summary values.
+
+Example add request:
+
+```bash
+curl -X POST http://localhost:3001/portfolio \
+  -H 'authorization: Bearer your_app_jwt' \
+  -H 'content-type: application/json' \
+  -d '{"ticker":"AAPL","companyName":"Apple Inc.","quantity":2,"averagePurchasePrice":150,"currency":"USD","purchaseDate":"2026-05-01T10:30:00.000Z"}'
+```
+
+Local browser check:
+
+1. Sign in and open `http://localhost:3000/portfolio`.
+2. Select Add position, search for `AAPL`, and choose Apple from autocomplete.
+3. Confirm that the current market price and current local date-time are prefilled.
+4. Enter a positive quantity and adjust the purchase price or timestamp if needed. Future timestamps must be rejected.
+5. Save a second `AAPL` purchase with a different price and time. Both transactions should remain visible.
+6. Confirm that summary profit/loss includes both transactions while the position count remains one.
+7. Edit or delete one transaction and confirm that summary calculations update.
+8. Refresh the page and confirm that the saved portfolio state persists.
 
 ## Market Data
 
@@ -507,9 +584,9 @@ can add retryable, typed jobs without changing local infrastructure.
 
 The next product work is planned in this order:
 
-- [ ] Portfolio CRUD
-- [ ] Portfolio P/L calculation
-- [ ] Portfolio Dashboard
+- [x] Portfolio CRUD
+- [x] Portfolio P/L calculation
+- [x] Portfolio Dashboard
 - [ ] Stock Details Page
 - [ ] Improve Search
 - [ ] AI Stock Report

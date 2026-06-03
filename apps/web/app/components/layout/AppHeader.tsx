@@ -13,6 +13,7 @@ import {
   DashboardIcon,
   HomeIcon,
   MenuIcon,
+  PortfolioIcon,
   SignOutIcon,
   WatchlistIcon,
 } from "./HeaderIcons";
@@ -120,6 +121,13 @@ export function AppHeader() {
                 >
                   <WatchlistIcon className="header-menu-icon" />
                   <span>{t.watchlist}</span>
+                </Link>
+                <Link
+                  href="/portfolio"
+                  onClick={() => setOpenMenu(null)}
+                >
+                  <PortfolioIcon className="header-menu-icon" />
+                  <span>{t.portfolio}</span>
                 </Link>
                 <Link href="/" onClick={() => setOpenMenu(null)}>
                   <HomeIcon className="header-menu-icon" />

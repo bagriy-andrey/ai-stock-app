@@ -42,6 +42,15 @@ export function fetchMarketQuotes(
   });
 }
 
+export function fetchMarketQuote(
+  accessToken: string,
+  ticker: string,
+): Promise<StockQuote> {
+  return apiRequest<StockQuote>(`/market-data/quote/${ticker}`, {
+    headers: authHeaders(accessToken),
+  });
+}
+
 export function fetchCompanyProfile(
   accessToken: string,
   ticker: string,

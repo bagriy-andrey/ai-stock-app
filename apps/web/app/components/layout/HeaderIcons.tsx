@@ -72,6 +72,15 @@ export function WatchlistIcon({ className = "" }: IconProps) {
   );
 }
 
+export function PortfolioIcon({ className = "" }: IconProps) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 7h16v12H4V7Z" />
+      <path d="M8 7V5h8v2M4 11h16M10 11v2h4v-2" />
+    </svg>
+  );
+}
+
 export function HomeIcon({ className = "" }: IconProps) {
   return (
     <svg className={className} viewBox="0 0 24 24" aria-hidden="true">
