@@ -7,6 +7,7 @@ import type {
   WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../../dictionaries";
+import type { StockChartCandle } from "../../lib/market-data-api";
 import {
   formatCurrency,
   formatPercent,
@@ -18,6 +19,9 @@ interface StockCardProps {
   item: WatchlistItemDto;
   quote?: StockQuote;
   profile?: CompanyProfile;
+  candles?: StockChartCandle[];
+  isChartUnavailable: boolean;
+  isChartLoading: boolean;
   isPriceLoading: boolean;
   isRemoving: boolean;
   language: ProfileLanguage;
@@ -30,6 +34,9 @@ export function StockCard({
   item,
   quote,
   profile,
+  candles,
+  isChartUnavailable,
+  isChartLoading,
   isPriceLoading,
   isRemoving,
   language,
@@ -66,17 +73,92 @@ export function StockCard({
           quote={quote}
           t={t}
         />
+        <StockCardSparkline
+          candles={candles}
+          isUnavailable={isChartUnavailable}
+          isLoading={isChartLoading}
+          t={t}
+        />
       </button>
       <button
         aria-label={`${isRemoving ? t.removing : t.remove} ${item.ticker}`}
         className="stock-card-remove"
         disabled={isRemoving}
-        onClick={onRemove}
+        onClick={(event) => {
+          event.stopPropagation();
+          onRemove();
+        }}
         type="button"
       >
         <TrashIcon />
       </button>
     </article>
+  );
+}
+
+interface StockCardSparklineProps {
+  candles?: StockChartCandle[];
+  isUnavailable: boolean;
+  isLoading: boolean;
+  t: Dictionary;
+}
+
+function StockCardSparkline({
+  candles,
+  isUnavailable,
+  isLoading,
+  t,
+}: StockCardSparklineProps) {
+  if (isLoading) {
+    return <p className="stock-card-sparkline-status">{t.loadingChart}</p>;
+  }
+
+  if (isUnavailable) {
+    return <p className="stock-card-sparkline-status">{t.chartUnavailable}</p>;
+  }
+
+  const closes =
+    candles
+      ?.map((candle) => candle.close)
+      .filter((close) => Number.isFinite(close)) ?? [];
+
+  if (closes.length < 2) {
+    return <p className="stock-card-sparkline-status">{t.noChartData}</p>;
+  }
+
+  const firstClose = closes[0];
+  const lastClose = closes[closes.length - 1];
+  const minimum = Math.min(...closes);
+  const maximum = Math.max(...closes);
+  const spread = maximum - minimum;
+  const width = 280;
+  const height = 72;
+  const padding = 4;
+  const points = closes
+    .map((close, index) => {
+      const x =
+        padding + (index / (closes.length - 1)) * (width - 2 * padding);
+      const y =
+        spread === 0
+          ? height / 2
+          : padding + ((maximum - close) / spread) * (height - 2 * padding);
+
+      return `${x},${y}`;
+    })
+    .join(" ");
+  const variant = getChangeVariant(lastClose - firstClose);
+
+  return (
+    <div className="stock-card-sparkline" aria-hidden="true">
+      <svg viewBox={`0 0 ${width} ${height}`}>
+        <polyline
+          className={`stock-chart-line-${variant}`}
+          fill="none"
+          points={points}
+          vectorEffect="non-scaling-stroke"
+        />
+      </svg>
+    </div>
   );
 }
 

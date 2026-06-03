@@ -22,7 +22,9 @@ import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import {
   fetchCompanyProfile,
   fetchMarketQuotes,
+  fetchStockCandles,
   searchMarketSymbols,
+  type StockChartCandle,
 } from "../lib/market-data-api";
 import {
   addWatchlistItem,
@@ -118,6 +120,17 @@ export function WatchlistPage() {
       ),
     [companyProfileQueries],
   );
+  const sparklineQueries = useQueries({
+    queries: items.map((item) => ({
+      queryKey: ["market", "stocks", item.ticker, "candles", "1m"],
+      queryFn: () => fetchStockCandles(accessToken ?? "", item.ticker, "1m"),
+      select: getRecentSparklineCandles,
+      enabled: Boolean(accessToken),
+      staleTime: 5 * 60 * 1_000,
+      refetchOnWindowFocus: false,
+      retry: false,
+    })),
+  });
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -198,8 +211,13 @@ export function WatchlistPage() {
           <EmptyState description={t.watchlistEmpty} title={t.noStocksYet} />
         ) : (
           <div className="watchlist-list">
-            {items.map((item) => (
+            {items.map((item, index) => (
               <StockCard
+                candles={sparklineQueries[index]?.data}
+                isChartLoading={sparklineQueries[index]?.isLoading ?? false}
+                isChartUnavailable={
+                  sparklineQueries[index]?.error instanceof Error
+                }
                 isPriceLoading={quotesQuery.isLoading}
                 isRemoving={
                   removeMutation.isPending &&
@@ -227,6 +245,12 @@ export function WatchlistPage() {
       ) : null}
     </main>
   );
+}
+
+function getRecentSparklineCandles(
+  candles: StockChartCandle[],
+): StockChartCandle[] {
+  return candles.slice(-40);
 }
 
 interface SearchResultsProps {

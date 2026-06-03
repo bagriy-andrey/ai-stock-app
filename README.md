@@ -291,12 +291,14 @@ The watchlist renders tracked companies as responsive fintech-style cards.
 Each card shows a circular Finnhub company logo when available, or circular
 fallback initials when a logo is missing. Cards display the ticker, company
 name, current price, absolute price change, and percentage change with
-positive, negative, and neutral color states. Selecting the main card area
-opens a stock details modal with the latest quote values and a responsive
-historical closing-price chart. The chart supports `1D`, `1W`, `1M`, and `1Y`
-ranges backed by Yahoo Finance, with loading, empty, and safe provider-error
-states. The remove action is kept separate so deleting a ticker does not open
-the modal.
+positive, negative, and neutral color states. Cards also show a small
+non-interactive sparkline from recent `1M` historical candles, with loading,
+empty, and provider-error fallbacks when chart data is unavailable. Selecting
+the main card area opens a stock details modal with the latest quote values
+and a responsive historical closing-price chart. The chart supports `1D`,
+`1W`, `1M`, and `1Y` ranges backed by Yahoo Finance, with loading, empty, and
+safe provider-error states. The remove action is kept separate so deleting a
+ticker does not open the modal.
 
 Example add request:
 
