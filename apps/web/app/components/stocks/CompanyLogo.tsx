@@ -3,12 +3,14 @@
 import { useEffect, useState } from "react";
 
 interface CompanyLogoProps {
+  className?: string;
   companyName: string;
   logoUrl?: string;
   ticker: string;
 }
 
 export function CompanyLogo({
+  className = "",
   companyName,
   logoUrl,
   ticker,
@@ -20,12 +22,13 @@ export function CompanyLogo({
   }, [logoUrl]);
 
   return (
-    <div className="company-logo" aria-hidden="true">
+    <div className={`company-logo ${className}`.trim()} aria-hidden="true">
       {logoUrl && !hasImageError ? (
         // Finnhub returns dynamic third-party image URLs, so a native image is intentional.
         // eslint-disable-next-line @next/next/no-img-element
         <img
           alt=""
+          decoding="async"
           onError={() => setHasImageError(true)}
           referrerPolicy="no-referrer"
           src={logoUrl}

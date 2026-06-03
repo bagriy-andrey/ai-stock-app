@@ -17,6 +17,7 @@ import { useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
+import { CompanyLogo } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/EmptyState";
@@ -341,8 +342,15 @@ function TransactionsTable({
                   onClick={() => onOpenStock(transaction.ticker)}
                   type="button"
                 >
-                  <strong>{transaction.ticker}</strong>
-                  <small>{transaction.companyName}</small>
+                  <CompanyLogo
+                    className="company-logo--table"
+                    companyName={transaction.companyName}
+                    ticker={transaction.ticker}
+                  />
+                  <span className="stock-table-identity-text">
+                    <strong>{transaction.ticker}</strong>
+                    <small>{transaction.companyName}</small>
+                  </span>
                 </button>
               </td>
               <td>

@@ -26,6 +26,7 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { AddPurchaseModal } from "../components/portfolio/AddPurchaseModal";
+import { CompanyLogo } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
@@ -688,8 +689,17 @@ function PositionsTable({
                 }}
               >
                 <td>
-                  <strong>{position.ticker}</strong>
-                  <small>{position.companyName}</small>
+                  <div className="stock-table-identity">
+                    <CompanyLogo
+                      className="company-logo--table"
+                      companyName={position.companyName}
+                      ticker={position.ticker}
+                    />
+                    <div className="stock-table-identity-text">
+                      <strong>{position.ticker}</strong>
+                      <small>{position.companyName}</small>
+                    </div>
+                  </div>
                 </td>
                 <td>{formatNumber(position.quantity, language)}</td>
                 <td>
