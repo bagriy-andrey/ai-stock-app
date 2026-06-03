@@ -403,7 +403,7 @@ function getCachedCompanyName(
     .getQueryCache()
     .findAll({ queryKey: ["portfolio"] })) {
     const portfolio = query.state.data as PortfolioDto | undefined;
-    const position = portfolio?.items.find(
+    const position = portfolio?.items?.find(
       (item) => item.ticker.toUpperCase() === ticker,
     );
 

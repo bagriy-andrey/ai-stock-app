@@ -324,6 +324,106 @@ describe("PortfolioService", () => {
     ]);
   });
 
+  it("returns portfolio allocation for all open positions with top 10 and others", async () => {
+    const tickers = [
+      "AAA",
+      "BBB",
+      "CCC",
+      "DDD",
+      "EEE",
+      "FFF",
+      "GGG",
+      "HHH",
+      "III",
+      "JJJ",
+      "KKK",
+      "LLL",
+    ];
+    transactionsService.findAllForUser.mockResolvedValue(
+      tickers.map((ticker, index) =>
+        buildTransaction({
+          id: `tx-${ticker}`,
+          ticker,
+          companyName: `${ticker} Inc.`,
+          quantity: 1,
+          price: 10,
+          transactionDate: `2026-05-${String(index + 1).padStart(2, "0")}T00:00:00.000Z`,
+        }),
+      ),
+    );
+    marketDataService.getQuotes.mockResolvedValue(
+      tickers.map((ticker, index) => ({
+        ...quote,
+        ticker,
+        currentPrice: (tickers.length - index) * 10,
+      })),
+    );
+
+    await expect(service.getAllocationForUser(userId.toString())).resolves.toEqual({
+      totalPortfolioValue: 780,
+      allocations: [
+        { ticker: "AAA", value: 120, percentage: (120 / 780) * 100 },
+        { ticker: "BBB", value: 110, percentage: (110 / 780) * 100 },
+        { ticker: "CCC", value: 100, percentage: (100 / 780) * 100 },
+        { ticker: "DDD", value: 90, percentage: (90 / 780) * 100 },
+        { ticker: "EEE", value: 80, percentage: (80 / 780) * 100 },
+        { ticker: "FFF", value: 70, percentage: (70 / 780) * 100 },
+        { ticker: "GGG", value: 60, percentage: (60 / 780) * 100 },
+        { ticker: "HHH", value: 50, percentage: (50 / 780) * 100 },
+        { ticker: "III", value: 40, percentage: (40 / 780) * 100 },
+        { ticker: "JJJ", value: 30, percentage: (30 / 780) * 100 },
+        { ticker: "Others", value: 30, percentage: (30 / 780) * 100 },
+      ],
+    });
+
+    expect(transactionsService.findAllForUser).toHaveBeenCalledWith(
+      userId.toString(),
+    );
+    expect(marketDataService.getQuotes).toHaveBeenCalledWith(tickers);
+  });
+
+  it("does not add others to allocation when there are 10 or fewer open positions", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([
+      buildTransaction({
+        id: "tx-aapl",
+        ticker: "AAPL",
+        companyName: "Apple Inc.",
+        quantity: 1,
+        price: 100,
+      }),
+      buildTransaction({
+        id: "tx-msft",
+        ticker: "MSFT",
+        companyName: "Microsoft Corporation",
+        quantity: 1,
+        price: 100,
+      }),
+    ]);
+    marketDataService.getQuotes.mockResolvedValue([
+      { ...quote, ticker: "AAPL", currentPrice: 300 },
+      { ...quote, ticker: "MSFT", currentPrice: 100 },
+    ]);
+
+    await expect(service.getAllocationForUser(userId.toString())).resolves.toEqual({
+      totalPortfolioValue: 400,
+      allocations: [
+        { ticker: "AAPL", value: 300, percentage: 75 },
+        { ticker: "MSFT", value: 100, percentage: 25 },
+      ],
+    });
+  });
+
+  it("returns an empty allocation when there are no open positions", async () => {
+    transactionsService.findAllForUser.mockResolvedValue([]);
+
+    await expect(service.getAllocationForUser(userId.toString())).resolves.toEqual({
+      totalPortfolioValue: 0,
+      allocations: [],
+    });
+
+    expect(marketDataService.getQuotes).not.toHaveBeenCalled();
+  });
+
   it("hides fully sold positions from the portfolio", async () => {
     transactionsService.findAllForUser.mockResolvedValue([
       buildTransaction({

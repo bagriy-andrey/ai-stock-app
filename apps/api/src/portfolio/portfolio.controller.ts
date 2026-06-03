@@ -12,6 +12,7 @@ import {
   UseGuards,
 } from "@nestjs/common";
 import type {
+  PortfolioAllocationDto,
   PortfolioDto,
   PortfolioPositionDto,
 } from "@ai-stock-advisor/shared";
@@ -26,6 +27,15 @@ import { PortfolioService } from "./portfolio.service";
 @UseGuards(JwtAuthGuard)
 export class PortfolioController {
   constructor(private readonly portfolioService: PortfolioService) {}
+
+  @Get("allocation")
+  getAllocation(
+    @Request() request: AuthenticatedRequest,
+  ): Promise<PortfolioAllocationDto> {
+    return this.portfolioService.getAllocationForUser(
+      this.getAuthenticatedUserId(request),
+    );
+  }
 
   @Get()
   getPortfolio(

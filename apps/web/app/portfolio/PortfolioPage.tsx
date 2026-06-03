@@ -3,6 +3,7 @@
 import type {
   CreatePortfolioPositionRequest,
   CreatePortfolioTransactionRequest,
+  PortfolioAllocationDto,
   PortfolioDto,
   PortfolioPositionDto,
   PortfolioTransactionDto,
@@ -40,6 +41,7 @@ import {
 } from "../lib/pagination-state";
 import {
   createPortfolioPosition,
+  fetchPortfolioAllocation,
   fetchPortfolio,
 } from "../lib/portfolio-api";
 import {
@@ -93,6 +95,13 @@ export function PortfolioPage() {
     refetchInterval: 2 * 60 * 1_000,
     retry: false,
   });
+  const allocationQuery = useQuery({
+    queryKey: ["portfolio", "allocation"],
+    queryFn: () => fetchPortfolioAllocation(accessToken ?? ""),
+    enabled: Boolean(accessToken),
+    refetchInterval: 2 * 60 * 1_000,
+    retry: false,
+  });
 
   const createMutation = useMutation({
     mutationFn: (input: CreatePortfolioPositionRequest) =>
@@ -135,27 +144,19 @@ export function PortfolioPage() {
           <h2 id="portfolio-summary-heading">{t.portfolioSummary}</h2>
           <Button onClick={() => setIsAddOpen(true)}>{t.addPosition}</Button>
         </div>
-        {portfolioQuery.isLoading ? (
-          <PortfolioOverviewState
-            message={t.loadingPortfolio}
-            role="status"
-            title={t.portfolioAllocation}
-          />
-        ) : portfolioQuery.error instanceof Error ? (
-          <PortfolioOverviewState
-            message={t.portfolioLoadError}
-            role="alert"
-            title={t.portfolioAllocation}
-            variant="error"
-          />
-        ) : portfolio ? (
-          <PortfolioOverview
-            currency={summaryCurrency}
-            language={language}
-            portfolio={portfolio}
-            t={t}
-          />
-        ) : null}
+        <PortfolioOverview
+          allocation={allocationQuery.data}
+          allocationError={allocationQuery.error}
+          currency={summaryCurrency}
+          isAllocationLoading={allocationQuery.isLoading}
+          isPortfolioLoading={portfolioQuery.isLoading}
+          language={language}
+          portfolio={portfolio}
+          portfolioError={
+            portfolioQuery.error instanceof Error ? portfolioQuery.error : null
+          }
+          t={t}
+        />
       </section>
 
       <section aria-labelledby="portfolio-positions-heading" className="page-section">
@@ -238,67 +239,57 @@ export function PortfolioPage() {
   );
 }
 
-interface PortfolioSummaryProps {
+interface PortfolioOverviewProps {
+  allocation?: PortfolioAllocationDto;
+  allocationError: Error | null;
   currency: string;
+  isAllocationLoading: boolean;
+  isPortfolioLoading: boolean;
   language: ProfileLanguage;
-  portfolio: PortfolioDto;
+  portfolio?: PortfolioDto;
+  portfolioError: Error | null;
   t: Dictionary;
 }
 
 function PortfolioOverview({
+  allocation,
+  allocationError,
   currency,
+  isAllocationLoading,
+  isPortfolioLoading,
   language,
   portfolio,
+  portfolioError,
   t,
-}: PortfolioSummaryProps) {
+}: PortfolioOverviewProps) {
   return (
     <div className="portfolio-overview-grid">
-      <PortfolioSummary
-        currency={currency}
-        language={language}
-        portfolio={portfolio}
-        t={t}
-      />
+      {isPortfolioLoading ? (
+        <div>
+          <p role="status">{t.loadingPortfolio}</p>
+        </div>
+      ) : portfolioError ? (
+        <div>
+          <p className="error-text" role="alert">
+            {t.portfolioLoadError}
+          </p>
+        </div>
+      ) : portfolio ? (
+        <PortfolioSummary
+          currency={currency}
+          language={language}
+          portfolio={portfolio}
+          t={t}
+        />
+      ) : null}
       <PortfolioAllocationChart
+        allocation={allocation}
+        error={allocationError}
+        isLoading={isAllocationLoading}
         currency={currency}
         language={language}
-        positions={portfolio.items}
-        totalCurrentValue={portfolio.summary.totalCurrentValue}
         t={t}
       />
-    </div>
-  );
-}
-
-function PortfolioOverviewState({
-  message,
-  role,
-  title,
-  variant,
-}: {
-  message: string;
-  role: "alert" | "status";
-  title: string;
-  variant?: "error";
-}) {
-  return (
-    <div className="portfolio-overview-grid">
-      <div>
-        <p className={variant === "error" ? "error-text" : undefined} role={role}>
-          {message}
-        </p>
-      </div>
-      <Card className="portfolio-allocation-card">
-        <h3>{title}</h3>
-        <p
-          className={`portfolio-allocation-status${
-            variant === "error" ? " error-text" : ""
-          }`}
-          role={role}
-        >
-          {message}
-        </p>
-      </Card>
     </div>
   );
 }
@@ -308,7 +299,12 @@ function PortfolioSummary({
   language,
   portfolio,
   t,
-}: PortfolioSummaryProps) {
+}: {
+  currency: string;
+  language: ProfileLanguage;
+  portfolio: PortfolioDto;
+  t: Dictionary;
+}) {
   const { summary } = portfolio;
 
   return (
@@ -339,21 +335,21 @@ function PortfolioSummary({
 }
 
 interface PortfolioAllocationChartProps {
+  allocation?: PortfolioAllocationDto;
   currency: string;
+  error: Error | null;
+  isLoading: boolean;
   language: ProfileLanguage;
-  positions: PortfolioPositionDto[];
-  totalCurrentValue: number;
   t: Dictionary;
 }
 
 interface AllocationSegment {
   color: string;
-  companyName: string;
-  currentValue: number;
   endPercent: number;
   percent: number;
   startPercent: number;
   ticker: string;
+  value: number;
 }
 
 interface AllocationTooltip {
@@ -374,10 +370,11 @@ const allocationColors = [
 ];
 
 function PortfolioAllocationChart({
+  allocation,
   currency,
+  error,
+  isLoading,
   language,
-  positions,
-  totalCurrentValue,
   t,
 }: PortfolioAllocationChartProps) {
   const chartTitleId = useId();
@@ -385,7 +382,7 @@ function PortfolioAllocationChart({
   const tooltipId = useId();
   const chartWrapRef = useRef<HTMLDivElement>(null);
   const [tooltip, setTooltip] = useState<AllocationTooltip | null>(null);
-  const segments = buildAllocationSegments(positions, totalCurrentValue);
+  const segments = buildAllocationSegments(allocation);
 
   const showTooltipAtPointer = (
     segment: AllocationSegment,
@@ -423,7 +420,15 @@ function PortfolioAllocationChart({
           <p id={chartDescriptionId}>{t.allocationByCurrentValue}</p>
         </div>
       </div>
-      {segments.length === 0 ? (
+      {isLoading ? (
+        <p className="portfolio-allocation-status" role="status">
+          {t.loadingPortfolio}
+        </p>
+      ) : error ? (
+        <p className="portfolio-allocation-status error-text" role="alert">
+          {t.portfolioLoadError}
+        </p>
+      ) : segments.length === 0 ? (
         <EmptyState
           description={t.portfolioEmpty}
           title={t.noAllocationData}
@@ -485,12 +490,9 @@ function PortfolioAllocationChart({
                 }
               >
                 <strong>{tooltip.segment.ticker}</strong>
-                {tooltip.segment.companyName ? (
-                  <small>{tooltip.segment.companyName}</small>
-                ) : null}
                 <span>{formatPercent(tooltip.segment.percent, language)}</span>
                 <small>
-                  {formatCurrency(tooltip.segment.currentValue, currency, language)}
+                  {formatCurrency(tooltip.segment.value, currency, language)}
                 </small>
               </div>
             ) : null}
@@ -505,12 +507,11 @@ function PortfolioAllocationChart({
                 />
                 <div>
                   <strong>{segment.ticker}</strong>
-                  {segment.companyName ? <small>{segment.companyName}</small> : null}
                 </div>
                 <span>
                   {formatPercent(segment.percent, language)}
                   <small>
-                    {formatCurrency(segment.currentValue, currency, language)}
+                    {formatCurrency(segment.value, currency, language)}
                   </small>
                 </span>
               </li>
@@ -523,24 +524,23 @@ function PortfolioAllocationChart({
 }
 
 function buildAllocationSegments(
-  positions: PortfolioPositionDto[],
-  totalCurrentValue: number,
+  allocation: PortfolioAllocationDto | undefined,
 ): AllocationSegment[] {
-  if (totalCurrentValue <= 0) {
+  if (!allocation || allocation.totalPortfolioValue <= 0) {
     return [];
   }
 
   let accumulatedPercent = 0;
-  const allocationPositions = positions.filter(
-    (position) => position.currentValue > 0,
+  const allocationItems = allocation.allocations.filter(
+    (item) => item.value > 0,
   );
 
-  return allocationPositions
-    .map((position, index) => {
-      const percent = (position.currentValue / totalCurrentValue) * 100;
+  return allocationItems
+    .map((item, index) => {
+      const percent = item.percentage;
       const startPercent = accumulatedPercent;
       const endPercent =
-        index === allocationPositions.length - 1
+        index === allocationItems.length - 1
           ? 100
           : accumulatedPercent + percent;
 
@@ -548,12 +548,11 @@ function buildAllocationSegments(
 
       return {
         color: allocationColors[index % allocationColors.length],
-        companyName: position.companyName,
-        currentValue: position.currentValue,
         endPercent,
         percent,
         startPercent,
-        ticker: position.ticker,
+        ticker: item.ticker,
+        value: item.value,
       };
     });
 }
@@ -615,12 +614,10 @@ function formatAllocationLabel(
   currency: string,
   language: ProfileLanguage,
 ): string {
-  const companyName = segment.companyName ? `, ${segment.companyName}` : "";
-
-  return `${segment.ticker}${companyName}: ${formatPercent(
+  return `${segment.ticker}: ${formatPercent(
     segment.percent,
     language,
-  )}, ${formatCurrency(segment.currentValue, currency, language)}`;
+  )}, ${formatCurrency(segment.value, currency, language)}`;
 }
 
 function SummaryCard({

@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
+  PortfolioAllocationDto,
   PortfolioDto,
   PortfolioPositionDto,
   PortfolioSummaryDto,
@@ -44,6 +45,8 @@ interface PositionAccumulator {
   sellQuantity: number;
   currency: string;
 }
+
+const allocationTopPositionsLimit = 10;
 
 @Injectable()
 export class PortfolioService implements OnModuleInit {
@@ -90,16 +93,59 @@ export class PortfolioService implements OnModuleInit {
     userId: string,
     paginationOptions: PaginationOptions = {},
   ): Promise<PortfolioDto> {
-    this.toUserObjectId(userId);
-    const transactions = await this.transactionsService.findAllForUser(userId);
-    const openPositions = this.aggregateTransactions(transactions);
-    const valuedPositions = await this.addMarketValues(openPositions);
+    const valuedPositions = await this.getValuedOpenPositionsForUser(userId);
     const paginatedPositions = paginateItems(valuedPositions, paginationOptions);
 
     return {
       items: paginatedPositions.items,
       meta: paginatedPositions.meta,
       summary: this.toSummary(valuedPositions),
+    };
+  }
+
+  async getAllocationForUser(userId: string): Promise<PortfolioAllocationDto> {
+    const valuedPositions = await this.getValuedOpenPositionsForUser(userId);
+    const sortedPositions = [...valuedPositions].sort(
+      (left, right) => right.currentValue - left.currentValue,
+    );
+    const totalPortfolioValue = sortedPositions.reduce(
+      (totalValue, position) => totalValue + position.currentValue,
+      0,
+    );
+
+    if (totalPortfolioValue <= 0) {
+      return {
+        totalPortfolioValue,
+        allocations: [],
+      };
+    }
+
+    const topPositions = sortedPositions.slice(0, allocationTopPositionsLimit);
+    const remainingPositions = sortedPositions.slice(allocationTopPositionsLimit);
+    const allocations = topPositions.map((position) =>
+      this.toAllocationItem(position.ticker, position.currentValue, totalPortfolioValue),
+    );
+
+    if (remainingPositions.length > 0) {
+      const otherPositionsValue = remainingPositions.reduce(
+        (totalValue, position) => totalValue + position.currentValue,
+        0,
+      );
+
+      if (otherPositionsValue > 0) {
+        allocations.push(
+          this.toAllocationItem(
+            "Others",
+            otherPositionsValue,
+            totalPortfolioValue,
+          ),
+        );
+      }
+    }
+
+    return {
+      totalPortfolioValue,
+      allocations,
     };
   }
 
@@ -235,6 +281,16 @@ export class PortfolioService implements OnModuleInit {
       transactionDate: new Date().toISOString(),
       notes: existingPosition.notes,
     });
+  }
+
+  private async getValuedOpenPositionsForUser(
+    userId: string,
+  ): Promise<PortfolioPositionDto[]> {
+    this.toUserObjectId(userId);
+    const transactions = await this.transactionsService.findAllForUser(userId);
+    const openPositions = this.aggregateTransactions(transactions);
+
+    return this.addMarketValues(openPositions);
   }
 
   private async addMarketValues(
@@ -413,6 +469,18 @@ export class PortfolioService implements OnModuleInit {
         0,
       ),
       positionsCount: positions.length,
+    };
+  }
+
+  private toAllocationItem(
+    ticker: string,
+    value: number,
+    totalPortfolioValue: number,
+  ): PortfolioAllocationDto["allocations"][number] {
+    return {
+      ticker,
+      value,
+      percentage: (value / totalPortfolioValue) * 100,
     };
   }
 

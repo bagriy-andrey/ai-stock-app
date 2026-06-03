@@ -214,6 +214,17 @@ export interface PortfolioDto {
   summary: PortfolioSummaryDto;
 }
 
+export interface PortfolioAllocationItemDto {
+  ticker: string;
+  value: number;
+  percentage: number;
+}
+
+export interface PortfolioAllocationDto {
+  totalPortfolioValue: number;
+  allocations: PortfolioAllocationItemDto[];
+}
+
 export interface CreatePortfolioPositionRequest {
   ticker: string;
   companyName: string;

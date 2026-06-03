@@ -1,6 +1,7 @@
 import type {
   CreatePortfolioPositionRequest,
   PaginationQuery,
+  PortfolioAllocationDto,
   PortfolioDto,
   PortfolioPositionDto,
   UpdatePortfolioPositionRequest,
@@ -21,6 +22,14 @@ export function fetchPortfolio(
   const query = params.toString();
 
   return apiRequest<PortfolioDto>(`/portfolio${query ? `?${query}` : ""}`, {
+    headers: authHeaders(accessToken),
+  });
+}
+
+export function fetchPortfolioAllocation(
+  accessToken: string,
+): Promise<PortfolioAllocationDto> {
+  return apiRequest<PortfolioAllocationDto>("/portfolio/allocation", {
     headers: authHeaders(accessToken),
   });
 }

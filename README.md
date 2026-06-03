@@ -133,6 +133,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
 | API | `GET` | `http://localhost:3001/portfolio?page=1&limit=10` | Return paginated aggregated open positions and portfolio summary |
+| API | `GET` | `http://localhost:3001/portfolio/allocation` | Return full-portfolio allocation data independent of pagination |
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
@@ -158,6 +159,8 @@ parameters. Defaults are `page=1` and `limit=10`; `limit` cannot exceed `100`.
 Both endpoints return `{ items, meta }`, where `meta` includes `totalItems`,
 `totalPages`, `hasNextPage`, and `hasPreviousPage`. Portfolio also includes the
 full portfolio `summary`; pagination is applied after transaction aggregation.
+`GET /portfolio/allocation` does not accept pagination and always calculates
+allocation from every open position for the authenticated user.
 Transaction pagination metadata is calculated after active `ticker`, `fromDate`,
 and `toDate` filters are applied.
 
@@ -339,15 +342,18 @@ buy price applied to the remaining open quantity. `UPDATE` and `DELETE`
 transaction records are preserved in transaction history but are not included in
 portfolio aggregation.
 
-The allocation pie chart uses the same aggregated open positions as the
-positions table, not individual transactions. Each segment represents one ticker
-and is calculated as:
+The allocation pie chart uses `GET /portfolio/allocation`, not the paginated
+positions table response. It stays stable when users navigate table pages. Each
+segment represents one ticker and is calculated as:
 
 ```text
-allocationPercent = position.currentValue / summary.totalCurrentValue * 100
+allocationPercent = position.currentValue / totalPortfolioValue * 100
 ```
 
-The chart legend displays ticker, company name when available, allocation
+The allocation endpoint sorts open positions by current value descending,
+returns the top 10 positions individually, and aggregates any remaining
+positions into an `Others` item. If there are 10 or fewer open positions,
+`Others` is not returned. The chart legend displays ticker, allocation
 percentage, and current value. It supports loading, empty, and API error states.
 When the portfolio has no open positions or total current value is zero, the
 chart shows an empty state instead of rendering segments.
@@ -405,7 +411,8 @@ Local browser check:
 7. Add another ticker purchase. Confirm that the allocation chart shows one segment per ticker and the displayed percentages add up to approximately `100%`.
 8. Add an `AAPL` `SELL` transaction through the Transactions API. Confirm that Portfolio quantity, cost basis, and allocation percentage update.
 9. Fully sell the remaining `AAPL` quantity. Confirm that `AAPL` disappears from Portfolio and from the allocation chart.
-10. Refresh the page and confirm that the aggregated portfolio state persists.
+10. Add enough tickers to paginate the positions table, switch pages, and confirm that the allocation chart does not change because of pagination.
+11. Refresh the page and confirm that the aggregated portfolio state persists.
 
 ## Transactions
 
