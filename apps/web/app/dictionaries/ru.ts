@@ -36,6 +36,8 @@ export const ru = {
   adding: "Добавление...",
   add: "Добавить",
   yourWatchlist: "Ваш список наблюдения",
+  sortOptions: "Параметры сортировки",
+  dailyChangePercent: "Изменение за день %",
   livePricesUnavailable:
     "Актуальные цены временно недоступны. Сохраненный список наблюдения по-прежнему показан.",
   loadingWatchlist: "Загрузка списка наблюдения...",

@@ -36,6 +36,8 @@ export const uk = {
   adding: "Додавання...",
   add: "Додати",
   yourWatchlist: "Ваш список спостереження",
+  sortOptions: "Параметри сортування",
+  dailyChangePercent: "Зміна за день %",
   livePricesUnavailable:
     "Актуальні ціни тимчасово недоступні. Збережений список спостереження все одно показано.",
   loadingWatchlist: "Завантаження списку спостереження...",

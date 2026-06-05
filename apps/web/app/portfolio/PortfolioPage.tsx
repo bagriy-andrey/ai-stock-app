@@ -21,7 +21,7 @@ import type {
   FormEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -35,20 +35,26 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
+import { SortableHeader } from "../components/ui/SortableHeader";
 import type { Dictionary } from "../dictionaries";
+import {
+  createClientPaginationMeta,
+  paginateClientItems,
+} from "../lib/client-pagination";
+import type { PortfolioSortField } from "../lib/page-sort-fields";
 import {
   resolveValidPage,
   shouldShowPagination,
 } from "../lib/pagination-state";
 import {
   createPortfolioPosition,
+  fetchAllPortfolio,
   fetchPortfolioAllocation,
-  fetchPortfolio,
 } from "../lib/portfolio-api";
-import {
-  buildPortfolioQueryKey,
-  buildPortfolioQueryState,
-} from "../lib/portfolio-query-state";
+import { buildPortfolioQueryKey } from "../lib/portfolio-query-state";
+import type { SortState } from "../lib/table-sorting";
+import { sortItems } from "../lib/table-sorting";
+import { useUrlSortState } from "../lib/use-url-sort-state";
 import {
   createTransaction,
   fetchTransactions,
@@ -68,11 +74,26 @@ import {
 const portfolioQueryKey = ["portfolio"] as const;
 const transactionsQueryKey = ["transactions"] as const;
 const tablePageSize = 10;
+const portfolioSortAccessors: Record<
+  PortfolioSortField,
+  (position: PortfolioPositionDto) => string | number
+> = {
+  name: (position) => position.companyName || position.ticker,
+  quantity: (position) => position.quantity,
+  currentPrice: (position) => position.currentPrice,
+  currentValue: (position) => position.currentValue,
+  profitLoss: (position) => position.profitLoss,
+  profitLossPercent: (position) => position.profitLossPercent,
+};
 
 type PortfolioAction = "add" | "edit" | "sell" | "delete";
 type DeletePositionMode = "partial" | "close";
 
-export function PortfolioPage() {
+export function PortfolioPage({
+  initialSortState = {},
+}: {
+  initialSortState?: SortState<PortfolioSortField>;
+}) {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
@@ -82,15 +103,14 @@ export function PortfolioPage() {
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const portfolioQueryState = buildPortfolioQueryState({
-    page: currentPage,
-    limit: tablePageSize,
+  const { setSort, sortState } = useUrlSortState({
+    initialState: initialSortState,
+    onSortChange: () => setCurrentPage(1),
   });
 
   const portfolioQuery = useQuery({
-    queryKey: buildPortfolioQueryKey(portfolioQueryState),
-    queryFn: () =>
-      fetchPortfolio(accessToken ?? "", portfolioQueryState),
+    queryKey: buildPortfolioQueryKey(),
+    queryFn: () => fetchAllPortfolio(accessToken ?? ""),
     enabled: Boolean(accessToken),
     placeholderData: keepPreviousData,
     refetchInterval: 2 * 60 * 1_000,
@@ -117,8 +137,25 @@ export function PortfolioPage() {
   });
 
   const portfolio = portfolioQuery.data;
-  const positions = portfolio?.items ?? [];
-  const paginationMeta = portfolio?.meta;
+  const sortedPositions = useMemo(
+    () =>
+      sortItems({
+        accessors: portfolioSortAccessors,
+        items: portfolio?.items ?? [],
+        state: sortState,
+      }),
+    [portfolio?.items, sortState],
+  );
+  const paginationMeta = createClientPaginationMeta({
+    page: currentPage,
+    limit: tablePageSize,
+    totalItems: sortedPositions.length,
+  });
+  const positions = paginateClientItems({
+    items: sortedPositions,
+    page: currentPage,
+    limit: tablePageSize,
+  });
   const showPagination = shouldShowPagination(paginationMeta, tablePageSize);
   const summaryCurrency = positions[0]?.currency ?? "USD";
 
@@ -180,7 +217,9 @@ export function PortfolioPage() {
                 setActionPosition(position);
               }}
               onOpenStock={setDetailsTicker}
+              onSort={setSort}
               positions={positions}
+              sortState={sortState}
               t={t}
             />
             {showPagination && paginationMeta ? (
@@ -642,7 +681,9 @@ interface PositionsTableProps {
   language: ProfileLanguage;
   onEdit: (position: PortfolioPositionDto) => void;
   onOpenStock: (ticker: string) => void;
+  onSort: (sort: PortfolioSortField) => void;
   positions: PortfolioPositionDto[];
+  sortState: SortState<PortfolioSortField>;
   t: Dictionary;
 }
 
@@ -650,7 +691,9 @@ function PositionsTable({
   language,
   onEdit,
   onOpenStock,
+  onSort,
   positions,
+  sortState,
   t,
 }: PositionsTableProps) {
   return (
@@ -658,12 +701,42 @@ function PositionsTable({
       <table className="portfolio-table">
         <thead>
           <tr>
-            <th>{t.name}</th>
-            <th>{t.quantity}</th>
-            <th>{t.currentStockPrice}</th>
-            <th>{t.currentValue}</th>
-            <th>{t.profitLossUsd}</th>
-            <th>{t.profitLossPercent}</th>
+            <SortableHeader
+              label={t.name}
+              onSort={onSort}
+              sort="name"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.quantity}
+              onSort={onSort}
+              sort="quantity"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.currentStockPrice}
+              onSort={onSort}
+              sort="currentPrice"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.currentValue}
+              onSort={onSort}
+              sort="currentValue"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.profitLossUsd}
+              onSort={onSort}
+              sort="profitLoss"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.profitLossPercent}
+              onSort={onSort}
+              sort="profitLossPercent"
+              sortState={sortState}
+            />
             <th><span className="visually-hidden">{t.actions}</span></th>
           </tr>
         </thead>

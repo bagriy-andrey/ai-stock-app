@@ -2,7 +2,9 @@
 
 import type {
   CompanyProfile,
+  StockQuote,
   StockSearchResult,
+  WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
@@ -17,8 +19,10 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { EmptyState } from "../components/ui/EmptyState";
+import { SortIndicator } from "../components/ui/SortIndicator";
 import { StockCard } from "../components/watchlist/StockCard";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
+import type { WatchlistSortField } from "../lib/page-sort-fields";
 import {
   fetchCompanyProfile,
   fetchMarketQuotes,
@@ -26,6 +30,9 @@ import {
   searchMarketSymbols,
   type StockChartCandle,
 } from "../lib/market-data-api";
+import type { SortState } from "../lib/table-sorting";
+import { sortItems } from "../lib/table-sorting";
+import { useUrlSortState } from "../lib/use-url-sort-state";
 import {
   addWatchlistItem,
   fetchWatchlist,
@@ -33,8 +40,31 @@ import {
 } from "../lib/watchlist-api";
 
 const watchlistQueryKey = ["watchlist"] as const;
+const watchlistSortAccessors: Record<
+  WatchlistSortField,
+  (displayItem: WatchlistDisplayItem) => string | number | undefined
+> = {
+  ticker: ({ item }) => item.ticker,
+  currentPrice: ({ quote }) => quote?.currentPrice,
+  changePercent: ({ quote }) => quote?.changePercent,
+  companyName: ({ item, profile }) =>
+    profile?.name ?? item.companyName ?? item.ticker,
+};
 
-export function WatchlistPage() {
+interface WatchlistDisplayItem {
+  candles?: StockChartCandle[];
+  isChartLoading: boolean;
+  isChartUnavailable: boolean;
+  item: WatchlistItemDto;
+  profile?: CompanyProfile;
+  quote?: StockQuote;
+}
+
+export function WatchlistPage({
+  initialSortState = {},
+}: {
+  initialSortState?: SortState<WatchlistSortField>;
+}) {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
@@ -45,6 +75,9 @@ export function WatchlistPage() {
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
+  const { setSort, sortState } = useUrlSortState({
+    initialState: initialSortState,
+  });
 
   const watchlistQuery = useQuery({
     queryKey: watchlistQueryKey,
@@ -73,7 +106,7 @@ export function WatchlistPage() {
     },
   });
 
-  const items = watchlistQuery.data ?? [];
+  const items = useMemo(() => watchlistQuery.data ?? [], [watchlistQuery.data]);
   const searchQuery = useQuery({
     queryKey: ["market-data", "search", debouncedSearchInput],
     queryFn: () =>
@@ -131,6 +164,27 @@ export function WatchlistPage() {
       retry: false,
     })),
   });
+  const displayItems = useMemo(
+    () =>
+      items.map((item, index): WatchlistDisplayItem => ({
+        candles: sparklineQueries[index]?.data,
+        isChartLoading: sparklineQueries[index]?.isLoading ?? false,
+        isChartUnavailable: sparklineQueries[index]?.error instanceof Error,
+        item,
+        profile: profilesByTicker.get(item.ticker),
+        quote: quotesByTicker.get(item.ticker),
+      })),
+    [items, profilesByTicker, quotesByTicker, sparklineQueries],
+  );
+  const sortedDisplayItems = useMemo(
+    () =>
+      sortItems({
+        accessors: watchlistSortAccessors,
+        items: displayItems,
+        state: sortState,
+      }),
+    [displayItems, sortState],
+  );
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -198,7 +252,35 @@ export function WatchlistPage() {
       </section>
 
       <section aria-labelledby="watchlist-heading" className="page-section">
-        <h2 id="watchlist-heading">{t.yourWatchlist}</h2>
+        <div className="section-heading watchlist-heading">
+          <h2 id="watchlist-heading">{t.yourWatchlist}</h2>
+          <div className="watchlist-sort-controls" aria-label={t.sortOptions}>
+            <WatchlistSortButton
+              label={t.ticker}
+              onSort={setSort}
+              sort="ticker"
+              sortState={sortState}
+            />
+            <WatchlistSortButton
+              label={t.currentPrice}
+              onSort={setSort}
+              sort="currentPrice"
+              sortState={sortState}
+            />
+            <WatchlistSortButton
+              label={t.dailyChangePercent}
+              onSort={setSort}
+              sort="changePercent"
+              sortState={sortState}
+            />
+            <WatchlistSortButton
+              label={t.companyName}
+              onSort={setSort}
+              sort="companyName"
+              sortState={sortState}
+            />
+          </div>
+        </div>
         {quotesQuery.error instanceof Error ? (
           <p className="error-text" role="alert">{t.livePricesUnavailable}</p>
         ) : null}
@@ -211,25 +293,23 @@ export function WatchlistPage() {
           <EmptyState description={t.watchlistEmpty} title={t.noStocksYet} />
         ) : (
           <div className="watchlist-list">
-            {items.map((item, index) => (
+            {sortedDisplayItems.map((displayItem) => (
               <StockCard
-                candles={sparklineQueries[index]?.data}
-                isChartLoading={sparklineQueries[index]?.isLoading ?? false}
-                isChartUnavailable={
-                  sparklineQueries[index]?.error instanceof Error
-                }
+                candles={displayItem.candles}
+                isChartLoading={displayItem.isChartLoading}
+                isChartUnavailable={displayItem.isChartUnavailable}
                 isPriceLoading={quotesQuery.isLoading}
                 isRemoving={
                   removeMutation.isPending &&
-                  removeMutation.variables === item.id
+                  removeMutation.variables === displayItem.item.id
                 }
-                item={item}
-                key={item.id}
+                item={displayItem.item}
+                key={displayItem.item.id}
                 language={language}
-                onOpen={() => setDetailsTicker(item.ticker)}
-                onRemove={() => removeMutation.mutate(item.id)}
-                profile={profilesByTicker.get(item.ticker)}
-                quote={quotesByTicker.get(item.ticker)}
+                onOpen={() => setDetailsTicker(displayItem.item.ticker)}
+                onRemove={() => removeMutation.mutate(displayItem.item.id)}
+                profile={displayItem.profile}
+                quote={displayItem.quote}
                 t={t}
               />
             ))}
@@ -244,6 +324,32 @@ export function WatchlistPage() {
         />
       ) : null}
     </main>
+  );
+}
+
+function WatchlistSortButton({
+  label,
+  onSort,
+  sort,
+  sortState,
+}: {
+  label: string;
+  onSort: (sort: WatchlistSortField) => void;
+  sort: WatchlistSortField;
+  sortState: SortState<WatchlistSortField>;
+}) {
+  const isActive = sortState.sort === sort;
+
+  return (
+    <button
+      aria-pressed={isActive}
+      className="watchlist-sort-button"
+      onClick={() => onSort(sort)}
+      type="button"
+    >
+      <span>{label}</span>
+      <SortIndicator order={isActive ? sortState.order : undefined} />
+    </button>
   );
 }
 

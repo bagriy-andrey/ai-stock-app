@@ -34,6 +34,8 @@ export const en = {
   adding: "Adding...",
   add: "Add",
   yourWatchlist: "Your watchlist",
+  sortOptions: "Sort options",
+  dailyChangePercent: "Daily change %",
   livePricesUnavailable:
     "Live prices are temporarily unavailable. Your saved watchlist is still shown.",
   loadingWatchlist: "Loading watchlist...",

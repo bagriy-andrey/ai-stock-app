@@ -26,6 +26,34 @@ export function fetchPortfolio(
   });
 }
 
+export async function fetchAllPortfolio(
+  accessToken: string,
+): Promise<PortfolioDto> {
+  const firstPage = await fetchPortfolio(accessToken, { page: 1, limit: 100 });
+  const remainingPages = Array.from(
+    { length: Math.max(0, firstPage.meta.totalPages - 1) },
+    (_, index) => index + 2,
+  );
+
+  if (remainingPages.length === 0) {
+    return firstPage;
+  }
+
+  const additionalPages = await Promise.all(
+    remainingPages.map((page) =>
+      fetchPortfolio(accessToken, { page, limit: firstPage.meta.limit }),
+    ),
+  );
+
+  return {
+    ...firstPage,
+    items: [
+      ...firstPage.items,
+      ...additionalPages.flatMap((page) => page.items),
+    ],
+  };
+}
+
 export function fetchPortfolioAllocation(
   accessToken: string,
 ): Promise<PortfolioAllocationDto> {

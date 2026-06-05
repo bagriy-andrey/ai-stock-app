@@ -25,19 +25,25 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
+import { SortableHeader } from "../components/ui/SortableHeader";
 import type { Dictionary } from "../dictionaries";
+import {
+  createClientPaginationMeta,
+  paginateClientItems,
+} from "../lib/client-pagination";
+import type { TransactionSortField } from "../lib/page-sort-fields";
 import {
   getPageAfterRemovingCurrentItem,
   resolveValidPage,
   shouldShowPagination,
 } from "../lib/pagination-state";
 import {
-  fetchTransactions,
+  fetchAllTransactions,
   removeTransaction,
   updateTransaction,
 } from "../lib/transactions-api";
 import {
-  buildTransactionsQueryKey,
+  buildTransactionsListQueryKey,
   buildTransactionsQueryState,
   getPageAfterTransactionsFilterChange,
   hasTransactionFilters,
@@ -45,6 +51,9 @@ import {
   toTransactionFilters,
 } from "../lib/transactions-query-state";
 import { formatCurrency } from "../lib/stock-format";
+import type { SortState } from "../lib/table-sorting";
+import { sortItems } from "../lib/table-sorting";
+import { useUrlSortState } from "../lib/use-url-sort-state";
 
 const transactionTypes: PortfolioTransactionType[] = [
   "BUY",
@@ -53,10 +62,22 @@ const transactionTypes: PortfolioTransactionType[] = [
   "DELETE",
 ];
 const tablePageSize = 10;
+const transactionSortAccessors: Record<
+  TransactionSortField,
+  (transaction: PortfolioTransactionDto) => string | number | Date
+> = {
+  ticker: (transaction) => transaction.ticker,
+  type: (transaction) => transaction.type,
+  quantity: (transaction) => transaction.quantity,
+  price: (transaction) => transaction.price,
+  date: (transaction) => new Date(transaction.transactionDate),
+};
 
 export function TransactionsPage({
+  initialSortState = {},
   initialTicker = "",
 }: {
+  initialSortState?: SortState<TransactionSortField>;
   initialTicker?: string;
 }) {
   const queryClient = useQueryClient();
@@ -75,6 +96,10 @@ export function TransactionsPage({
   const [deletingTransaction, setDeletingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
+  const { setSort, sortState } = useUrlSortState({
+    initialState: initialSortState,
+    onSortChange: () => setCurrentPage(1),
+  });
   const queryState = useMemo(
     () =>
       buildTransactionsQueryState({
@@ -87,17 +112,34 @@ export function TransactionsPage({
     [currentPage, fromDate, tickerFilter, toDate],
   );
   const hasFilters = hasTransactionFilters(queryState);
-  const transactionsQueryKey = buildTransactionsQueryKey(queryState);
+  const transactionsQueryKey = buildTransactionsListQueryKey(queryState);
   const transactionsQuery = useQuery({
     queryKey: transactionsQueryKey,
     queryFn: () =>
-      fetchTransactions(accessToken ?? "", toTransactionFilters(queryState)),
+      fetchAllTransactions(accessToken ?? "", toTransactionFilters(queryState)),
     enabled: Boolean(accessToken),
     placeholderData: keepPreviousData,
     retry: false,
   });
-  const transactions = transactionsQuery.data?.items ?? [];
-  const paginationMeta = transactionsQuery.data?.meta;
+  const sortedTransactions = useMemo(
+    () =>
+      sortItems({
+        accessors: transactionSortAccessors,
+        items: transactionsQuery.data?.items ?? [],
+        state: sortState,
+      }),
+    [sortState, transactionsQuery.data?.items],
+  );
+  const paginationMeta = createClientPaginationMeta({
+    page: currentPage,
+    limit: tablePageSize,
+    totalItems: sortedTransactions.length,
+  });
+  const transactions = paginateClientItems({
+    items: sortedTransactions,
+    page: currentPage,
+    limit: tablePageSize,
+  });
 
   const updateMutation = useMutation({
     mutationFn: ({
@@ -249,6 +291,8 @@ export function TransactionsPage({
               onDelete={setDeletingTransaction}
               onEdit={setEditingTransaction}
               onOpenStock={setDetailsTicker}
+              onSort={setSort}
+              sortState={sortState}
               t={t}
               transactions={transactions}
             />
@@ -309,6 +353,8 @@ function TransactionsTable({
   onDelete,
   onEdit,
   onOpenStock,
+  onSort,
+  sortState,
 }: {
   language: ProfileLanguage;
   transactions: PortfolioTransactionDto[];
@@ -316,18 +362,45 @@ function TransactionsTable({
   onDelete: (transaction: PortfolioTransactionDto) => void;
   onEdit: (transaction: PortfolioTransactionDto) => void;
   onOpenStock: (ticker: string) => void;
+  onSort: (sort: TransactionSortField) => void;
+  sortState: SortState<TransactionSortField>;
 }) {
   return (
     <div className="portfolio-table-wrap transactions-table-wrap">
       <table className="portfolio-table transactions-table">
         <thead>
           <tr>
-            <th>{t.ticker}</th>
-            <th>{t.transactionType}</th>
-            <th>{t.quantity}</th>
-            <th>{t.price}</th>
+            <SortableHeader
+              label={t.ticker}
+              onSort={onSort}
+              sort="ticker"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.transactionType}
+              onSort={onSort}
+              sort="type"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.quantity}
+              onSort={onSort}
+              sort="quantity"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.price}
+              onSort={onSort}
+              sort="price"
+              sortState={sortState}
+            />
             <th>{t.currency}</th>
-            <th>{t.transactionDate}</th>
+            <SortableHeader
+              label={t.transactionDate}
+              onSort={onSort}
+              sort="date"
+              sortState={sortState}
+            />
             <th>{t.notes}</th>
             <th><span className="visually-hidden">{t.actions}</span></th>
           </tr>

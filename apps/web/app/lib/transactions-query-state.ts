@@ -48,6 +48,17 @@ export function buildTransactionsQueryKey(state: TransactionsQueryState) {
   ] as const;
 }
 
+export function buildTransactionsListQueryKey(state: TransactionsQueryState) {
+  return [
+    "transactions",
+    {
+      ticker: state.ticker ?? "",
+      fromDate: state.fromDate ?? "",
+      toDate: state.toDate ?? "",
+    },
+  ] as const;
+}
+
 export function toTransactionFilters(
   state: TransactionsQueryState,
 ): TransactionFilters {

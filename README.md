@@ -303,6 +303,12 @@ and a responsive historical closing-price chart. The chart supports `1D`,
 safe provider-error states. The remove action is kept separate so deleting a
 ticker does not open the modal.
 
+Watchlist sorting is client-side. The page supports sorting by ticker, current
+price, daily change percentage, and company name. Sorting state is stored in URL
+query parameters, for example `/watchlist?sort=changePercent&order=asc`.
+Opening the page without `sort` and `order` keeps the default saved-watchlist
+order unchanged.
+
 Example add request:
 
 ```bash
@@ -357,6 +363,13 @@ positions into an `Others` item. If there are 10 or fewer open positions,
 percentage, and current value. It supports loading, empty, and API error states.
 When the portfolio has no open positions or total current value is zero, the
 chart shows an empty state instead of rendering segments.
+
+The positions table supports client-side sorting by name, quantity, current
+stock price, current value, profit/loss USD, and profit/loss percentage.
+Sorting is applied before local table pagination and is stored in URL query
+parameters, for example `/portfolio?sort=currentValue&order=desc`. Opening the
+page without `sort` and `order` keeps the default aggregated-position order
+unchanged.
 
 `GET /portfolio` loads the latest cached Finnhub quote for each open ticker and
 returns:
@@ -421,6 +434,12 @@ Authenticated users can review transaction history at
 supports ticker search and date range filters, and provides edit/delete actions
 for transaction records. Because Portfolio is derived from transaction history,
 transaction record edits can change the aggregated Portfolio view.
+
+The transactions table supports client-side sorting by ticker, type, quantity,
+price, and transaction date. Ticker and date filters are applied first, then
+sorting, then local table pagination. Sorting state is stored in URL query
+parameters, for example `/transactions?sort=date&order=desc`; existing filter
+query parameters remain in place when changing sort order.
 
 Transaction records are stored with `userId`, uppercase `ticker`,
 `companyName`, `type` (`BUY`, `SELL`, `UPDATE`, or `DELETE`), positive

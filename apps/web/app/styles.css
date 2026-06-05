@@ -654,6 +654,43 @@ p {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
 }
 
+.watchlist-heading {
+  align-items: flex-start;
+  gap: 16px;
+}
+
+.watchlist-sort-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.watchlist-sort-button {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  gap: 8px;
+  border-color: var(--border);
+  background: var(--panel);
+  color: var(--foreground);
+  font-size: 0.82rem;
+  padding: 0 10px;
+}
+
+.watchlist-sort-button[aria-pressed="true"] {
+  border-color: var(--control-border);
+  background: var(--input-background);
+}
+
+.watchlist-sort-button .sort-indicator-icon {
+  color: var(--subtle-foreground);
+}
+
+.watchlist-sort-button[aria-pressed="true"] .sort-indicator-icon {
+  color: var(--foreground);
+}
+
 .stock-card {
   position: relative;
   min-height: 256px;
@@ -1460,6 +1497,44 @@ p {
   font-size: 0.74rem;
   letter-spacing: 0.06em;
   text-transform: uppercase;
+}
+
+.table-sort-button {
+  display: inline-flex;
+  min-height: 0;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: inherit;
+  letter-spacing: inherit;
+  padding: 0;
+  text-align: left;
+  text-transform: inherit;
+}
+
+.table-sort-button:hover {
+  background: transparent;
+  color: var(--foreground);
+}
+
+.table-sort-indicator {
+  display: inline-flex;
+  align-items: center;
+  color: var(--subtle-foreground);
+}
+
+.sort-indicator-icon {
+  display: block;
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+  opacity: 0.72;
+}
+
+.sort-indicator-icon-active {
+  opacity: 1;
 }
 
 .portfolio-table tbody tr:last-child td {

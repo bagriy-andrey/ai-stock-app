@@ -9,7 +9,11 @@ export function buildPortfolioQueryState({
   return { page, limit };
 }
 
-export function buildPortfolioQueryKey(state: PortfolioQueryState) {
+export function buildPortfolioQueryKey(state?: PortfolioQueryState) {
+  if (!state) {
+    return ["portfolio"] as const;
+  }
+
   return ["portfolio", { page: state.page, limit: state.limit }] as const;
 }
 
