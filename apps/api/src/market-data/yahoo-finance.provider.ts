@@ -14,7 +14,7 @@ const YAHOO_FINANCE_TIMEOUT_MS = 5_000;
 const MILLISECONDS_PER_DAY = 24 * 60 * 60 * 1_000;
 
 type YahooChartInterval = "5m" | "1h" | "1d" | "1wk";
-type YahooChartPeriod = "1d" | "7d" | "1mo" | "1y";
+type YahooChartPeriod = "1d" | "7d" | "1mo" | "3mo" | "6mo" | "1y" | "5y" | "all";
 
 interface YahooChartQuote {
   date: Date;
@@ -45,7 +45,11 @@ const YAHOO_CHART_CONFIG: Record<StockCandleRange, YahooChartConfig> = {
   "1d": { period: "1d", interval: "5m" },
   "1w": { period: "7d", interval: "1h" },
   "1m": { period: "1mo", interval: "1d" },
+  "3m": { period: "3mo", interval: "1d" },
+  "6m": { period: "6mo", interval: "1d" },
   "1y": { period: "1y", interval: "1wk" },
+  "5y": { period: "5y", interval: "1wk" },
+  all: { period: "all", interval: "1wk" },
 };
 
 @Injectable()
@@ -110,6 +114,25 @@ function getPeriodStart(now: Date, period: YahooChartPeriod): Date {
   if (period === "1mo") {
     start.setUTCMonth(start.getUTCMonth() - 1);
     return start;
+  }
+
+  if (period === "3mo") {
+    start.setUTCMonth(start.getUTCMonth() - 3);
+    return start;
+  }
+
+  if (period === "6mo") {
+    start.setUTCMonth(start.getUTCMonth() - 6);
+    return start;
+  }
+
+  if (period === "5y") {
+    start.setUTCFullYear(start.getUTCFullYear() - 5);
+    return start;
+  }
+
+  if (period === "all") {
+    return new Date("1970-01-01T00:00:00.000Z");
   }
 
   start.setUTCFullYear(start.getUTCFullYear() - 1);

@@ -43,13 +43,19 @@ describe("market data DTOs", () => {
   });
 
   it("accepts supported candle ranges", async () => {
-    const dto = plainToInstance(GetCandlesQueryDto, { range: "1m" });
+    await Promise.all(
+      ["1d", "1w", "1m", "3m", "6m", "1y", "5y", "all"].map(
+        async (range) => {
+          const dto = plainToInstance(GetCandlesQueryDto, { range });
 
-    await expect(validate(dto)).resolves.toHaveLength(0);
+          await expect(validate(dto)).resolves.toHaveLength(0);
+        },
+      ),
+    );
   });
 
   it("rejects unsupported candle ranges", async () => {
-    const dto = plainToInstance(GetCandlesQueryDto, { range: "5y" });
+    const dto = plainToInstance(GetCandlesQueryDto, { range: "2y" });
 
     await expect(validate(dto)).resolves.not.toHaveLength(0);
   });

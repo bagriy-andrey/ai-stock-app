@@ -4,7 +4,6 @@ import type {
   CreatePortfolioPositionRequest,
   MarketMoversResponse,
   PortfolioDto,
-  ProfileLanguage,
   StockCandleRange,
   StockDetails,
   WatchlistItemDto,
@@ -16,34 +15,32 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../auth/AuthProvider";
 import {
   AddPurchaseModal,
   type AddPurchasePrefill,
 } from "../portfolio/AddPurchaseModal";
-import { Button } from "../ui/button";
 import { useI18n } from "../i18n/I18nProvider";
 import type { Dictionary } from "../../dictionaries";
 import {
   fetchStockCandles,
   fetchStockDetails,
-  type StockChartCandle,
 } from "../../lib/market-data-api";
 import { createPortfolioPosition } from "../../lib/portfolio-api";
-import {
-  formatCurrency,
-  formatPercent,
-  getChangeVariant,
-} from "../../lib/stock-format";
 import {
   addWatchlistItem,
   fetchWatchlist,
   removeWatchlistItem,
 } from "../../lib/watchlist-api";
-import { CompanyLogo } from "./CompanyLogo";
-
-const candleRanges: StockCandleRange[] = ["1d", "1w", "1m", "1y"];
+import { CompanyInfoTab } from "./CompanyInfoTab";
+import { StockChartTab } from "./StockChartTab";
+import { StockDetailsHeader } from "./StockDetailsHeader";
+import { StockDetailsTabs } from "./StockDetailsTabs";
+import { StockInfoTab } from "./StockInfoTab";
+import type { StockDetailsTabValue } from "./stock-details-types";
 
 interface StockDetailsModalProps {
   ticker: string;
@@ -62,15 +59,14 @@ export function StockDetailsModal({
   const router = useRouter();
   const pathname = usePathname();
   const headingId = useId();
-  const chartHeadingId = useId();
   const dialogRef = useRef<HTMLElement>(null);
+  const closeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onCloseRef = useRef(onClose);
+  const [activeTab, setActiveTab] = useState<StockDetailsTabValue>("chart");
   const [range, setRange] = useState<StockCandleRange>("1d");
+  const [isClosing, setIsClosing] = useState(false);
   const [purchasePrefill, setPurchasePrefill] =
     useState<AddPurchasePrefill | null>(null);
-  const [purchaseStatusMessage, setPurchaseStatusMessage] = useState<string | null>(
-    null,
-  );
   const normalizedTicker = ticker.trim().toUpperCase();
   const watchlistQueryKey = ["watchlist"] as const;
   const portfolioQueryKey = ["portfolio"] as const;
@@ -92,6 +88,12 @@ export function StockDetailsModal({
     queryFn: () => fetchWatchlist(accessToken ?? ""),
     enabled: open && Boolean(accessToken),
   });
+  const details = detailsQuery.data;
+  const candles = candlesQuery.data ?? [];
+  const companyName =
+    details?.name ??
+    getCachedCompanyName(queryClient, normalizedTicker) ??
+    t.companyNameNotSet;
   const watchlistItem = watchlistQuery.data?.find(
     (item) => item.ticker.toUpperCase() === normalizedTicker,
   );
@@ -115,18 +117,12 @@ export function StockDetailsModal({
     mutationFn: (input: CreatePortfolioPositionRequest) =>
       createPortfolioPosition(accessToken ?? "", input),
     onSuccess: async () => {
-      setPurchasePrefill(null);
-      setPurchaseStatusMessage(t.portfolioActionSuccess);
       await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
       await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+      setPurchasePrefill(null);
+      onCloseRef.current();
     },
   });
-  const details = detailsQuery.data;
-  const candles = candlesQuery.data ?? [];
-  const companyName =
-    details?.name ??
-    getCachedCompanyName(queryClient, normalizedTicker) ??
-    t.companyNameNotSet;
   const isWatchlistMutationPending =
     addWatchlistMutation.isPending || removeWatchlistMutation.isPending;
   const watchlistActionError =
@@ -140,14 +136,40 @@ export function StockDetailsModal({
     onCloseRef.current = onClose;
   }, [onClose]);
 
+  const requestClose = useCallback(() => {
+    if (closeTimerRef.current) {
+      return;
+    }
+
+    setIsClosing(true);
+    closeTimerRef.current = setTimeout(() => {
+      closeTimerRef.current = null;
+      onCloseRef.current();
+    }, 170);
+  }, []);
+
   useEffect(() => {
     if (open) {
+      setActiveTab("chart");
       setRange("1d");
+      setIsClosing(false);
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+        closeTimerRef.current = null;
+      }
     }
   }, [open, normalizedTicker]);
 
   useEffect(() => {
-    if (!open || normalizedTicker.length === 0) {
+    return () => {
+      if (closeTimerRef.current) {
+        clearTimeout(closeTimerRef.current);
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!open || normalizedTicker.length === 0 || purchasePrefill) {
       return;
     }
 
@@ -160,7 +182,7 @@ export function StockDetailsModal({
     const onKeyDown = (event: globalThis.KeyboardEvent) => {
       if (event.key === "Escape") {
         event.preventDefault();
-        onCloseRef.current();
+        requestClose();
         return;
       }
 
@@ -198,175 +220,175 @@ export function StockDetailsModal({
       document.removeEventListener("keydown", onKeyDown);
       previouslyFocusedElement?.focus();
     };
-  }, [open, normalizedTicker]);
+  }, [open, normalizedTicker, purchasePrefill, requestClose]);
 
   if (!open || normalizedTicker.length === 0) {
     return null;
   }
 
+  if (purchasePrefill) {
+    return typeof document === "undefined"
+      ? null
+      : createPortal(
+          <AddPurchaseModal
+            accessToken={accessToken ?? ""}
+            error={createPurchaseMutation.error}
+            initialStock={purchasePrefill}
+            isPending={createPurchaseMutation.isPending}
+            onClose={() => {
+              setPurchasePrefill(null);
+              onCloseRef.current();
+            }}
+            onSubmit={(input) => createPurchaseMutation.mutate(input)}
+            t={t}
+          />,
+          document.body,
+        );
+  }
+
   return (
     <div
-      className="stock-modal-backdrop"
+      className={[
+        "stock-modal-backdrop",
+        isClosing ? "stock-modal-backdrop-closing" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
       onClick={(event) => {
         if (event.currentTarget === event.target) {
-          onClose();
+          requestClose();
         }
       }}
     >
       <section
         aria-labelledby={headingId}
         aria-modal="true"
-        className="stock-modal"
+        className={["stock-modal", isClosing ? "stock-modal-closing" : ""]
+          .filter(Boolean)
+          .join(" ")}
         ref={dialogRef}
         role="dialog"
         tabIndex={-1}
       >
-        <button
-          aria-label={t.close}
-          className="stock-modal-close"
-          onClick={onClose}
-          type="button"
-        >
-          <CloseIcon />
-        </button>
-        <div className="stock-modal-header">
-          <CompanyLogo
-            companyName={companyName}
-            logoUrl={details?.logoUrl}
-            ticker={normalizedTicker}
-          />
-          <div>
-            <p className="stock-modal-ticker">
-              {t.stockDetails} / {normalizedTicker}
-            </p>
-            <h2 id={headingId}>{companyName}</h2>
-            <p className="stock-modal-metadata">
-              {[details?.exchange, details?.currency].filter(Boolean).join(" / ")}
-            </p>
-          </div>
-        </div>
-        {detailsQuery.isLoading ? (
-          <p role="status">{t.loadingStockDetails}</p>
-        ) : detailsQuery.error instanceof Error ? (
-          <p className="error-text" role="alert">{t.stockDetailsUnavailable}</p>
-        ) : details ? (
-          <StockSummary details={details} language={language} t={t} />
-        ) : null}
-        <div className="stock-modal-actions" aria-label={t.actions}>
-          <Button
-            disabled={isWatchlistMutationPending || watchlistQuery.isLoading}
-            onClick={() => {
-              if (watchlistItem) {
-                removeWatchlistMutation.mutate(watchlistItem.id);
-                return;
-              }
+        <StockDetailsHeader
+          companyName={companyName}
+          currency={details?.currency}
+          exchange={details?.exchange}
+          headingId={headingId}
+          isWatchlisted={Boolean(watchlistItem)}
+          isWatchlistPending={isWatchlistMutationPending || watchlistQuery.isLoading}
+          logoUrl={details?.logoUrl}
+          onAddPurchase={() => {
+            setPurchasePrefill({
+              ticker: normalizedTicker,
+              companyName: getActionCompanyName(companyName, t),
+              currency: details?.currency,
+            });
+          }}
+          onClose={requestClose}
+          onToggleWatchlist={() => {
+            if (watchlistItem) {
+              removeWatchlistMutation.mutate(watchlistItem.id);
+              return;
+            }
 
-              addWatchlistMutation.mutate();
-            }}
-            type="button"
-            variant={watchlistItem ? "danger" : "default"}
-          >
-            {isWatchlistMutationPending
-              ? watchlistItem
-                ? t.removing
-                : t.adding
-              : watchlistItem
-                ? t.removeFromWatchlist
-                : t.addToWatchlist}
-          </Button>
-          <Button
-            onClick={() => {
-              setPurchaseStatusMessage(null);
-              setPurchasePrefill({
-                ticker: normalizedTicker,
-                companyName: getActionCompanyName(companyName, t),
-                currency: details?.currency,
-              });
-            }}
-            type="button"
-            variant="outline"
-          >
-            {t.addPurchase}
-          </Button>
-          <Button
-            onClick={() => {
-              const target = `/transactions?ticker=${encodeURIComponent(
-                normalizedTicker,
-              )}`;
+            addWatchlistMutation.mutate();
+          }}
+          onViewTransactions={() => {
+            const target = `/transactions?ticker=${encodeURIComponent(
+              normalizedTicker,
+            )}`;
 
-              if (pathname === "/transactions") {
-                router.replace(target);
-              } else {
-                router.push(target);
-              }
-            }}
-            type="button"
-            variant="outline"
-          >
-            {t.viewTransactions}
-          </Button>
-        </div>
+            if (pathname === "/transactions") {
+              router.replace(target);
+            } else {
+              router.push(target);
+            }
+          }}
+          t={t}
+          ticker={normalizedTicker}
+        />
         {watchlistActionError ? (
-          <p className="error-text" role="alert">{watchlistActionError}</p>
-        ) : null}
-        <section
-          aria-labelledby={chartHeadingId}
-          className="stock-chart-section"
-        >
-          <div className="stock-chart-header">
-            <h3 id={chartHeadingId}>{t.priceHistory}</h3>
-            <div
-              aria-label={t.chartRange}
-              className="stock-chart-ranges"
-              role="group"
-            >
-              {candleRanges.map((option) => (
-                <button
-                  aria-pressed={range === option}
-                  key={option}
-                  onClick={() => setRange(option)}
-                  type="button"
-                >
-                  {option.toUpperCase()}
-                </button>
-              ))}
-            </div>
-          </div>
-          {candlesQuery.isLoading ? (
-            <p className="stock-chart-status" role="status">{t.loadingChart}</p>
-          ) : candlesQuery.error instanceof Error ? (
-            <p className="stock-chart-status error-text" role="alert">{t.chartUnavailable}</p>
-          ) : candles.length === 0 ? (
-            <p className="stock-chart-status">{t.noChartData}</p>
-          ) : (
-            <StockHistoryChart
-              candles={candles}
-              currency={details?.currency}
-              language={language}
-              range={range}
-              title={t.priceHistory}
-            />
-          )}
-        </section>
-        {purchasePrefill ? (
-          <AddPurchaseModal
-            accessToken={accessToken ?? ""}
-            error={createPurchaseMutation.error}
-            initialStock={purchasePrefill}
-            isPending={createPurchaseMutation.isPending}
-            onClose={() => setPurchasePrefill(null)}
-            onSubmit={(input) => createPurchaseMutation.mutate(input)}
-            t={t}
-          />
-        ) : null}
-        {purchaseStatusMessage ? (
-          <p className="app-toast" role="status">
-            {purchaseStatusMessage}
+          <p className="stock-modal-inline-error error-text" role="alert">
+            {watchlistActionError}
           </p>
         ) : null}
+        <StockDetailsTabs
+          chartContent={
+            <StockChartTab
+              candles={candles}
+              currency={details?.currency}
+              isError={candlesQuery.error instanceof Error}
+              isLoading={candlesQuery.isLoading}
+              language={language}
+              onRangeChange={setRange}
+              range={range}
+              t={t}
+            />
+          }
+          companyInfoContent={renderDetailsContent({
+            details,
+            isLoading: detailsQuery.isLoading,
+            isError: detailsQuery.error instanceof Error,
+            loadingMessage: t.loadingStockDetails,
+            errorMessage: t.stockDetailsUnavailable,
+            render: (loadedDetails) => (
+              <CompanyInfoTab details={loadedDetails} language={language} t={t} />
+            ),
+          })}
+          onValueChange={setActiveTab}
+          stockInfoContent={renderDetailsContent({
+            details,
+            isLoading: detailsQuery.isLoading,
+            isError: detailsQuery.error instanceof Error,
+            loadingMessage: t.loadingStockDetails,
+            errorMessage: t.stockDetailsUnavailable,
+            render: (loadedDetails) => (
+              <StockInfoTab details={loadedDetails} language={language} t={t} />
+            ),
+          })}
+          t={t}
+          value={activeTab}
+        />
       </section>
     </div>
   );
+}
+
+interface RenderDetailsContentOptions {
+  details: StockDetails | undefined;
+  errorMessage: string;
+  isError: boolean;
+  isLoading: boolean;
+  loadingMessage: string;
+  render: (details: StockDetails) => ReactNode;
+}
+
+function renderDetailsContent({
+  details,
+  errorMessage,
+  isError,
+  isLoading,
+  loadingMessage,
+  render,
+}: RenderDetailsContentOptions) {
+  if (isLoading) {
+    return (
+      <p className="stock-details-status" role="status">
+        {loadingMessage}
+      </p>
+    );
+  }
+
+  if (isError) {
+    return (
+      <p className="stock-details-status error-text" role="alert">
+        {errorMessage}
+      </p>
+    );
+  }
+
+  return details ? render(details) : null;
 }
 
 function getActionCompanyName(
@@ -423,301 +445,4 @@ function getCachedCompanyName(
   }
 
   return undefined;
-}
-
-interface StockSummaryProps {
-  details: StockDetails;
-  language: ProfileLanguage;
-  t: Dictionary;
-}
-
-function StockSummary({ details, language, t }: StockSummaryProps) {
-  return (
-    <>
-      <div className="stock-modal-price">
-        <span>{t.currentPrice}</span>
-        <strong>
-          {formatPrice(details.currentPrice, details.currency, language)}
-        </strong>
-        <ChangeValue details={details} language={language} />
-      </div>
-      <dl className="stock-detail-grid">
-        <StockDetail
-          label={t.previousClose}
-          value={formatPrice(details.previousClose, details.currency, language)}
-        />
-        <StockDetail
-          label={t.openPrice}
-          value={formatPrice(details.open, details.currency, language)}
-        />
-        <StockDetail
-          label={t.dayHigh}
-          value={formatPrice(details.high, details.currency, language)}
-        />
-        <StockDetail
-          label={t.dayLow}
-          value={formatPrice(details.low, details.currency, language)}
-        />
-      </dl>
-      <StockFundamentalsSection
-        details={details}
-        language={language}
-        t={t}
-      />
-    </>
-  );
-}
-
-interface StockFundamentalsSectionProps {
-  details: StockDetails;
-  language: ProfileLanguage;
-  t: Dictionary;
-}
-
-function StockFundamentalsSection({
-  details,
-  language,
-  t,
-}: StockFundamentalsSectionProps) {
-  const fundamentals = details.fundamentals ?? {};
-
-  return (
-    <section className="stock-fundamentals-section">
-      <h3>{t.fundamentals}</h3>
-      <dl className="stock-detail-grid stock-fundamentals-grid">
-        <StockDetail
-          label={t.marketCap}
-          value={formatMarketCap(
-            fundamentals.marketCap,
-            fundamentals.currency ?? details.currency,
-            language,
-          )}
-        />
-        <StockDetail
-          label={t.peRatio}
-          value={formatOptionalNumber(fundamentals.peRatio, language)}
-        />
-        <StockDetail
-          label={t.eps}
-          value={formatOptionalPrice(
-            fundamentals.eps,
-            fundamentals.currency ?? details.currency,
-            language,
-          )}
-        />
-        <StockDetail
-          label={t.fiftyTwoWeekHigh}
-          value={formatOptionalPrice(
-            fundamentals.fiftyTwoWeekHigh,
-            fundamentals.currency ?? details.currency,
-            language,
-          )}
-        />
-        <StockDetail
-          label={t.fiftyTwoWeekLow}
-          value={formatOptionalPrice(
-            fundamentals.fiftyTwoWeekLow,
-            fundamentals.currency ?? details.currency,
-            language,
-          )}
-        />
-        <StockDetail label={t.sector} value={formatOptionalText(fundamentals.sector)} />
-        <StockDetail
-          label={t.industry}
-          value={formatOptionalText(fundamentals.industry)}
-        />
-        <StockDetail
-          label={t.exchange}
-          value={formatOptionalText(fundamentals.exchange)}
-        />
-        <StockDetail
-          label={t.currency}
-          value={formatOptionalText(fundamentals.currency)}
-        />
-      </dl>
-    </section>
-  );
-}
-
-interface ChangeValueProps {
-  details: StockDetails;
-  language: ProfileLanguage;
-}
-
-function ChangeValue({ details, language }: ChangeValueProps) {
-  const variant = getChangeVariant(details.change);
-
-  return (
-    <span className={`stock-change stock-change-${variant}`}>
-      {formatPrice(details.change, details.currency, language, true)}
-      <small>{formatPercent(details.percentChange, language)}</small>
-    </span>
-  );
-}
-
-interface StockHistoryChartProps {
-  candles: StockChartCandle[];
-  currency?: string;
-  language: ProfileLanguage;
-  range: StockCandleRange;
-  title: string;
-}
-
-function StockHistoryChart({
-  candles,
-  currency,
-  language,
-  range,
-  title,
-}: StockHistoryChartProps) {
-  const firstCandle = candles[0];
-  const lastCandle = candles[candles.length - 1];
-  const closes = candles.map((candle) => candle.close);
-  const minimum = Math.min(...closes);
-  const maximum = Math.max(...closes);
-  const spread = maximum - minimum;
-  const width = 640;
-  const height = 240;
-  const padding = 10;
-  const points = candles
-    .map((candle, index) => {
-      const x =
-        candles.length === 1
-          ? width / 2
-          : padding + (index / (candles.length - 1)) * (width - 2 * padding);
-      const y =
-        spread === 0
-          ? height / 2
-          : padding +
-            ((maximum - candle.close) / spread) * (height - 2 * padding);
-
-      return `${x},${y}`;
-    })
-    .join(" ");
-  const variant = getChangeVariant(lastCandle.close - firstCandle.close);
-
-  return (
-    <div className="stock-chart">
-      <div className="stock-chart-prices">
-        <strong>{formatPrice(firstCandle.close, currency, language)}</strong>
-        <strong className={`stock-chart-value-${variant}`}>
-          {formatPrice(lastCandle.close, currency, language)}
-        </strong>
-      </div>
-      <svg aria-label={title} role="img" viewBox={`0 0 ${width} ${height}`}>
-        <polyline
-          className={`stock-chart-line-${variant}`}
-          fill="none"
-          points={points}
-          vectorEffect="non-scaling-stroke"
-        />
-      </svg>
-      <div className="stock-chart-dates">
-        <span>{formatCandleDate(firstCandle.timestamp, language, range)}</span>
-        <span>{formatCandleDate(lastCandle.timestamp, language, range)}</span>
-      </div>
-    </div>
-  );
-}
-
-function formatPrice(
-  price: number,
-  currency: string | undefined,
-  language: ProfileLanguage,
-  withSign = false,
-): string {
-  return currency
-    ? formatCurrency(price, currency, language, withSign)
-    : new Intl.NumberFormat(language, {
-        maximumFractionDigits: 2,
-        signDisplay: withSign ? "always" : "auto",
-      }).format(price);
-}
-
-function formatMarketCap(
-  value: number | undefined,
-  currency: string | undefined,
-  language: ProfileLanguage,
-): string {
-  if (!isFiniteNumber(value)) {
-    return "N/A";
-  }
-
-  try {
-    return new Intl.NumberFormat(language, {
-      style: currency ? "currency" : "decimal",
-      currency,
-      notation: "compact",
-      maximumFractionDigits: 2,
-    }).format(value);
-  } catch {
-    return new Intl.NumberFormat(language, {
-      notation: "compact",
-      maximumFractionDigits: 2,
-    }).format(value);
-  }
-}
-
-function formatOptionalPrice(
-  value: number | undefined,
-  currency: string | undefined,
-  language: ProfileLanguage,
-): string {
-  return isFiniteNumber(value) ? formatPrice(value, currency, language) : "N/A";
-}
-
-function formatOptionalNumber(
-  value: number | undefined,
-  language: ProfileLanguage,
-): string {
-  return isFiniteNumber(value)
-    ? new Intl.NumberFormat(language, {
-        maximumFractionDigits: 2,
-      }).format(value)
-    : "N/A";
-}
-
-function formatOptionalText(value: string | undefined): string {
-  const normalizedValue = value?.trim();
-  return normalizedValue ? normalizedValue : "N/A";
-}
-
-function isFiniteNumber(value: number | undefined): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function formatCandleDate(
-  timestamp: string,
-  language: ProfileLanguage,
-  range: StockCandleRange,
-): string {
-  return new Intl.DateTimeFormat(
-    language,
-    range === "1d"
-      ? { hour: "2-digit", minute: "2-digit" }
-      : { day: "numeric", month: "short", year: range === "1y" ? "numeric" : undefined },
-  ).format(new Date(timestamp));
-}
-
-interface StockDetailProps {
-  label: string;
-  value: string;
-}
-
-function StockDetail({ label, value }: StockDetailProps) {
-  return (
-    <div>
-      <dt>{label}</dt>
-      <dd>{value}</dd>
-    </div>
-  );
-}
-
-function CloseIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 24 24">
-      <path d="M6 6l12 12" />
-      <path d="M18 6L6 18" />
-    </svg>
-  );
 }

@@ -297,11 +297,16 @@ name, current price, absolute price change, and percentage change with
 positive, negative, and neutral color states. Cards also show a small
 non-interactive sparkline from recent `1M` historical candles, with loading,
 empty, and provider-error fallbacks when chart data is unavailable. Selecting
-the main card area opens a stock details modal with the latest quote values
-and a responsive historical closing-price chart. The chart supports `1D`,
-`1W`, `1M`, and `1Y` ranges backed by Yahoo Finance, with loading, empty, and
-safe provider-error states. The remove action is kept separate so deleting a
-ticker does not open the modal.
+the main card area opens a tabbed stock details modal. The modal keeps the
+company logo, name, ticker, exchange, currency, icon-only watchlist, purchase,
+transactions, and close actions visible in a sticky header. Details are split
+into Chart, Stock Info, and Company Info tabs so the content area scrolls
+independently inside the modal. The chart supports `1D`, `1W`, `1M`, `3M`,
+`6M`, `1Y`, `5Y`, and `ALL` ranges backed by Yahoo Finance, with loading,
+empty, and safe provider-error states. Selecting the purchase action closes the
+stock details modal and opens the add-purchase modal as a separate top-level
+dialog instead of nesting one modal inside another. The remove action is kept
+separate so deleting a ticker does not open the modal.
 
 Watchlist filtering, sorting, and pagination are client-side. The page supports
 searching the saved watchlist by ticker or company name, sorting by ticker,
@@ -329,12 +334,14 @@ Local browser check:
 2. Open `http://localhost:3000/watchlist` from the header navigation.
 3. Search for `apple` or `AAPL`, then select Apple from the autocomplete list.
 4. Add the selected stock. Its card should show a company logo or fallback initials, company name, current market price, and colored price change.
-5. Select the stock card. A stock details modal should open with the latest quote values and a historical chart.
+5. Select the stock card. A stock details modal should open on the Chart tab with a sticky header and tab bar.
 6. Select each chart range and confirm that the chart reloads and uses a green, red, or gray line based on the selected period trend.
-7. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
-8. Try to add `AAPL` again. The page should show a duplicate-ticker error.
-9. Search the saved watchlist, change sorting, switch pages if enough items exist, then refresh the page. The URL state should restore the same visible list state.
-10. Remove the ticker. It should disappear without opening the details modal.
+7. Switch to Stock Info and Company Info. The selected ticker should remain unchanged, and unavailable company profile fields should show `N/A`.
+8. Use the add-purchase icon. The stock details modal should close, and the add-purchase modal should open as its own top-level dialog.
+9. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
+10. Try to add `AAPL` again. The page should show a duplicate-ticker error.
+11. Search the saved watchlist, change sorting, switch pages if enough items exist, then refresh the page. The URL state should restore the same visible list state.
+12. Remove the ticker. It should disappear without opening the details modal.
 
 ## Portfolio
 

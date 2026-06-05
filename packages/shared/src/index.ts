@@ -41,6 +41,11 @@ export interface CompanyProfile {
   logo?: string;
   marketCapitalization?: number;
   webUrl?: string;
+  description?: string;
+  ceo?: string;
+  headquarters?: string;
+  employees?: number;
+  foundedYear?: number;
 }
 
 export interface StockFundamentals {
@@ -61,6 +66,13 @@ export interface StockDetails {
   exchange: string;
   currency: string;
   logoUrl?: string;
+  country?: string;
+  website?: string;
+  description?: string;
+  ceo?: string;
+  headquarters?: string;
+  employees?: number;
+  foundedYear?: number;
   currentPrice: number;
   change: number;
   percentChange: number;
@@ -71,7 +83,15 @@ export interface StockDetails {
   fundamentals: StockFundamentals;
 }
 
-export type StockCandleRange = "1d" | "1w" | "1m" | "1y";
+export type StockCandleRange =
+  | "1d"
+  | "1w"
+  | "1m"
+  | "3m"
+  | "6m"
+  | "1y"
+  | "5y"
+  | "all";
 
 export interface StockCandle {
   timestamp: number;

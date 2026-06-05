@@ -27,7 +27,11 @@ describe("YahooFinanceProvider", () => {
     ["1d", "2026-06-01T12:00:00.000Z", "5m"],
     ["1w", "2026-05-26T12:00:00.000Z", "1h"],
     ["1m", "2026-05-02T12:00:00.000Z", "1d"],
+    ["3m", "2026-03-02T12:00:00.000Z", "1d"],
+    ["6m", "2025-12-02T12:00:00.000Z", "1d"],
     ["1y", "2025-06-02T12:00:00.000Z", "1wk"],
+    ["5y", "2021-06-02T12:00:00.000Z", "1wk"],
+    ["all", "1970-01-01T00:00:00.000Z", "1wk"],
   ] as const)(
     "maps the %s range to the expected Yahoo chart period and interval",
     async (range, expectedPeriodStart, expectedInterval) => {
