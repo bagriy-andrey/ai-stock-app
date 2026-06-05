@@ -1,37 +1,31 @@
-import { Transform, Type } from "class-transformer";
+import { Transform } from "class-transformer";
 import {
   IsDateString,
   IsEnum,
+  IsIn,
   IsNotEmpty,
   IsNumber,
   IsOptional,
-  IsPositive,
   IsString,
   Matches,
+  Max,
+  MaxLength,
+  Min,
 } from "class-validator";
 import type { PortfolioTransactionType } from "@ai-stock-advisor/shared";
 import { IsNotFutureDate } from "../../portfolio/dto/is-not-future-date.validator";
+import {
+  currencyPattern,
+  IsSafeNotes,
+  purchaseNotesMaxLength,
+  purchaseNumberMax,
+  purchaseNumberMin,
+  tickerPattern,
+  trimOptionalNotes,
+  trimString,
+  trimUppercaseString,
+} from "../../portfolio/dto/portfolio-position-validation";
 import { portfolioTransactionTypes } from "./create-portfolio-transaction.dto";
-
-const tickerPattern = /^[A-Z][A-Z0-9.-]{0,9}$/;
-const currencyPattern = /^[A-Z]{3}$/;
-
-function trimString({ value }: { value: unknown }): unknown {
-  return typeof value === "string" ? value.trim() : value;
-}
-
-function trimOptionalString({ value }: { value: unknown }): unknown {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function trimUppercaseString({ value }: { value: unknown }): unknown {
-  return typeof value === "string" ? value.trim().toUpperCase() : value;
-}
 
 export class UpdatePortfolioTransactionDto {
   @Transform(trimUppercaseString)
@@ -47,6 +41,7 @@ export class UpdatePortfolioTransactionDto {
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   companyName?: string;
 
   @Transform(trimUppercaseString)
@@ -54,24 +49,25 @@ export class UpdatePortfolioTransactionDto {
   @IsEnum(portfolioTransactionTypes)
   type?: PortfolioTransactionType;
 
-  @Type(() => Number)
   @IsOptional()
-  @IsNumber()
-  @IsPositive()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  @Min(purchaseNumberMin)
+  @Max(purchaseNumberMax)
   quantity?: number;
 
-  @Type(() => Number)
   @IsOptional()
-  @IsNumber()
-  @IsPositive()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  @Min(purchaseNumberMin)
+  @Max(purchaseNumberMax)
   price?: number;
 
   @Transform(trimUppercaseString)
   @IsOptional()
   @IsString()
   @IsNotEmpty()
+  @IsIn(["USD"], { message: "currency must be a supported currency" })
   @Matches(currencyPattern, {
-    message: "currency must be a three-letter currency code",
+    message: "currency must be a supported currency",
   })
   currency?: string;
 
@@ -80,8 +76,10 @@ export class UpdatePortfolioTransactionDto {
   @IsNotFutureDate()
   transactionDate?: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptionalNotes)
   @IsOptional()
   @IsString()
+  @MaxLength(purchaseNotesMaxLength)
+  @IsSafeNotes()
   notes?: string;
 }

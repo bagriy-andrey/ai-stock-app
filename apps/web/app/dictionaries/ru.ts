@@ -68,6 +68,7 @@ export const ru = {
   chartUnavailable: "Исторические цены временно недоступны.",
   noChartData: "Для этого периода нет исторических цен.",
   close: "Закрыть",
+  requiredFieldsHelp: "Поля, отмеченные *, обязательны.",
   currentPrice: "Текущая цена",
   previousClose: "Предыдущее закрытие",
   openPrice: "Открытие",
@@ -107,9 +108,17 @@ export const ru = {
   sellPrice: "Цена продажи",
   quantityToSell: "Количество для продажи",
   quantityGreaterThanZeroError: "Количество должно быть больше 0.",
+  quantityRequiredError: "Укажите количество.",
+  quantityInvalidNumberError:
+    "Введите количество только цифрами, используйте . или , для десятичных значений.",
+  quantityRangeError: "Количество должно быть от 0.0001 до 100000000.",
   sellQuantityExceedsPositionError:
     "Количество для продажи не может превышать текущее количество в позиции.",
   priceGreaterThanZeroError: "Цена должна быть больше 0.",
+  priceRequiredError: "Укажите цену покупки.",
+  priceInvalidNumberError:
+    "Введите цену покупки только цифрами, используйте . или , для десятичных значений.",
+  priceRangeError: "Цена покупки должна быть от 0.0001 до 100000000.",
   totalValue: "Общая стоимость",
   totalCost: "Общая себестоимость",
   totalProfitLoss: "Общая прибыль/убыток",
@@ -138,8 +147,17 @@ export const ru = {
   profitLossUsd: "Прибыль/убыток (USD)",
   profitLossPercent: "Прибыль/убыток %",
   currency: "Валюта",
+  currencyRequiredError: "Выберите валюту.",
+  currencyUnsupportedError: "Выберите поддерживаемую валюту.",
   purchaseDate: "Дата покупки",
+  purchaseDateRequiredError: "Укажите дату покупки.",
   futurePurchaseDateError: "Дата покупки не может быть в будущем.",
+  stockSelectionRequiredError: "Выберите акцию из списка.",
+  addPurchaseFormValidationError: "Исправьте выделенные поля перед сохранением.",
+  notesMaxLengthError: "Заметки должны быть не длиннее 500 символов.",
+  notesDangerousError:
+    "Заметки не могут содержать HTML, скрипты или управляющие символы.",
+  notesMaxLengthHelp: "Осталось символов: {count}.",
   loadingCurrentPrice: "Загрузка текущей рыночной цены...",
   currentPricePresetError:
     "Не удалось загрузить текущую цену. Введите цену покупки вручную.",
@@ -162,6 +180,7 @@ export const ru = {
   transactionFiltersSubtitle:
     "Сужайте историю сделок по тикеру и диапазону дат.",
   clearFilters: "Сбросить фильтры",
+  clearSearch: "Очистить поиск",
   searchByTicker: "Поиск по тикеру",
   allTypes: "Все типы",
   fromDate: "Дата с",

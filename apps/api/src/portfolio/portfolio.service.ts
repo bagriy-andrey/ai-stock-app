@@ -21,6 +21,10 @@ import {
 import { MarketDataService } from "../market-data/market-data.service";
 import { TransactionsService } from "../transactions/transactions.service";
 import type { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
+import {
+  purchaseNumberMax,
+  purchaseNumberMin,
+} from "./dto/portfolio-position-validation";
 import type { UpdatePortfolioPositionDto } from "./dto/update-portfolio-position.dto";
 import {
   PortfolioPosition,
@@ -157,13 +161,20 @@ export class PortfolioService implements OnModuleInit {
     const ticker = this.normalizeTicker(input.ticker);
     const purchaseDate = this.toPurchaseDate(input.purchaseDate);
     const quote = await this.marketDataService.getQuote(ticker);
+    const profile = await this.marketDataService
+      .getCompanyProfile(ticker)
+      .catch(() => null);
+    const companyName = profile?.name?.trim() || input.companyName.trim();
 
     const position = await this.portfolioPositionModel.create({
       userId: ownerId,
       ticker,
-      companyName: input.companyName.trim(),
-      quantity: input.quantity,
-      averagePurchasePrice: input.averagePurchasePrice,
+      companyName,
+      quantity: this.validatePurchaseNumber(input.quantity, "quantity"),
+      averagePurchasePrice: this.validatePurchaseNumber(
+        input.averagePurchasePrice,
+        "averagePurchasePrice",
+      ),
       currency: this.normalizeCurrency(input.currency),
       purchaseDate,
       notes: this.normalizeOptionalString(input.notes),
@@ -207,17 +218,28 @@ export class PortfolioService implements OnModuleInit {
         ? undefined
         : this.toPurchaseDate(input.purchaseDate);
     const quote = await this.marketDataService.getQuote(ticker);
+    const profile =
+      input.ticker === undefined
+        ? null
+        : await this.marketDataService.getCompanyProfile(ticker).catch(() => null);
     const update = {
       ...(input.ticker === undefined
         ? {}
         : { ticker }),
       ...(input.companyName === undefined
         ? {}
-        : { companyName: input.companyName.trim() }),
-      ...(input.quantity === undefined ? {} : { quantity: input.quantity }),
+        : { companyName: profile?.name?.trim() || input.companyName.trim() }),
+      ...(input.quantity === undefined
+        ? {}
+        : { quantity: this.validatePurchaseNumber(input.quantity, "quantity") }),
       ...(input.averagePurchasePrice === undefined
         ? {}
-        : { averagePurchasePrice: input.averagePurchasePrice }),
+        : {
+            averagePurchasePrice: this.validatePurchaseNumber(
+              input.averagePurchasePrice,
+              "averagePurchasePrice",
+            ),
+          }),
       ...(input.currency === undefined
         ? {}
         : { currency: this.normalizeCurrency(input.currency) }),
@@ -489,12 +511,32 @@ export class PortfolioService implements OnModuleInit {
   }
 
   private normalizeCurrency(currency: string): string {
-    return currency.trim().toUpperCase();
+    const normalizedCurrency = currency.trim().toUpperCase();
+
+    if (normalizedCurrency !== "USD") {
+      throw new BadRequestException("currency must be a supported currency");
+    }
+
+    return normalizedCurrency;
   }
 
   private normalizeOptionalString(value: string | undefined): string | undefined {
     const normalizedValue = value?.trim();
     return normalizedValue ? normalizedValue : undefined;
+  }
+
+  private validatePurchaseNumber(value: number, fieldName: string): number {
+    if (
+      !Number.isFinite(value) ||
+      value < purchaseNumberMin ||
+      value > purchaseNumberMax
+    ) {
+      throw new BadRequestException(
+        `${fieldName} must be between ${purchaseNumberMin} and ${purchaseNumberMax}`,
+      );
+    }
+
+    return value;
   }
 
   private toPurchaseDate(value: string): Date {

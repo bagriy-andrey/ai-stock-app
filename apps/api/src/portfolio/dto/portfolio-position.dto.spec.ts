@@ -8,8 +8,8 @@ describe("Portfolio position DTOs", () => {
   const validInput = {
     ticker: " aapl ",
     companyName: " Apple Inc. ",
-    quantity: "2",
-    averagePurchasePrice: "150",
+    quantity: 2,
+    averagePurchasePrice: 150,
     currency: " usd ",
     purchaseDate: "2026-05-01",
   };
@@ -31,10 +31,18 @@ describe("Portfolio position DTOs", () => {
   it.each([
     ["quantity", 0],
     ["quantity", -1],
+    ["quantity", 0.00009],
+    ["quantity", 100000001],
+    ["quantity", "00001"],
+    ["quantity", "1e10"],
     ["averagePurchasePrice", 0],
     ["averagePurchasePrice", -1],
+    ["averagePurchasePrice", 0.00009],
+    ["averagePurchasePrice", 100000001],
+    ["averagePurchasePrice", "abc"],
     ["ticker", ""],
     ["currency", ""],
+    ["currency", "EUR"],
   ])("rejects invalid %s values", async (field, value) => {
     const dto = plainToInstance(CreatePortfolioPositionDto, {
       ...validInput,
@@ -46,7 +54,7 @@ describe("Portfolio position DTOs", () => {
 
   it("accepts a partial update and validates positive numbers", async () => {
     const validDto = plainToInstance(UpdatePortfolioPositionDto, {
-      quantity: "3",
+      quantity: 3,
     });
     const invalidDto = plainToInstance(UpdatePortfolioPositionDto, {
       quantity: 0,
@@ -68,5 +76,25 @@ describe("Portfolio position DTOs", () => {
 
     await expect(validate(createDto)).resolves.not.toHaveLength(0);
     await expect(validate(updateDto)).resolves.not.toHaveLength(0);
+  });
+
+  it("normalizes optional notes and rejects unsafe notes", async () => {
+    const validDto = plainToInstance(CreatePortfolioPositionDto, {
+      ...validInput,
+      notes: "  Long-term position\r\nReviewed quarterly  ",
+    });
+    const unsafeDto = plainToInstance(CreatePortfolioPositionDto, {
+      ...validInput,
+      notes: "<script>alert(1)</script>",
+    });
+    const oversizedDto = plainToInstance(CreatePortfolioPositionDto, {
+      ...validInput,
+      notes: "a".repeat(501),
+    });
+
+    await expect(validate(validDto)).resolves.toHaveLength(0);
+    expect(validDto.notes).toBe("Long-term position\nReviewed quarterly");
+    await expect(validate(unsafeDto)).resolves.not.toHaveLength(0);
+    await expect(validate(oversizedDto)).resolves.not.toHaveLength(0);
   });
 });

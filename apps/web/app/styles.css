@@ -96,13 +96,15 @@ a:hover {
 button:focus-visible,
 a:focus-visible,
 input:focus-visible,
-select:focus-visible {
+select:focus-visible,
+textarea:focus-visible {
   outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
 input,
-select {
+select,
+textarea {
   min-height: 40px;
   width: 100%;
   border: 1px solid var(--control-border);
@@ -117,8 +119,15 @@ select {
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
   border-color: var(--focus-ring);
+}
+
+textarea {
+  min-height: 104px;
+  padding: 10px 12px;
+  resize: vertical;
 }
 
 label {
@@ -575,6 +584,23 @@ p {
   color: var(--negative);
 }
 
+.field-error {
+  color: var(--negative);
+  font-size: 0.82rem;
+  font-weight: 700;
+  line-height: 1.2;
+  min-height: 1rem;
+}
+
+.required-indicator {
+  color: var(--negative);
+}
+
+.ui-control-invalid {
+  border-color: var(--negative);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--negative) 35%, transparent);
+}
+
 .success-text {
   color: var(--positive);
 }
@@ -601,6 +627,84 @@ p {
   position: relative;
   display: grid;
   gap: 8px;
+}
+
+.stock-search-control {
+  position: relative;
+  display: flex;
+  min-height: 40px;
+  align-items: center;
+  border: 1px solid var(--control-border);
+  border-radius: 8px;
+  background: var(--input-background);
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease;
+}
+
+.stock-search-control:focus-within {
+  border-color: var(--focus-ring);
+}
+
+.stock-search-control .stock-search-input {
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  padding-right: 122px;
+}
+
+.stock-search-control .stock-search-input:focus {
+  border-color: transparent;
+}
+
+.stock-search-control-busy {
+  opacity: 0.78;
+}
+
+.stock-search-inline-status {
+  position: absolute;
+  right: 42px;
+  max-width: 150px;
+  overflow: hidden;
+  color: var(--subtle-foreground);
+  font-size: 0.78rem;
+  font-weight: 800;
+  pointer-events: none;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stock-search-loader {
+  position: absolute;
+  right: 46px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--subtle-foreground) 40%, transparent);
+  border-top-color: var(--focus-ring);
+  border-radius: 999px;
+  animation: stock-search-spin 700ms linear infinite;
+}
+
+.stock-search-clear {
+  position: absolute;
+  right: 4px;
+  display: grid;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  place-items: center;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--subtle-foreground);
+  padding: 0;
+}
+
+.stock-search-clear:hover,
+.stock-search-clear:focus-visible {
+  background: var(--panel-hover);
+  color: var(--foreground);
 }
 
 .search-status,
@@ -646,6 +750,12 @@ p {
 
 .search-results small {
   color: var(--subtle-foreground);
+}
+
+@keyframes stock-search-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .watchlist-list {
@@ -1686,6 +1796,10 @@ p {
   gap: 10px;
 }
 
+.portfolio-modal-actions {
+  justify-content: flex-end;
+}
+
 .portfolio-row-actions .ui-button {
   min-height: 34px;
   padding: 0 10px;
@@ -1737,6 +1851,21 @@ p {
 
 .portfolio-field-status {
   color: var(--subtle-foreground);
+}
+
+.app-toast {
+  position: fixed;
+  z-index: 20;
+  right: 24px;
+  bottom: 24px;
+  max-width: min(360px, calc(100vw - 48px));
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 30%);
+  color: var(--foreground);
+  font-weight: 800;
+  padding: 14px 16px;
 }
 
 .visually-hidden {
@@ -1843,6 +1972,11 @@ p {
 
   .stock-modal {
     padding: 20px;
+  }
+
+  .portfolio-modal-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .stock-chart-header {

@@ -69,6 +69,7 @@ export const uk = {
   chartUnavailable: "Історичні ціни тимчасово недоступні.",
   noChartData: "Для цього періоду немає історичних цін.",
   close: "Закрити",
+  requiredFieldsHelp: "Поля, позначені *, обов'язкові.",
   currentPrice: "Поточна ціна",
   previousClose: "Попереднє закриття",
   openPrice: "Відкриття",
@@ -108,9 +109,17 @@ export const uk = {
   sellPrice: "Ціна продажу",
   quantityToSell: "Кількість для продажу",
   quantityGreaterThanZeroError: "Кількість має бути більшою за 0.",
+  quantityRequiredError: "Вкажіть кількість.",
+  quantityInvalidNumberError:
+    "Введіть кількість лише цифрами, використовуйте . або , для десяткових значень.",
+  quantityRangeError: "Кількість має бути від 0.0001 до 100000000.",
   sellQuantityExceedsPositionError:
     "Кількість для продажу не може перевищувати поточну кількість у позиції.",
   priceGreaterThanZeroError: "Ціна має бути більшою за 0.",
+  priceRequiredError: "Вкажіть ціну придбання.",
+  priceInvalidNumberError:
+    "Введіть ціну придбання лише цифрами, використовуйте . або , для десяткових значень.",
+  priceRangeError: "Ціна придбання має бути від 0.0001 до 100000000.",
   totalValue: "Загальна вартість",
   totalCost: "Загальна собівартість",
   totalProfitLoss: "Загальний прибуток/збиток",
@@ -139,8 +148,17 @@ export const uk = {
   profitLossUsd: "Прибуток/збиток (USD)",
   profitLossPercent: "Прибуток/збиток %",
   currency: "Валюта",
+  currencyRequiredError: "Виберіть валюту.",
+  currencyUnsupportedError: "Виберіть підтримувану валюту.",
   purchaseDate: "Дата придбання",
+  purchaseDateRequiredError: "Вкажіть дату придбання.",
   futurePurchaseDateError: "Дата придбання не може бути в майбутньому.",
+  stockSelectionRequiredError: "Виберіть акцію зі списку.",
+  addPurchaseFormValidationError: "Виправте виділені поля перед збереженням.",
+  notesMaxLengthError: "Нотатки мають містити не більше 500 символів.",
+  notesDangerousError:
+    "Нотатки не можуть містити HTML, скрипти або керівні символи.",
+  notesMaxLengthHelp: "Залишилось символів: {count}.",
   loadingCurrentPrice: "Завантаження поточної ринкової ціни...",
   currentPricePresetError:
     "Не вдалося завантажити поточну ціну. Введіть ціну придбання вручну.",
@@ -163,6 +181,7 @@ export const uk = {
   transactionFiltersSubtitle:
     "Звужуйте історію угод за тикером і діапазоном дат.",
   clearFilters: "Скинути фільтри",
+  clearSearch: "Очистити пошук",
   searchByTicker: "Пошук за тикером",
   allTypes: "Усі типи",
   fromDate: "Дата з",

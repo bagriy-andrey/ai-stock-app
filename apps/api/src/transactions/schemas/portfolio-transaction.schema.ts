@@ -1,6 +1,11 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type { PortfolioTransactionType } from "@ai-stock-advisor/shared";
 import { HydratedDocument, Types } from "mongoose";
+import {
+  purchaseNotesMaxLength,
+  purchaseNumberMax,
+  purchaseNumberMin,
+} from "../../portfolio/dto/portfolio-position-validation";
 import { User } from "../../users/schemas/user.schema";
 
 @Schema({
@@ -20,13 +25,13 @@ export class PortfolioTransaction {
   @Prop({ enum: ["BUY", "SELL", "UPDATE", "DELETE"], required: true })
   type!: PortfolioTransactionType;
 
-  @Prop({ required: true, min: Number.MIN_VALUE })
+  @Prop({ required: true, min: purchaseNumberMin, max: purchaseNumberMax })
   quantity!: number;
 
-  @Prop({ required: true, min: Number.MIN_VALUE })
+  @Prop({ required: true, min: purchaseNumberMin, max: purchaseNumberMax })
   price!: number;
 
-  @Prop({ required: true, trim: true, uppercase: true })
+  @Prop({ enum: ["USD"], required: true, trim: true, uppercase: true })
   currency!: string;
 
   @Prop({
@@ -38,7 +43,7 @@ export class PortfolioTransaction {
   })
   transactionDate!: Date;
 
-  @Prop({ trim: true })
+  @Prop({ maxlength: purchaseNotesMaxLength, trim: true })
   notes?: string;
 
   createdAt!: Date;

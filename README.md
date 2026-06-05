@@ -413,6 +413,14 @@ returns:
 The MVP does not perform FX conversion. Keep positions in one currency when
 using aggregate summary values.
 
+Add purchase validation runs in both the web form and API DTOs. Users must pick
+a ticker from autocomplete, quantity and purchase price must be JSON numbers
+between `0.0001` and `100000000`, currency is currently limited to `USD`, and
+purchase dates cannot be in the future. Notes are optional, capped at 500
+characters, normalized for line endings, and rejected if they contain HTML,
+script-like payloads, or control characters. Successful saves close the modal
+and refresh both Portfolio and Transactions query data.
+
 Example add request:
 
 ```bash

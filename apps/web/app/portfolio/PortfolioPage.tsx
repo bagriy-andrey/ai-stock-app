@@ -336,7 +336,7 @@ export function PortfolioPage() {
           </>
         )}
         {statusMessage ? (
-          <p className="portfolio-action-status" role="status">
+          <p className="app-toast" role="status">
             {statusMessage}
           </p>
         ) : null}

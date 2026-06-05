@@ -42,6 +42,7 @@ describe("PortfolioService", () => {
     },
   };
   const marketDataService = {
+    getCompanyProfile: jest.fn(),
     getQuote: jest.fn(),
     getQuotes: jest.fn(),
   } as unknown as jest.Mocked<MarketDataService>;
@@ -85,6 +86,13 @@ describe("PortfolioService", () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    marketDataService.getCompanyProfile.mockResolvedValue({
+      country: "US",
+      currency: "USD",
+      exchange: "NASDAQ",
+      name: "Apple Inc.",
+      ticker: "AAPL",
+    });
   });
 
   it("replaces the legacy unique user ticker index with a non-unique index", async () => {

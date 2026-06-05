@@ -1,34 +1,28 @@
-import { Transform, Type } from "class-transformer";
+import { Transform } from "class-transformer";
 import {
   IsDateString,
-  IsNotEmpty,
+  IsIn,
   IsNumber,
+  IsNotEmpty,
   IsOptional,
-  IsPositive,
   IsString,
   Matches,
+  Max,
+  MaxLength,
+  Min,
 } from "class-validator";
 import { IsNotFutureDate } from "./is-not-future-date.validator";
-
-const tickerPattern = /^[A-Z][A-Z0-9.-]{0,9}$/;
-const currencyPattern = /^[A-Z]{3}$/;
-
-function trimString({ value }: { value: unknown }): unknown {
-  return typeof value === "string" ? value.trim() : value;
-}
-
-function trimOptionalString({ value }: { value: unknown }): unknown {
-  if (typeof value !== "string") {
-    return value;
-  }
-
-  const trimmed = value.trim();
-  return trimmed.length > 0 ? trimmed : undefined;
-}
-
-function trimUppercaseString({ value }: { value: unknown }): unknown {
-  return typeof value === "string" ? value.trim().toUpperCase() : value;
-}
+import {
+  currencyPattern,
+  IsSafeNotes,
+  purchaseNotesMaxLength,
+  purchaseNumberMax,
+  purchaseNumberMin,
+  tickerPattern,
+  trimOptionalNotes,
+  trimString,
+  trimUppercaseString,
+} from "./portfolio-position-validation";
 
 export class CreatePortfolioPositionDto {
   @Transform(trimUppercaseString)
@@ -42,23 +36,25 @@ export class CreatePortfolioPositionDto {
   @Transform(trimString)
   @IsString()
   @IsNotEmpty()
+  @MaxLength(200)
   companyName!: string;
 
-  @Type(() => Number)
-  @IsNumber()
-  @IsPositive()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  @Min(purchaseNumberMin)
+  @Max(purchaseNumberMax)
   quantity!: number;
 
-  @Type(() => Number)
-  @IsNumber()
-  @IsPositive()
+  @IsNumber({ allowInfinity: false, allowNaN: false })
+  @Min(purchaseNumberMin)
+  @Max(purchaseNumberMax)
   averagePurchasePrice!: number;
 
   @Transform(trimUppercaseString)
   @IsString()
   @IsNotEmpty()
+  @IsIn(["USD"], { message: "currency must be a supported currency" })
   @Matches(currencyPattern, {
-    message: "currency must be a three-letter currency code",
+    message: "currency must be a supported currency",
   })
   currency!: string;
 
@@ -66,8 +62,10 @@ export class CreatePortfolioPositionDto {
   @IsNotFutureDate()
   purchaseDate!: string;
 
-  @Transform(trimOptionalString)
+  @Transform(trimOptionalNotes)
   @IsOptional()
   @IsString()
+  @MaxLength(purchaseNotesMaxLength)
+  @IsSafeNotes()
   notes?: string;
 }

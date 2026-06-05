@@ -68,6 +68,9 @@ export function StockDetailsModal({
   const [range, setRange] = useState<StockCandleRange>("1d");
   const [purchasePrefill, setPurchasePrefill] =
     useState<AddPurchasePrefill | null>(null);
+  const [purchaseStatusMessage, setPurchaseStatusMessage] = useState<string | null>(
+    null,
+  );
   const normalizedTicker = ticker.trim().toUpperCase();
   const watchlistQueryKey = ["watchlist"] as const;
   const portfolioQueryKey = ["portfolio"] as const;
@@ -113,6 +116,7 @@ export function StockDetailsModal({
       createPortfolioPosition(accessToken ?? "", input),
     onSuccess: async () => {
       setPurchasePrefill(null);
+      setPurchaseStatusMessage(t.portfolioActionSuccess);
       await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
       await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
     },
@@ -271,13 +275,14 @@ export function StockDetailsModal({
                 : t.addToWatchlist}
           </Button>
           <Button
-            onClick={() =>
+            onClick={() => {
+              setPurchaseStatusMessage(null);
               setPurchasePrefill({
                 ticker: normalizedTicker,
                 companyName: getActionCompanyName(companyName, t),
                 currency: details?.currency,
-              })
-            }
+              });
+            }}
             type="button"
             variant="outline"
           >
@@ -353,6 +358,11 @@ export function StockDetailsModal({
             onSubmit={(input) => createPurchaseMutation.mutate(input)}
             t={t}
           />
+        ) : null}
+        {purchaseStatusMessage ? (
+          <p className="app-toast" role="status">
+            {purchaseStatusMessage}
+          </p>
         ) : null}
       </section>
     </div>
