@@ -8,7 +8,7 @@ import type {
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   useMutation,
   useQueries,
@@ -19,10 +19,20 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Input } from "../components/ui/input";
+import { Label } from "../components/ui/label";
+import { PaginationControls } from "../components/ui/PaginationControls";
 import { SortIndicator } from "../components/ui/SortIndicator";
 import { StockCard } from "../components/watchlist/StockCard";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
-import type { WatchlistSortField } from "../lib/page-sort-fields";
+import {
+  watchlistSortFields,
+  type WatchlistSortField,
+} from "../lib/page-sort-fields";
+import {
+  createClientPaginationMeta,
+  paginateClientItems,
+} from "../lib/client-pagination";
 import {
   fetchCompanyProfile,
   fetchMarketQuotes,
@@ -30,9 +40,19 @@ import {
   searchMarketSymbols,
   type StockChartCandle,
 } from "../lib/market-data-api";
+import {
+  resolveValidPage,
+  shouldShowPagination,
+} from "../lib/pagination-state";
 import type { SortState } from "../lib/table-sorting";
-import { sortItems } from "../lib/table-sorting";
-import { useUrlSortState } from "../lib/use-url-sort-state";
+import { sortItems, toggleSortState } from "../lib/table-sorting";
+import {
+  parsePageParam,
+  parseSortParams,
+  parseStringParam,
+  type QueryParamsReader,
+  useUrlState,
+} from "../lib/url-state";
 import {
   addWatchlistItem,
   fetchWatchlist,
@@ -40,6 +60,7 @@ import {
 } from "../lib/watchlist-api";
 
 const watchlistQueryKey = ["watchlist"] as const;
+const tablePageSize = 10;
 const watchlistSortAccessors: Record<
   WatchlistSortField,
   (displayItem: WatchlistDisplayItem) => string | number | undefined
@@ -50,6 +71,36 @@ const watchlistSortAccessors: Record<
   companyName: ({ item, profile }) =>
     profile?.name ?? item.companyName ?? item.ticker,
 };
+const watchlistUrlKeys = ["search", "sort", "order", "page"] as const;
+
+interface WatchlistUrlState extends SortState<WatchlistSortField> {
+  page: number;
+  search: string;
+}
+
+function parseWatchlistUrlState(params: QueryParamsReader): WatchlistUrlState {
+  const sortState = parseSortParams({
+    allowedSorts: watchlistSortFields,
+    params,
+  });
+
+  return {
+    page: parsePageParam(params.get("page")),
+    search: parseStringParam(params.get("search")),
+    ...sortState,
+  };
+}
+
+function serializeWatchlistUrlState(
+  state: WatchlistUrlState,
+): Record<string, string | number | undefined> {
+  return {
+    search: state.search,
+    sort: state.sort,
+    order: state.sort ? state.order : undefined,
+    page: state.page,
+  };
+}
 
 interface WatchlistDisplayItem {
   candles?: StockChartCandle[];
@@ -60,11 +111,7 @@ interface WatchlistDisplayItem {
   quote?: StockQuote;
 }
 
-export function WatchlistPage({
-  initialSortState = {},
-}: {
-  initialSortState?: SortState<WatchlistSortField>;
-}) {
+export function WatchlistPage() {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
@@ -75,9 +122,35 @@ export function WatchlistPage({
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
-  const { setSort, sortState } = useUrlSortState({
-    initialState: initialSortState,
+  const { setState: setUrlState, state: urlState } = useUrlState({
+    defaults: { page: 1 },
+    managedKeys: watchlistUrlKeys,
+    parse: parseWatchlistUrlState,
+    serialize: serializeWatchlistUrlState,
   });
+  const currentPage = urlState.page;
+  const watchlistSearch = urlState.search;
+  const sortState: SortState<WatchlistSortField> = useMemo(
+    () => ({
+      sort: urlState.sort,
+      order: urlState.order,
+    }),
+    [urlState.order, urlState.sort],
+  );
+  const setCurrentPage = useCallback((page: number | ((currentPage: number) => number)) => {
+    setUrlState({
+      page: typeof page === "function" ? page(currentPage) : page,
+    });
+  }, [currentPage, setUrlState]);
+  const setSort = useCallback((sort: WatchlistSortField) => {
+    const nextSortState = toggleSortState(sortState, sort);
+
+    setUrlState({
+      sort: nextSortState.sort,
+      order: nextSortState.order,
+      page: 1,
+    });
+  }, [setUrlState, sortState]);
 
   const watchlistQuery = useQuery({
     queryKey: watchlistQueryKey,
@@ -176,15 +249,49 @@ export function WatchlistPage({
       })),
     [items, profilesByTicker, quotesByTicker, sparklineQueries],
   );
+  const filteredDisplayItems = useMemo(() => {
+    const normalizedSearch = watchlistSearch.trim().toLowerCase();
+
+    if (!normalizedSearch) {
+      return displayItems;
+    }
+
+    return displayItems.filter((displayItem) =>
+      [
+        displayItem.item.ticker,
+        displayItem.item.companyName,
+        displayItem.profile?.name,
+      ].some((value) => value?.toLowerCase().includes(normalizedSearch)),
+    );
+  }, [displayItems, watchlistSearch]);
   const sortedDisplayItems = useMemo(
     () =>
       sortItems({
         accessors: watchlistSortAccessors,
-        items: displayItems,
+        items: filteredDisplayItems,
         state: sortState,
       }),
-    [displayItems, sortState],
+    [filteredDisplayItems, sortState],
   );
+  const paginationMeta = createClientPaginationMeta({
+    page: currentPage,
+    limit: tablePageSize,
+    totalItems: sortedDisplayItems.length,
+  });
+  const paginatedDisplayItems = paginateClientItems({
+    items: sortedDisplayItems,
+    page: currentPage,
+    limit: tablePageSize,
+  });
+  const showPagination = shouldShowPagination(paginationMeta, tablePageSize);
+
+  useEffect(() => {
+    const validPage = resolveValidPage(currentPage, paginationMeta);
+
+    if (validPage !== currentPage) {
+      setCurrentPage(validPage);
+    }
+  }, [currentPage, paginationMeta, setCurrentPage]);
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -254,31 +361,47 @@ export function WatchlistPage({
       <section aria-labelledby="watchlist-heading" className="page-section">
         <div className="section-heading watchlist-heading">
           <h2 id="watchlist-heading">{t.yourWatchlist}</h2>
-          <div className="watchlist-sort-controls" aria-label={t.sortOptions}>
-            <WatchlistSortButton
-              label={t.ticker}
-              onSort={setSort}
-              sort="ticker"
-              sortState={sortState}
-            />
-            <WatchlistSortButton
-              label={t.currentPrice}
-              onSort={setSort}
-              sort="currentPrice"
-              sortState={sortState}
-            />
-            <WatchlistSortButton
-              label={t.dailyChangePercent}
-              onSort={setSort}
-              sort="changePercent"
-              sortState={sortState}
-            />
-            <WatchlistSortButton
-              label={t.companyName}
-              onSort={setSort}
-              sort="companyName"
-              sortState={sortState}
-            />
+          <div className="watchlist-controls">
+            <div className="profile-field table-search-field">
+              <Label htmlFor="watchlist-search">{t.tickerOrCompanyName}</Label>
+              <Input
+                id="watchlist-search"
+                onChange={(event) =>
+                  setUrlState({
+                    search: event.target.value,
+                    page: 1,
+                  })
+                }
+                placeholder={t.stockSearchPlaceholder}
+                value={watchlistSearch}
+              />
+            </div>
+            <div className="watchlist-sort-controls" aria-label={t.sortOptions}>
+              <WatchlistSortButton
+                label={t.ticker}
+                onSort={setSort}
+                sort="ticker"
+                sortState={sortState}
+              />
+              <WatchlistSortButton
+                label={t.currentPrice}
+                onSort={setSort}
+                sort="currentPrice"
+                sortState={sortState}
+              />
+              <WatchlistSortButton
+                label={t.dailyChangePercent}
+                onSort={setSort}
+                sort="changePercent"
+                sortState={sortState}
+              />
+              <WatchlistSortButton
+                label={t.companyName}
+                onSort={setSort}
+                sort="companyName"
+                sortState={sortState}
+              />
+            </div>
           </div>
         </div>
         {quotesQuery.error instanceof Error ? (
@@ -289,31 +412,51 @@ export function WatchlistPage({
           <p role="status">{t.loadingWatchlist}</p>
         ) : watchlistQuery.error instanceof Error ? (
           <p className="error-text" role="alert">{t.watchlistLoadError}</p>
-        ) : items.length === 0 ? (
-          <EmptyState description={t.watchlistEmpty} title={t.noStocksYet} />
+        ) : paginatedDisplayItems.length === 0 ? (
+          <EmptyState
+            description={
+              watchlistSearch.trim() ? t.noMatchingStocks : t.watchlistEmpty
+            }
+            title={watchlistSearch.trim() ? t.noMatchingStocks : t.noStocksYet}
+          />
         ) : (
-          <div className="watchlist-list">
-            {sortedDisplayItems.map((displayItem) => (
-              <StockCard
-                candles={displayItem.candles}
-                isChartLoading={displayItem.isChartLoading}
-                isChartUnavailable={displayItem.isChartUnavailable}
-                isPriceLoading={quotesQuery.isLoading}
-                isRemoving={
-                  removeMutation.isPending &&
-                  removeMutation.variables === displayItem.item.id
-                }
-                item={displayItem.item}
-                key={displayItem.item.id}
-                language={language}
-                onOpen={() => setDetailsTicker(displayItem.item.ticker)}
-                onRemove={() => removeMutation.mutate(displayItem.item.id)}
-                profile={displayItem.profile}
-                quote={displayItem.quote}
-                t={t}
+          <>
+            <div className="watchlist-list">
+              {paginatedDisplayItems.map((displayItem) => (
+                <StockCard
+                  candles={displayItem.candles}
+                  isChartLoading={displayItem.isChartLoading}
+                  isChartUnavailable={displayItem.isChartUnavailable}
+                  isPriceLoading={quotesQuery.isLoading}
+                  isRemoving={
+                    removeMutation.isPending &&
+                    removeMutation.variables === displayItem.item.id
+                  }
+                  item={displayItem.item}
+                  key={displayItem.item.id}
+                  language={language}
+                  onOpen={() => setDetailsTicker(displayItem.item.ticker)}
+                  onRemove={() => removeMutation.mutate(displayItem.item.id)}
+                  profile={displayItem.profile}
+                  quote={displayItem.quote}
+                  t={t}
+                />
+              ))}
+            </div>
+            {showPagination ? (
+              <PaginationControls
+                ariaLabel={t.paginationNavigation}
+                currentPage={currentPage}
+                isBusy={watchlistQuery.isFetching || quotesQuery.isFetching}
+                nextLabel={t.paginationNext}
+                onNext={() => setCurrentPage((page) => page + 1)}
+                onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                pageLabel={t.paginationPageIndicator}
+                previousLabel={t.paginationPrevious}
+                totalPages={paginationMeta.totalPages}
               />
-            ))}
-          </div>
+            ) : null}
+          </>
         )}
       </section>
       {detailsTicker ? (

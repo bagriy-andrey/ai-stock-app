@@ -179,6 +179,21 @@ describe("TransactionsService", () => {
     });
   });
 
+  it("filters transactions by type", async () => {
+    const exec = jest
+      .fn<Promise<PortfolioTransactionDocument[]>, []>()
+      .mockResolvedValue([transaction]);
+    const sort = jest.fn().mockReturnValue({ exec });
+    portfolioTransactionModel.find.mockReturnValue({ sort });
+
+    await service.findAllForUser(userId.toString(), { type: "BUY" });
+
+    expect(portfolioTransactionModel.find).toHaveBeenCalledWith({
+      userId,
+      type: "BUY",
+    });
+  });
+
   it("paginates transactions with a ticker filter", async () => {
     mockPaginatedFind([transaction], 11);
 

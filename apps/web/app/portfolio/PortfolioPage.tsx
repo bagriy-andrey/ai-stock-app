@@ -21,7 +21,7 @@ import type {
   FormEvent,
   MouseEvent as ReactMouseEvent,
 } from "react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -41,7 +41,10 @@ import {
   createClientPaginationMeta,
   paginateClientItems,
 } from "../lib/client-pagination";
-import type { PortfolioSortField } from "../lib/page-sort-fields";
+import {
+  portfolioSortFields,
+  type PortfolioSortField,
+} from "../lib/page-sort-fields";
 import {
   resolveValidPage,
   shouldShowPagination,
@@ -51,10 +54,12 @@ import {
   fetchAllPortfolio,
   fetchPortfolioAllocation,
 } from "../lib/portfolio-api";
-import { buildPortfolioQueryKey } from "../lib/portfolio-query-state";
+import {
+  buildPortfolioQueryKey,
+  getPageAfterPortfolioFilterChange,
+} from "../lib/portfolio-query-state";
 import type { SortState } from "../lib/table-sorting";
-import { sortItems } from "../lib/table-sorting";
-import { useUrlSortState } from "../lib/use-url-sort-state";
+import { sortItems, toggleSortState } from "../lib/table-sorting";
 import {
   createTransaction,
   fetchTransactions,
@@ -70,6 +75,13 @@ import {
   formatPercent,
   getChangeVariant,
 } from "../lib/stock-format";
+import {
+  parsePageParam,
+  parseSortParams,
+  parseStringParam,
+  type QueryParamsReader,
+  useUrlState,
+} from "../lib/url-state";
 
 const portfolioQueryKey = ["portfolio"] as const;
 const transactionsQueryKey = ["transactions"] as const;
@@ -85,15 +97,41 @@ const portfolioSortAccessors: Record<
   profitLoss: (position) => position.profitLoss,
   profitLossPercent: (position) => position.profitLossPercent,
 };
+const portfolioUrlKeys = ["search", "sort", "order", "page"] as const;
+
+interface PortfolioUrlState extends SortState<PortfolioSortField> {
+  page: number;
+  search: string;
+}
+
+function parsePortfolioUrlState(params: QueryParamsReader): PortfolioUrlState {
+  const sortState = parseSortParams({
+    allowedSorts: portfolioSortFields,
+    params,
+  });
+
+  return {
+    page: parsePageParam(params.get("page")),
+    search: parseStringParam(params.get("search")),
+    ...sortState,
+  };
+}
+
+function serializePortfolioUrlState(
+  state: PortfolioUrlState,
+): Record<string, string | number | undefined> {
+  return {
+    search: state.search,
+    sort: state.sort,
+    order: state.sort ? state.order : undefined,
+    page: state.page,
+  };
+}
 
 type PortfolioAction = "add" | "edit" | "sell" | "delete";
 type DeletePositionMode = "partial" | "close";
 
-export function PortfolioPage({
-  initialSortState = {},
-}: {
-  initialSortState?: SortState<PortfolioSortField>;
-}) {
+export function PortfolioPage() {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
@@ -101,12 +139,36 @@ export function PortfolioPage({
   const [actionPosition, setActionPosition] =
     useState<PortfolioPositionDto | null>(null);
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const { setSort, sortState } = useUrlSortState({
-    initialState: initialSortState,
-    onSortChange: () => setCurrentPage(1),
+  const { setState: setUrlState, state: urlState } = useUrlState({
+    defaults: { page: 1 },
+    managedKeys: portfolioUrlKeys,
+    parse: parsePortfolioUrlState,
+    serialize: serializePortfolioUrlState,
   });
+  const currentPage = urlState.page;
+  const portfolioSearch = urlState.search;
+  const sortState: SortState<PortfolioSortField> = useMemo(
+    () => ({
+      sort: urlState.sort,
+      order: urlState.order,
+    }),
+    [urlState.order, urlState.sort],
+  );
+  const setCurrentPage = useCallback((page: number | ((currentPage: number) => number)) => {
+    setUrlState({
+      page: typeof page === "function" ? page(currentPage) : page,
+    });
+  }, [currentPage, setUrlState]);
+  const setSort = useCallback((sort: PortfolioSortField) => {
+    const nextSortState = toggleSortState(sortState, sort);
+
+    setUrlState({
+      sort: nextSortState.sort,
+      order: nextSortState.order,
+      page: getPageAfterPortfolioFilterChange(),
+    });
+  }, [setUrlState, sortState]);
 
   const portfolioQuery = useQuery({
     queryKey: buildPortfolioQueryKey(),
@@ -137,14 +199,28 @@ export function PortfolioPage({
   });
 
   const portfolio = portfolioQuery.data;
+  const filteredPositions = useMemo(() => {
+    const normalizedSearch = portfolioSearch.trim().toLowerCase();
+    const items = portfolio?.items ?? [];
+
+    if (!normalizedSearch) {
+      return items;
+    }
+
+    return items.filter((position) =>
+      [position.ticker, position.companyName].some((value) =>
+        value.toLowerCase().includes(normalizedSearch),
+      ),
+    );
+  }, [portfolio?.items, portfolioSearch]);
   const sortedPositions = useMemo(
     () =>
       sortItems({
         accessors: portfolioSortAccessors,
-        items: portfolio?.items ?? [],
+        items: filteredPositions,
         state: sortState,
       }),
-    [portfolio?.items, sortState],
+    [filteredPositions, sortState],
   );
   const paginationMeta = createClientPaginationMeta({
     page: currentPage,
@@ -165,7 +241,7 @@ export function PortfolioPage({
     if (validPage !== currentPage) {
       setCurrentPage(validPage);
     }
-  }, [currentPage, paginationMeta]);
+  }, [currentPage, paginationMeta, setCurrentPage]);
 
   return (
     <main>
@@ -198,15 +274,37 @@ export function PortfolioPage({
       </section>
 
       <section aria-labelledby="portfolio-positions-heading" className="page-section">
-        <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
+        <div className="section-heading">
+          <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
+          <div className="table-toolbar">
+            <div className="profile-field table-search-field">
+              <Label htmlFor="portfolio-search">{t.tickerOrCompanyName}</Label>
+              <Input
+                id="portfolio-search"
+                onChange={(event) =>
+                  setUrlState({
+                    search: event.target.value,
+                    page: getPageAfterPortfolioFilterChange(),
+                  })
+                }
+                placeholder="AAPL"
+                value={portfolioSearch}
+              />
+            </div>
+          </div>
+        </div>
         {portfolioQuery.isLoading ? (
           <p role="status">{t.loadingPositions}</p>
         ) : portfolioQuery.error instanceof Error ? (
           <p className="error-text" role="alert">{t.positionsLoadError}</p>
         ) : positions.length === 0 ? (
           <EmptyState
-            description={t.portfolioEmpty}
-            title={t.noPortfolioPositionsYet}
+            description={
+              portfolioSearch.trim() ? t.noMatchingStocks : t.portfolioEmpty
+            }
+            title={
+              portfolioSearch.trim() ? t.noMatchingStocks : t.noPortfolioPositionsYet
+            }
           />
         ) : (
           <>
@@ -847,6 +945,7 @@ function PortfolioActionModal({
     page: 1,
     limit: 100,
     ticker: position.ticker,
+    type: "",
     fromDate: "",
     toDate: "",
   });

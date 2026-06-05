@@ -137,7 +137,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
-| API | `GET` | `http://localhost:3001/transactions?page=1&limit=10&ticker=AAPL&fromDate=2026-05-01&toDate=2026-05-31` | Return paginated owned transaction records with optional filters |
+| API | `GET` | `http://localhost:3001/transactions?page=1&limit=10&ticker=AAPL&type=BUY&fromDate=2026-05-01&toDate=2026-05-31` | Return paginated owned transaction records with optional filters |
 | API | `GET` | `http://localhost:3001/transactions/:id` | Return one owned transaction record |
 | API | `POST` | `http://localhost:3001/transactions` | Create one owned transaction record |
 | API | `PATCH` | `http://localhost:3001/transactions/:id` | Update one owned transaction record |
@@ -161,8 +161,8 @@ Both endpoints return `{ items, meta }`, where `meta` includes `totalItems`,
 full portfolio `summary`; pagination is applied after transaction aggregation.
 `GET /portfolio/allocation` does not accept pagination and always calculates
 allocation from every open position for the authenticated user.
-Transaction pagination metadata is calculated after active `ticker`, `fromDate`,
-and `toDate` filters are applied.
+Transaction pagination metadata is calculated after active `ticker`, `type`,
+`fromDate`, and `toDate` filters are applied.
 
 Example placeholder analysis request:
 
@@ -303,11 +303,16 @@ and a responsive historical closing-price chart. The chart supports `1D`,
 safe provider-error states. The remove action is kept separate so deleting a
 ticker does not open the modal.
 
-Watchlist sorting is client-side. The page supports sorting by ticker, current
-price, daily change percentage, and company name. Sorting state is stored in URL
-query parameters, for example `/watchlist?sort=changePercent&order=asc`.
-Opening the page without `sort` and `order` keeps the default saved-watchlist
-order unchanged.
+Watchlist filtering, sorting, and pagination are client-side. The page supports
+searching the saved watchlist by ticker or company name, sorting by ticker,
+current price, daily change percentage, and company name, and paginating the
+filtered result. Search, sort, order, and page state are stored in URL query
+parameters, for example
+`/watchlist?search=apple&sort=changePercent&order=desc&page=1`. Empty and
+default values are omitted where possible; opening the page without query
+parameters keeps the default saved-watchlist order and starts on page 1. Search
+is applied first, then sorting, then pagination. The URL state survives refresh
+and supports browser back/forward navigation and bookmarks.
 
 Example add request:
 
@@ -328,7 +333,8 @@ Local browser check:
 6. Select each chart range and confirm that the chart reloads and uses a green, red, or gray line based on the selected period trend.
 7. Close the modal and refresh the page. The ticker should remain in the list with its latest quote.
 8. Try to add `AAPL` again. The page should show a duplicate-ticker error.
-9. Remove the ticker. It should disappear without opening the details modal.
+9. Search the saved watchlist, change sorting, switch pages if enough items exist, then refresh the page. The URL state should restore the same visible list state.
+10. Remove the ticker. It should disappear without opening the details modal.
 
 ## Portfolio
 
@@ -364,12 +370,15 @@ percentage, and current value. It supports loading, empty, and API error states.
 When the portfolio has no open positions or total current value is zero, the
 chart shows an empty state instead of rendering segments.
 
-The positions table supports client-side sorting by name, quantity, current
-stock price, current value, profit/loss USD, and profit/loss percentage.
-Sorting is applied before local table pagination and is stored in URL query
-parameters, for example `/portfolio?sort=currentValue&order=desc`. Opening the
-page without `sort` and `order` keeps the default aggregated-position order
-unchanged.
+The positions table supports client-side search by ticker or company name and
+sorting by name, quantity, current stock price, current value, profit/loss USD,
+and profit/loss percentage. Search is applied first, then sorting, then local
+table pagination. Search, sort, order, and page state are stored in URL query
+parameters, for example
+`/portfolio?search=aapl&sort=currentValue&order=desc&page=2`. Empty and default
+values are omitted where possible; opening the page without query parameters
+keeps the default aggregated-position order and starts on page 1. The URL state
+survives refresh and supports browser back/forward navigation and bookmarks.
 
 `GET /portfolio` loads the latest cached Finnhub quote for each open ticker and
 returns:
@@ -424,22 +433,25 @@ Local browser check:
 7. Add another ticker purchase. Confirm that the allocation chart shows one segment per ticker and the displayed percentages add up to approximately `100%`.
 8. Add an `AAPL` `SELL` transaction through the Transactions API. Confirm that Portfolio quantity, cost basis, and allocation percentage update.
 9. Fully sell the remaining `AAPL` quantity. Confirm that `AAPL` disappears from Portfolio and from the allocation chart.
-10. Add enough tickers to paginate the positions table, switch pages, and confirm that the allocation chart does not change because of pagination.
-11. Refresh the page and confirm that the aggregated portfolio state persists.
+10. Add enough tickers to paginate the positions table, search or sort the table, switch pages, and confirm that the allocation chart does not change because of pagination.
+11. Refresh the page and confirm that the aggregated portfolio state and URL-backed table state persist.
 
 ## Transactions
 
 Authenticated users can review transaction history at
 `http://localhost:3000/transactions`. The page lists owned transaction records,
-supports ticker search and date range filters, and provides edit/delete actions
-for transaction records. Because Portfolio is derived from transaction history,
-transaction record edits can change the aggregated Portfolio view.
+supports ticker search, type, and date range filters, and provides edit/delete
+actions for transaction records. Because Portfolio is derived from transaction
+history, transaction record edits can change the aggregated Portfolio view.
 
 The transactions table supports client-side sorting by ticker, type, quantity,
-price, and transaction date. Ticker and date filters are applied first, then
-sorting, then local table pagination. Sorting state is stored in URL query
-parameters, for example `/transactions?sort=date&order=desc`; existing filter
-query parameters remain in place when changing sort order.
+price, and transaction date. Ticker, type, and date filters are applied first,
+then sorting, then local table pagination. Ticker, type, date filters, sort,
+order, and page state are stored in URL query parameters, for example
+`/transactions?ticker=aapl&type=buy&sort=date&order=desc&page=1`. Empty and
+default values are omitted where possible; opening the page without query
+parameters starts with no filters, default ordering, and page 1. The URL state
+survives refresh and supports browser back/forward navigation and bookmarks.
 
 Transaction records are stored with `userId`, uppercase `ticker`,
 `companyName`, `type` (`BUY`, `SELL`, `UPDATE`, or `DELETE`), positive
@@ -464,8 +476,9 @@ Local browser check:
 2. Add a portfolio purchase.
 3. Open `http://localhost:3000/transactions` from the header navigation.
 4. Confirm the corresponding `BUY` record is listed.
-5. Filter by ticker and date range, then clear filters.
-6. Create a `SELL` transaction through the API or edit an existing transaction to `SELL`, then confirm the Portfolio page reflects the changed open quantity.
+5. Filter by ticker, transaction type, and date range, then clear filters.
+6. Change filters, sorting, and page, then refresh the page. The URL state should restore the same visible table state.
+7. Create a `SELL` transaction through the API or edit an existing transaction to `SELL`, then confirm the Portfolio page reflects the changed open quantity.
 
 ## Market Data
 

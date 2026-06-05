@@ -182,6 +182,10 @@ export class TransactionsService {
       query.ticker = this.normalizeTicker(filters.ticker);
     }
 
+    if (filters.type) {
+      query.type = filters.type;
+    }
+
     const dateFilter: Record<string, Date> = {};
 
     if (filters.fromDate) {

@@ -74,6 +74,10 @@ export function buildTransactionsSearchParams(
     params.set("ticker", filters.ticker);
   }
 
+  if (filters.type) {
+    params.set("type", filters.type);
+  }
+
   if (filters.fromDate) {
     params.set("fromDate", filters.fromDate);
   }

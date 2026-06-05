@@ -163,6 +163,7 @@ export const ru = {
     "Сужайте историю сделок по тикеру и диапазону дат.",
   clearFilters: "Сбросить фильтры",
   searchByTicker: "Поиск по тикеру",
+  allTypes: "Все типы",
   fromDate: "Дата с",
   toDate: "Дата по",
   transactionHistory: "История сделок",

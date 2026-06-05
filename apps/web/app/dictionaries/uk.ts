@@ -164,6 +164,7 @@ export const uk = {
     "Звужуйте історію угод за тикером і діапазоном дат.",
   clearFilters: "Скинути фільтри",
   searchByTicker: "Пошук за тикером",
+  allTypes: "Усі типи",
   fromDate: "Дата з",
   toDate: "Дата до",
   transactionHistory: "Історія угод",

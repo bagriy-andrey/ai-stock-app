@@ -257,6 +257,7 @@ export interface PortfolioTransactionDto {
 
 export interface TransactionFilters {
   ticker?: string;
+  type?: PortfolioTransactionType;
   fromDate?: string;
   toDate?: string;
   page?: number;

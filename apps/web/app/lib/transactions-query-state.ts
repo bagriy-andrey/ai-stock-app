@@ -1,7 +1,15 @@
 import type {
   PortfolioTransactionDto,
+  PortfolioTransactionType,
   TransactionFilters,
 } from "@ai-stock-advisor/shared";
+
+export const transactionTypeFilters = [
+  "BUY",
+  "SELL",
+  "UPDATE",
+  "DELETE",
+] as const satisfies readonly PortfolioTransactionType[];
 
 export interface TransactionsQueryState {
   fromDate?: string;
@@ -9,6 +17,7 @@ export interface TransactionsQueryState {
   page: number;
   ticker?: string;
   toDate?: string;
+  type?: PortfolioTransactionType;
 }
 
 export function buildTransactionsQueryState({
@@ -17,12 +26,14 @@ export function buildTransactionsQueryState({
   page,
   ticker,
   toDate,
+  type,
 }: {
   fromDate: string;
   limit: number;
   page: number;
   ticker: string;
   toDate: string;
+  type: PortfolioTransactionType | "";
 }): TransactionsQueryState {
   const normalizedTicker = ticker.trim().toUpperCase();
 
@@ -30,6 +41,7 @@ export function buildTransactionsQueryState({
     page,
     limit,
     ...(normalizedTicker ? { ticker: normalizedTicker } : {}),
+    ...(type ? { type } : {}),
     ...(fromDate ? { fromDate } : {}),
     ...(toDate ? { toDate } : {}),
   };
@@ -42,6 +54,7 @@ export function buildTransactionsQueryKey(state: TransactionsQueryState) {
       page: state.page,
       limit: state.limit,
       ticker: state.ticker ?? "",
+      type: state.type ?? "",
       fromDate: state.fromDate ?? "",
       toDate: state.toDate ?? "",
     },
@@ -53,6 +66,7 @@ export function buildTransactionsListQueryKey(state: TransactionsQueryState) {
     "transactions",
     {
       ticker: state.ticker ?? "",
+      type: state.type ?? "",
       fromDate: state.fromDate ?? "",
       toDate: state.toDate ?? "",
     },
@@ -66,13 +80,14 @@ export function toTransactionFilters(
     page: state.page,
     limit: state.limit,
     ...(state.ticker ? { ticker: state.ticker } : {}),
+    ...(state.type ? { type: state.type } : {}),
     ...(state.fromDate ? { fromDate: state.fromDate } : {}),
     ...(state.toDate ? { toDate: state.toDate } : {}),
   };
 }
 
 export function hasTransactionFilters(state: TransactionsQueryState): boolean {
-  return Boolean(state.ticker || state.fromDate || state.toDate);
+  return Boolean(state.ticker || state.type || state.fromDate || state.toDate);
 }
 
 export function getPageAfterTransactionsFilterChange(): number {
@@ -84,6 +99,10 @@ export function transactionMatchesFilters(
   state: TransactionsQueryState,
 ): boolean {
   if (state.ticker && transaction.ticker !== state.ticker) {
+    return false;
+  }
+
+  if (state.type && transaction.type !== state.type) {
     return false;
   }
 
@@ -106,4 +125,12 @@ export function transactionMatchesFilters(
   }
 
   return true;
+}
+
+export function parseTransactionTypeFilter(
+  value: string | null | undefined,
+): PortfolioTransactionType | undefined {
+  const normalizedValue = value?.trim().toUpperCase();
+
+  return transactionTypeFilters.find((type) => type === normalizedValue);
 }

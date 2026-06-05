@@ -160,6 +160,7 @@ export const en = {
   transactionFiltersSubtitle: "Narrow transaction history by ticker and date range.",
   clearFilters: "Clear filters",
   searchByTicker: "Search by ticker",
+  allTypes: "All types",
   fromDate: "From date",
   toDate: "To date",
   transactionHistory: "Transaction history",

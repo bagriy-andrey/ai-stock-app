@@ -13,7 +13,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import type { FormEvent } from "react";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
@@ -31,7 +31,10 @@ import {
   createClientPaginationMeta,
   paginateClientItems,
 } from "../lib/client-pagination";
-import type { TransactionSortField } from "../lib/page-sort-fields";
+import {
+  transactionSortFields,
+  type TransactionSortField,
+} from "../lib/page-sort-fields";
 import {
   getPageAfterRemovingCurrentItem,
   resolveValidPage,
@@ -47,20 +50,23 @@ import {
   buildTransactionsQueryState,
   getPageAfterTransactionsFilterChange,
   hasTransactionFilters,
+  parseTransactionTypeFilter,
   transactionMatchesFilters,
+  transactionTypeFilters,
   toTransactionFilters,
 } from "../lib/transactions-query-state";
 import { formatCurrency } from "../lib/stock-format";
 import type { SortState } from "../lib/table-sorting";
-import { sortItems } from "../lib/table-sorting";
-import { useUrlSortState } from "../lib/use-url-sort-state";
+import { sortItems, toggleSortState } from "../lib/table-sorting";
+import {
+  parsePageParam,
+  parseSortParams,
+  parseStringParam,
+  type QueryParamsReader,
+  useUrlState,
+} from "../lib/url-state";
 
-const transactionTypes: PortfolioTransactionType[] = [
-  "BUY",
-  "SELL",
-  "UPDATE",
-  "DELETE",
-];
+const transactionTypes: PortfolioTransactionType[] = [...transactionTypeFilters];
 const tablePageSize = 10;
 const transactionSortAccessors: Record<
   TransactionSortField,
@@ -72,44 +78,108 @@ const transactionSortAccessors: Record<
   price: (transaction) => transaction.price,
   date: (transaction) => new Date(transaction.transactionDate),
 };
+const transactionsUrlKeys = [
+  "ticker",
+  "type",
+  "fromDate",
+  "toDate",
+  "sort",
+  "order",
+  "page",
+] as const;
 
-export function TransactionsPage({
-  initialSortState = {},
-  initialTicker = "",
-}: {
-  initialSortState?: SortState<TransactionSortField>;
-  initialTicker?: string;
-}) {
+interface TransactionsUrlState extends SortState<TransactionSortField> {
+  fromDate: string;
+  page: number;
+  ticker: string;
+  toDate: string;
+  type?: PortfolioTransactionType;
+}
+
+function parseTransactionsUrlState(
+  params: QueryParamsReader,
+): TransactionsUrlState {
+  const sortState = parseSortParams({
+    allowedSorts: transactionSortFields,
+    params,
+  });
+
+  return {
+    fromDate: parseStringParam(params.get("fromDate")),
+    page: parsePageParam(params.get("page")),
+    ticker: parseStringParam(params.get("ticker")).toUpperCase(),
+    toDate: parseStringParam(params.get("toDate")),
+    type: parseTransactionTypeFilter(params.get("type")),
+    ...sortState,
+  };
+}
+
+function serializeTransactionsUrlState(
+  state: TransactionsUrlState,
+): Record<string, string | number | undefined> {
+  return {
+    ticker: state.ticker,
+    type: state.type?.toLowerCase(),
+    fromDate: state.fromDate,
+    toDate: state.toDate,
+    sort: state.sort,
+    order: state.sort ? state.order : undefined,
+    page: state.page,
+  };
+}
+
+export function TransactionsPage() {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
-  const normalizedInitialTicker = initialTicker.trim().toUpperCase();
-  const [tickerFilter, setTickerFilter] = useState(normalizedInitialTicker);
-  const [appliedInitialTicker, setAppliedInitialTicker] = useState(
-    normalizedInitialTicker,
-  );
-  const [fromDate, setFromDate] = useState("");
-  const [toDate, setToDate] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
   const [editingTransaction, setEditingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
   const [deletingTransaction, setDeletingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
-  const { setSort, sortState } = useUrlSortState({
-    initialState: initialSortState,
-    onSortChange: () => setCurrentPage(1),
+  const { setState: setUrlState, state: urlState } = useUrlState({
+    defaults: { page: 1 },
+    managedKeys: transactionsUrlKeys,
+    parse: parseTransactionsUrlState,
+    serialize: serializeTransactionsUrlState,
   });
+  const currentPage = urlState.page;
+  const fromDate = urlState.fromDate;
+  const tickerFilter = urlState.ticker;
+  const toDate = urlState.toDate;
+  const typeFilter = urlState.type ?? "";
+  const sortState: SortState<TransactionSortField> = useMemo(
+    () => ({
+      sort: urlState.sort,
+      order: urlState.order,
+    }),
+    [urlState.order, urlState.sort],
+  );
+  const setCurrentPage = useCallback((page: number | ((currentPage: number) => number)) => {
+    setUrlState({
+      page: typeof page === "function" ? page(currentPage) : page,
+    });
+  }, [currentPage, setUrlState]);
+  const setSort = useCallback((sort: TransactionSortField) => {
+    const nextSortState = toggleSortState(sortState, sort);
+
+    setUrlState({
+      sort: nextSortState.sort,
+      order: nextSortState.order,
+      page: getPageAfterTransactionsFilterChange(),
+    });
+  }, [setUrlState, sortState]);
   const queryState = useMemo(
     () =>
       buildTransactionsQueryState({
         page: currentPage,
         limit: tablePageSize,
         ticker: tickerFilter,
+        type: typeFilter,
         fromDate,
         toDate,
       }),
-    [currentPage, fromDate, tickerFilter, toDate],
+    [currentPage, fromDate, tickerFilter, toDate, typeFilter],
   );
   const hasFilters = hasTransactionFilters(queryState);
   const transactionsQueryKey = buildTransactionsListQueryKey(queryState);
@@ -189,18 +259,7 @@ export function TransactionsPage({
     if (validPage !== currentPage) {
       setCurrentPage(validPage);
     }
-  }, [currentPage, paginationMeta]);
-
-  useEffect(() => {
-    if (normalizedInitialTicker !== appliedInitialTicker) {
-      setTickerFilter(normalizedInitialTicker);
-      setAppliedInitialTicker(normalizedInitialTicker);
-      setCurrentPage(getPageAfterTransactionsFilterChange());
-    }
-  }, [appliedInitialTicker, normalizedInitialTicker]);
-
-  const resetFiltersPage = () =>
-    setCurrentPage(getPageAfterTransactionsFilterChange());
+  }, [currentPage, paginationMeta, setCurrentPage]);
 
   return (
     <main>
@@ -223,10 +282,13 @@ export function TransactionsPage({
               type="button"
               variant="outline"
               onClick={() => {
-                resetFiltersPage();
-                setTickerFilter("");
-                setFromDate("");
-                setToDate("");
+                setUrlState({
+                  ticker: "",
+                  type: undefined,
+                  fromDate: "",
+                  toDate: "",
+                  page: getPageAfterTransactionsFilterChange(),
+                });
               }}
             >
               {t.clearFilters}
@@ -239,20 +301,44 @@ export function TransactionsPage({
             <Input
               id="transactions-ticker-filter"
               onChange={(event) => {
-                resetFiltersPage();
-                setTickerFilter(event.target.value);
+                setUrlState({
+                  ticker: event.target.value,
+                  page: getPageAfterTransactionsFilterChange(),
+                });
               }}
               placeholder="AAPL"
               value={tickerFilter}
             />
           </div>
           <div className="profile-field">
+            <Label htmlFor="transactions-type-filter">{t.transactionType}</Label>
+            <Select
+              id="transactions-type-filter"
+              onChange={(event) =>
+                setUrlState({
+                  type: parseTransactionTypeFilter(event.target.value),
+                  page: getPageAfterTransactionsFilterChange(),
+                })
+              }
+              value={typeFilter}
+            >
+              <option value="">{t.allTypes}</option>
+              {transactionTypes.map((transactionType) => (
+                <option key={transactionType} value={transactionType}>
+                  {transactionType}
+                </option>
+              ))}
+            </Select>
+          </div>
+          <div className="profile-field">
             <Label htmlFor="transactions-from-date">{t.fromDate}</Label>
             <Input
               id="transactions-from-date"
               onChange={(event) => {
-                resetFiltersPage();
-                setFromDate(event.target.value);
+                setUrlState({
+                  fromDate: event.target.value,
+                  page: getPageAfterTransactionsFilterChange(),
+                });
               }}
               type="date"
               value={fromDate}
@@ -263,8 +349,10 @@ export function TransactionsPage({
             <Input
               id="transactions-to-date"
               onChange={(event) => {
-                resetFiltersPage();
-                setToDate(event.target.value);
+                setUrlState({
+                  toDate: event.target.value,
+                  page: getPageAfterTransactionsFilterChange(),
+                });
               }}
               type="date"
               value={toDate}

@@ -659,6 +659,13 @@ p {
   gap: 16px;
 }
 
+.watchlist-controls {
+  display: grid;
+  min-width: min(100%, 760px);
+  gap: 12px;
+  justify-items: end;
+}
+
 .watchlist-sort-controls {
   display: flex;
   flex-wrap: wrap;
@@ -1576,6 +1583,16 @@ p {
   white-space: nowrap;
 }
 
+.table-toolbar {
+  display: flex;
+  justify-content: flex-end;
+  width: min(100%, 320px);
+}
+
+.table-search-field {
+  width: 100%;
+}
+
 .pagination-controls {
   display: flex;
   align-items: center;
@@ -1603,7 +1620,7 @@ p {
 .transactions-filter-form {
   display: grid;
   gap: 16px;
-  grid-template-columns: 2fr 1fr 1fr;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
 }
 
 .transactions-table {
@@ -1763,6 +1780,17 @@ p {
   .section-heading {
     align-items: flex-start;
     flex-direction: column;
+  }
+
+  .table-toolbar,
+  .watchlist-controls {
+    width: 100%;
+    min-width: 0;
+    justify-items: stretch;
+  }
+
+  .watchlist-sort-controls {
+    justify-content: flex-start;
   }
 
   .watchlist-form button {
