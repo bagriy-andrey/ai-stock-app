@@ -6,7 +6,7 @@ import type {
   ProfileLanguage,
 } from "@ai-stock-advisor/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useMemo } from "react";
+import { type KeyboardEvent, useMemo } from "react";
 import type { Dictionary } from "../../dictionaries";
 import { fetchPortfolioPerformance } from "../../lib/portfolio-api";
 import {
@@ -29,6 +29,7 @@ interface PortfolioInsightsSectionProps {
   currency: string;
   isPortfolioLoading: boolean;
   language: ProfileLanguage;
+  onOpenStock: (ticker: string) => void;
   portfolio?: PortfolioDto;
   portfolioError: Error | null;
   t: Dictionary;
@@ -45,6 +46,7 @@ interface InsightCardConfig {
   identity?: PortfolioPositionDto;
   primary: InsightValue;
   secondary?: InsightValue;
+  currentValue?: InsightValue;
   title: string;
 }
 
@@ -53,6 +55,7 @@ export function PortfolioInsightsSection({
   currency,
   isPortfolioLoading,
   language,
+  onOpenStock,
   portfolio,
   portfolioError,
   t,
@@ -95,6 +98,13 @@ export function PortfolioInsightsSection({
           ),
           variant: getChangeVariant(bestPerformer.profitLoss),
         },
+        currentValue: {
+          text: formatCurrency(
+            bestPerformer.currentValue,
+            bestPerformer.currency,
+            language,
+          ),
+        },
         title: t.bestPerformer,
       });
     }
@@ -116,6 +126,13 @@ export function PortfolioInsightsSection({
           ),
           variant: getChangeVariant(worstPerformer.profitLoss),
         },
+        currentValue: {
+          text: formatCurrency(
+            worstPerformer.currentValue,
+            worstPerformer.currency,
+            language,
+          ),
+        },
         title: t.worstPerformer,
       });
     }
@@ -127,7 +144,7 @@ export function PortfolioInsightsSection({
         primary: {
           text: formatPercent(largestPosition.allocationPercent, language),
         },
-        secondary: {
+        currentValue: {
           text: formatCurrency(
             largestPosition.position.currentValue,
             largestPosition.position.currency,
@@ -197,7 +214,12 @@ export function PortfolioInsightsSection({
       ) : (
         <div className="portfolio-insights-grid">
           {insightCards.map((card) => (
-            <PortfolioInsightCard card={card} key={card.id} />
+            <PortfolioInsightCard
+              card={card}
+              key={card.id}
+              onOpenStock={onOpenStock}
+              t={t}
+            />
           ))}
         </div>
       )}
@@ -205,9 +227,49 @@ export function PortfolioInsightsSection({
   );
 }
 
-function PortfolioInsightCard({ card }: { card: InsightCardConfig }) {
+function PortfolioInsightCard({
+  card,
+  onOpenStock,
+  t,
+}: {
+  card: InsightCardConfig;
+  onOpenStock: (ticker: string) => void;
+  t: Dictionary;
+}) {
+  const ticker = card.identity?.ticker;
+  const isClickable = Boolean(ticker);
+  const handleOpenStock = () => {
+    if (ticker) {
+      onOpenStock(ticker);
+    }
+  };
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!isClickable) {
+      return;
+    }
+
+    if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      handleOpenStock();
+    }
+  };
+
   return (
-    <Card className="portfolio-insight-card">
+    <Card
+      aria-label={
+        ticker ? `${card.title}: ${ticker}. ${t.stockDetails}` : undefined
+      }
+      className={[
+        "portfolio-insight-card",
+        isClickable ? "portfolio-insight-card-clickable" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      onClick={isClickable ? handleOpenStock : undefined}
+      onKeyDown={handleKeyDown}
+      role={isClickable ? "button" : undefined}
+      tabIndex={isClickable ? 0 : undefined}
+    >
       <span className="portfolio-insight-title">{card.title}</span>
       {card.identity ? (
         <PortfolioInsightIdentity position={card.identity} />
@@ -218,6 +280,12 @@ function PortfolioInsightCard({ card }: { card: InsightCardConfig }) {
           <InsightValueText isSecondary value={card.secondary} />
         ) : null}
       </div>
+      {card.currentValue ? (
+        <div className="portfolio-insight-current-value">
+          <small>{t.currentValue}</small>
+          <strong>{card.currentValue.text}</strong>
+        </div>
+      ) : null}
     </Card>
   );
 }

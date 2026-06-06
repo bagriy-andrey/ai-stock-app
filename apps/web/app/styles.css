@@ -1798,6 +1798,22 @@ p {
   align-content: space-between;
   gap: 18px;
   padding: 20px;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.portfolio-insight-card-clickable {
+  cursor: pointer;
+}
+
+.portfolio-insight-card-clickable:hover,
+.portfolio-insight-card-clickable:focus-visible {
+  border-color: color-mix(in srgb, var(--link), transparent 44%);
+  box-shadow: 0 24px 54px rgb(0 0 0 / 24%);
+  outline: none;
+  transform: translateY(-2px);
 }
 
 .portfolio-insight-title {
@@ -1869,6 +1885,30 @@ p {
 
 .portfolio-insight-value-neutral {
   color: var(--neutral);
+}
+
+.portfolio-insight-current-value {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.portfolio-insight-current-value small {
+  color: var(--subtle-foreground);
+  font-size: 0.72rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.portfolio-insight-current-value strong {
+  color: var(--foreground);
+  font-size: 0.9rem;
+  font-weight: 900;
+  text-align: right;
 }
 
 .portfolio-insight-tooltip {

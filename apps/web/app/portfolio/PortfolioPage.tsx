@@ -305,6 +305,7 @@ export function PortfolioPage() {
         currency={summaryCurrency}
         isPortfolioLoading={portfolioQuery.isLoading}
         language={language}
+        onOpenStock={setDetailsTicker}
         portfolio={portfolio}
         portfolioError={
           portfolioQuery.error instanceof Error ? portfolioQuery.error : null

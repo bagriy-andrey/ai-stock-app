@@ -424,8 +424,10 @@ show the best performer, worst performer, and largest position in one compact
 card grid. Today's P/L uses `GET /portfolio/performance?range=1D` and compares
 the latest value point with the previous trading-day point. If that comparison
 is unavailable, the card shows `N/A` with an explanatory tooltip. The section
-supports loading skeletons, an empty state for portfolios with no positions, and
-responsive 4-column, 2-column, and single-column layouts.
+shows current value for position-based insight cards, opens the stock details
+modal when those cards are clicked, supports loading skeletons, an empty state
+for portfolios with no positions, and responsive 4-column, 2-column, and
+single-column layouts.
 
 The positions table supports client-side search by ticker or company name and
 sorting by name, quantity, current stock price, current value, profit/loss USD,
