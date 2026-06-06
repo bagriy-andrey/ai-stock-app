@@ -797,8 +797,8 @@ function PositionsTable({
   t,
 }: PositionsTableProps) {
   return (
-    <div className="portfolio-table-wrap">
-      <table className="portfolio-table">
+    <div className="portfolio-table-wrap portfolio-positions-table-wrap">
+      <table className="portfolio-table portfolio-positions-table">
         <thead>
           <tr>
             <SortableHeader
@@ -837,7 +837,9 @@ function PositionsTable({
               sort="profitLossPercent"
               sortState={sortState}
             />
-            <th><span className="visually-hidden">{t.actions}</span></th>
+            <th className="portfolio-positions-actions-heading">
+              <span className="visually-hidden">{t.actions}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -871,7 +873,7 @@ function PositionsTable({
                     />
                     <div className="stock-table-identity-text">
                       <strong>{position.ticker}</strong>
-                      <small>{position.companyName}</small>
+                      <small title={position.companyName}>{position.companyName}</small>
                     </div>
                   </div>
                 </td>
@@ -901,12 +903,13 @@ function PositionsTable({
                 <td className={variant}>
                   {formatPercent(position.profitLossPercent, language)}
                 </td>
-                <td>
+                <td className="portfolio-positions-actions-cell">
                   <div className="portfolio-row-actions">
                     <Button
                       aria-label="Edit position"
                       className="portfolio-row-icon-button"
                       data-tooltip="Edit position"
+                      type="button"
                       variant="outline"
                       onClick={(event) => {
                         event.stopPropagation();

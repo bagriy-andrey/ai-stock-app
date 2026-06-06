@@ -906,7 +906,12 @@ p {
   padding: 7px;
 }
 
-.company-logo--portfolio-position img {
+.company-logo--transaction {
+  padding: 7px;
+}
+
+.company-logo--portfolio-position img,
+.company-logo--transaction img {
   width: 100%;
   height: 100%;
   object-fit: contain;
@@ -1703,6 +1708,59 @@ p {
   white-space: nowrap;
 }
 
+.portfolio-positions-table {
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.portfolio-positions-table-wrap {
+  overflow: visible;
+}
+
+.portfolio-positions-table th,
+.portfolio-positions-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.portfolio-positions-table th:nth-child(1) {
+  width: 25%;
+}
+
+.portfolio-positions-table th:nth-child(2) {
+  width: 11%;
+}
+
+.portfolio-positions-table th:nth-child(3) {
+  width: 16%;
+}
+
+.portfolio-positions-table th:nth-child(4) {
+  width: 16%;
+}
+
+.portfolio-positions-table th:nth-child(5) {
+  width: 15%;
+}
+
+.portfolio-positions-table th:nth-child(6) {
+  width: 9%;
+}
+
+.portfolio-positions-actions-heading,
+.portfolio-positions-actions-cell {
+  width: 8%;
+  text-align: center;
+}
+
+.portfolio-positions-actions-cell {
+  overflow: visible;
+}
+
+.portfolio-positions-actions-cell .portfolio-row-actions {
+  justify-content: center;
+}
+
 .table-toolbar {
   display: flex;
   justify-content: flex-end;
@@ -1744,13 +1802,62 @@ p {
 }
 
 .transactions-table {
-  min-width: 1040px;
+  min-width: 0;
+  table-layout: fixed;
+}
+
+.transactions-table-wrap {
+  overflow: visible;
+}
+
+.transactions-table th,
+.transactions-table td {
+  overflow: hidden;
+  padding: 16px 14px;
+  text-overflow: ellipsis;
+}
+
+.transactions-table th:nth-child(1) {
+  width: 24%;
+}
+
+.transactions-table th:nth-child(2) {
+  width: 8%;
+}
+
+.transactions-table th:nth-child(3) {
+  width: 7%;
+}
+
+.transactions-table th:nth-child(4) {
+  width: 11%;
+}
+
+.transactions-table th:nth-child(5) {
+  width: 7%;
+}
+
+.transactions-table th:nth-child(6) {
+  width: 17%;
+}
+
+.transactions-table th:nth-child(7) {
+  width: 16%;
+}
+
+.transactions-table-row {
+  transition: background-color 160ms ease;
+}
+
+.transactions-table-row:hover {
+  background: var(--panel-hover);
 }
 
 .transaction-stock-open {
   display: flex;
   align-items: center;
   min-height: 0;
+  width: 100%;
   max-width: 100%;
   gap: 10px;
   border: 0;
@@ -1759,6 +1866,14 @@ p {
   color: inherit;
   padding: 4px 6px;
   text-align: left;
+}
+
+.transaction-stock-open .stock-table-identity-text {
+  overflow: hidden;
+}
+
+.transaction-stock-open small {
+  max-width: 190px;
 }
 
 .transaction-stock-open:hover,
@@ -1777,7 +1892,9 @@ p {
   display: inline-flex;
   align-items: center;
   min-height: 28px;
+  border: 1px solid transparent;
   border-radius: 999px;
+  line-height: 1;
   padding: 0 10px;
   font-size: 0.76rem;
   font-weight: 900;
@@ -1785,19 +1902,36 @@ p {
 }
 
 .transaction-type-buy {
+  border-color: color-mix(in srgb, var(--positive), transparent 70%);
   background: var(--positive-background);
   color: var(--positive);
 }
 
 .transaction-type-sell,
 .transaction-type-delete {
+  border-color: color-mix(in srgb, var(--negative), transparent 70%);
   background: var(--negative-background);
   color: var(--negative);
 }
 
 .transaction-type-update {
+  border-color: color-mix(in srgb, var(--neutral), transparent 70%);
   background: var(--neutral-background);
   color: var(--neutral);
+}
+
+.transactions-actions-heading,
+.transactions-actions-cell {
+  width: 10%;
+  text-align: center;
+}
+
+.transactions-actions-cell {
+  overflow: visible;
+}
+
+.transactions-actions-cell .portfolio-row-actions {
+  justify-content: center;
 }
 
 .portfolio-row-actions,
@@ -1848,6 +1982,14 @@ p {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--link), transparent 84%);
   color: var(--foreground);
   transform: translateY(-1px);
+}
+
+.transactions-row-icon-button-danger:hover,
+.transactions-row-icon-button-danger:focus-visible {
+  border-color: color-mix(in srgb, var(--negative), transparent 34%);
+  background: var(--negative-background);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--negative), transparent 82%);
+  color: var(--negative);
 }
 
 .portfolio-row-icon-button::after {

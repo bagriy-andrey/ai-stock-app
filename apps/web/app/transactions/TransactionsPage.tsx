@@ -12,6 +12,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { Pencil, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
@@ -67,6 +68,7 @@ import {
 } from "../lib/url-state";
 
 const transactionTypes: PortfolioTransactionType[] = [...transactionTypeFilters];
+const companyLogoBaseUrl = "https://financialmodelingprep.com/image-stock";
 const tablePageSize = 10;
 const transactionSortAccessors: Record<
   TransactionSortField,
@@ -490,12 +492,12 @@ function TransactionsTable({
               sortState={sortState}
             />
             <th>{t.notes}</th>
-            <th><span className="visually-hidden">{t.actions}</span></th>
+            <th className="transactions-actions-heading">{t.actions}</th>
           </tr>
         </thead>
         <tbody>
           {transactions.map((transaction) => (
-            <tr key={transaction.id}>
+            <tr className="transactions-table-row" key={transaction.id}>
               <td>
                 <button
                   aria-label={`${t.stockDetails}: ${transaction.ticker}, ${transaction.companyName}`}
@@ -504,13 +506,14 @@ function TransactionsTable({
                   type="button"
                 >
                   <CompanyLogo
-                    className="company-logo--table"
+                    className="company-logo--table company-logo--transaction"
                     companyName={transaction.companyName}
+                    logoUrl={getTransactionCompanyLogoUrl(transaction.ticker)}
                     ticker={transaction.ticker}
                   />
                   <span className="stock-table-identity-text">
                     <strong>{transaction.ticker}</strong>
-                    <small>{transaction.companyName}</small>
+                    <small title={transaction.companyName}>{transaction.companyName}</small>
                   </span>
                 </button>
               </td>
@@ -526,13 +529,27 @@ function TransactionsTable({
               <td className="transactions-notes-cell">
                 {transaction.notes ? transaction.notes : t.notesUnavailable}
               </td>
-              <td>
+              <td className="transactions-actions-cell">
                 <div className="portfolio-row-actions">
-                  <Button variant="outline" onClick={() => onEdit(transaction)}>
-                    {t.edit}
+                  <Button
+                    aria-label={t.editTransaction}
+                    className="portfolio-row-icon-button"
+                    data-tooltip={t.editTransaction}
+                    type="button"
+                    variant="outline"
+                    onClick={() => onEdit(transaction)}
+                  >
+                    <Pencil aria-hidden="true" size={16} strokeWidth={2.2} />
                   </Button>
-                  <Button variant="danger" onClick={() => onDelete(transaction)}>
-                    {t.delete}
+                  <Button
+                    aria-label={t.deleteTransaction}
+                    className="portfolio-row-icon-button transactions-row-icon-button-danger"
+                    data-tooltip={t.deleteTransaction}
+                    type="button"
+                    variant="outline"
+                    onClick={() => onDelete(transaction)}
+                  >
+                    <Trash2 aria-hidden="true" size={16} strokeWidth={2.2} />
                   </Button>
                 </div>
               </td>
@@ -542,6 +559,12 @@ function TransactionsTable({
       </table>
     </div>
   );
+}
+
+function getTransactionCompanyLogoUrl(ticker: string): string {
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  return `${companyLogoBaseUrl}/${encodeURIComponent(normalizedTicker)}.png`;
 }
 
 function TransactionEditModal({
