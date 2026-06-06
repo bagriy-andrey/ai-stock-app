@@ -14,19 +14,25 @@ import {
 import type {
   PortfolioAllocationDto,
   PortfolioDto,
+  PortfolioPerformancePointDto,
   PortfolioPositionDto,
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
+import { ListPortfolioPerformanceQueryDto } from "./dto/list-portfolio-performance-query.dto";
 import { ListPortfolioQueryDto } from "./dto/list-portfolio-query.dto";
 import { UpdatePortfolioPositionDto } from "./dto/update-portfolio-position.dto";
+import { PortfolioPerformanceService } from "./portfolio-performance.service";
 import { PortfolioService } from "./portfolio.service";
 
 @Controller("portfolio")
 @UseGuards(JwtAuthGuard)
 export class PortfolioController {
-  constructor(private readonly portfolioService: PortfolioService) {}
+  constructor(
+    private readonly portfolioService: PortfolioService,
+    private readonly portfolioPerformanceService: PortfolioPerformanceService,
+  ) {}
 
   @Get("allocation")
   getAllocation(
@@ -34,6 +40,17 @@ export class PortfolioController {
   ): Promise<PortfolioAllocationDto> {
     return this.portfolioService.getAllocationForUser(
       this.getAuthenticatedUserId(request),
+    );
+  }
+
+  @Get("performance")
+  getPerformance(
+    @Request() request: AuthenticatedRequest,
+    @Query() query: ListPortfolioPerformanceQueryDto,
+  ): Promise<PortfolioPerformancePointDto[]> {
+    return this.portfolioPerformanceService.getPerformanceForUser(
+      this.getAuthenticatedUserId(request),
+      query.range,
     );
   }
 

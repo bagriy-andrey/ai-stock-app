@@ -134,6 +134,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
 | API | `GET` | `http://localhost:3001/portfolio?page=1&limit=10` | Return paginated aggregated open positions and portfolio summary |
 | API | `GET` | `http://localhost:3001/portfolio/allocation` | Return full-portfolio allocation data independent of pagination |
+| API | `GET` | `http://localhost:3001/portfolio/performance?range=1M` | Return historical total portfolio value points for `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `5Y`, or `ALL` |
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
@@ -348,9 +349,9 @@ Local browser check:
 Authenticated users can review aggregated open positions at
 `http://localhost:3000/portfolio`. Open the page from the authenticated header
 menu. The page uses TanStack Query, shows portfolio summary cards, renders a
-responsive allocation pie chart, and renders one table row per open ticker.
-Detailed purchase, sale, adjustment, and delete records remain on the
-Transactions page.
+responsive portfolio performance chart, renders a responsive allocation pie
+chart, and renders one table row per open ticker. Detailed purchase, sale,
+adjustment, and delete records remain on the Transactions page.
 
 The portfolio summary and positions returned by `GET /portfolio` are derived
 from owned transaction records, not from individual purchase rows. Multiple
@@ -376,6 +377,46 @@ positions into an `Others` item. If there are 10 or fewer open positions,
 percentage, and current value. It supports loading, empty, and API error states.
 When the portfolio has no open positions or total current value is zero, the
 chart shows an empty state instead of rendering segments.
+
+The performance chart uses `GET /portfolio/performance?range=1M`. Supported
+ranges are `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `5Y`, and `ALL`; the web UI
+defaults to `1M`. `1D` uses latest available intraday candles when Yahoo
+provides them, grouped into date points, plus the live current-value point. It
+does not fabricate intraday portfolio points. `1W` uses the last seven calendar
+days of available market candles, with non-trading days represented only when
+the provider has data. `5Y` uses the last five years of available history.
+Each point represents total portfolio value:
+
+```text
+portfolioValue = sum(openPositionQuantityOnDate * historicalClosePriceOnDate)
+```
+
+The API returns a compact chart response:
+
+```json
+[
+  {
+    "date": "2026-05-01",
+    "totalValue": 7200
+  },
+  {
+    "date": "2026-05-02",
+    "totalValue": 7250
+  }
+]
+```
+
+Historical values are persisted in `PortfolioSnapshot` documents with
+`userId`, `snapshotDate`, `totalValue`, `totalCost`, `totalProfit`, and
+`positionCount`. A unique `{ userId, snapshotDate }` index keeps one snapshot
+per user per day. The performance endpoint recalculates the requested range
+from the latest owned transactions and Yahoo historical candles on each request,
+then idempotently upserts those snapshots. The last point is always recalculated
+from current live quotes so new purchases, sells, transaction edits, and
+transaction deletes are reflected after the frontend invalidates the
+`["portfolio", "performance"]` TanStack Query key. This keeps the frontend from
+doing temporary portfolio math and creates a reusable foundation for daily P/L,
+Telegram digests, AI reports, and portfolio insights.
 
 The positions table supports client-side search by ticker or company name and
 sorting by name, quantity, current stock price, current value, profit/loss USD,
@@ -524,7 +565,11 @@ Historical candle ranges map to Yahoo Finance chart queries as follows:
 | `1D` | `1d` | `5m` |
 | `1W` | `7d` | `1h` |
 | `1M` | `1mo` | `1d` |
-| `1Y` | `1y` | `1wk` |
+| `3M` | `3mo` | `1d` |
+| `6M` | `6mo` | `1d` |
+| `1Y` | `1y` | `1d` |
+| `5Y` | `5y` | `1wk` |
+| `ALL` | full available history | `1wk` |
 
 The current implementation uses an in-memory TTL cache because Redis
 application wiring has not been added yet:
@@ -596,8 +641,8 @@ separate Top Gainers and Top Losers lists. It shows loading skeletons while the
 request is pending, an empty state when FMP returns no valid records, and a
 safe error state when the provider request fails.
 
-`GET /market/stocks/:symbol/candles?range=1d|1w|1m|1y` requires the application
-JWT and returns:
+`GET /market/stocks/:symbol/candles?range=1d|1w|1m|3m|6m|1y|5y|all` requires
+the application JWT and returns:
 
 ```bash
 curl http://localhost:3001/market/stocks/AAPL/candles?range=1d \
@@ -699,9 +744,12 @@ lsof -nP -iTCP:3001 -sTCP:LISTEN
 
 ## Scheduled Jobs
 
-BullMQ scheduling is planned but not implemented in this initial scaffold.
-Redis is included in Docker Compose so the first scheduled-update vertical slice
-can add retryable, typed jobs without changing local infrastructure.
+The API currently has lightweight in-process portfolio snapshot scheduling.
+At 23:45 UTC it scans users with portfolio transactions and writes one
+`PortfolioSnapshot` per user for the current UTC day using live quotes and
+current aggregated positions. BullMQ remains the intended production job runner;
+Redis is included in Docker Compose so this scheduler can move to retryable,
+typed BullMQ jobs without changing local infrastructure.
 
 ## TODO Plan
 

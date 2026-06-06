@@ -7,6 +7,7 @@ import type {
   UpdatePortfolioTransactionRequest,
 } from "@ai-stock-advisor/shared";
 import {
+  type QueryClient,
   keepPreviousData,
   useMutation,
   useQuery,
@@ -113,6 +114,21 @@ const transactionsUrlKeys = [
   "order",
   "page",
 ] as const;
+const portfolioQueryKey = ["portfolio"] as const;
+const portfolioAllocationQueryKey = ["portfolio", "allocation"] as const;
+const portfolioPerformanceQueryKey = ["portfolio", "performance"] as const;
+const transactionsQueryKeyPrefix = ["transactions"] as const;
+
+async function invalidatePortfolioAndTransactions(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ exact: true, queryKey: portfolioQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioAllocationQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioPerformanceQueryKey }),
+    queryClient.invalidateQueries({ queryKey: transactionsQueryKeyPrefix }),
+  ]);
+}
 
 interface TransactionsUrlState extends SortState<TransactionSortField> {
   fromDate: string;
@@ -258,8 +274,7 @@ export function TransactionsPage() {
           }),
         );
       }
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      await invalidatePortfolioAndTransactions(queryClient);
     },
   });
 
@@ -274,8 +289,7 @@ export function TransactionsPage() {
           meta: paginationMeta,
         }),
       );
-      await queryClient.invalidateQueries({ queryKey: ["transactions"] });
-      await queryClient.invalidateQueries({ queryKey: ["portfolio"] });
+      await invalidatePortfolioAndTransactions(queryClient);
     },
   });
 

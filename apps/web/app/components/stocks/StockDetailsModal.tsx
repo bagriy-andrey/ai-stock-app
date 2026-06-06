@@ -48,6 +48,22 @@ interface StockDetailsModalProps {
   onClose: () => void;
 }
 
+const portfolioQueryKey = ["portfolio"] as const;
+const portfolioAllocationQueryKey = ["portfolio", "allocation"] as const;
+const portfolioPerformanceQueryKey = ["portfolio", "performance"] as const;
+const transactionsQueryKey = ["transactions"] as const;
+
+async function invalidatePortfolioAndTransactions(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ exact: true, queryKey: portfolioQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioAllocationQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioPerformanceQueryKey }),
+    queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+  ]);
+}
+
 export function StockDetailsModal({
   ticker,
   open,
@@ -69,8 +85,6 @@ export function StockDetailsModal({
     useState<AddPurchasePrefill | null>(null);
   const normalizedTicker = ticker.trim().toUpperCase();
   const watchlistQueryKey = ["watchlist"] as const;
-  const portfolioQueryKey = ["portfolio"] as const;
-  const transactionsQueryKey = ["transactions"] as const;
   const detailsQuery = useQuery({
     queryKey: ["market", "stocks", normalizedTicker, "details"],
     queryFn: () => fetchStockDetails(accessToken ?? "", normalizedTicker),
@@ -117,8 +131,7 @@ export function StockDetailsModal({
     mutationFn: (input: CreatePortfolioPositionRequest) =>
       createPortfolioPosition(accessToken ?? "", input),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
-      await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+      await invalidatePortfolioAndTransactions(queryClient);
       setPurchasePrefill(null);
       onCloseRef.current();
     },

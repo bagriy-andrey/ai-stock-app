@@ -141,6 +141,18 @@ export const ru = {
   allocationByCurrentValue: "По текущей рыночной стоимости",
   allocationLegend: "Легенда распределения портфеля",
   noAllocationData: "Нет данных о распределении",
+  portfolioPerformance: "Динамика портфеля",
+  portfolioPerformanceSubtitle: "Общая стоимость портфеля во времени",
+  portfolioPerformanceRange: "Период динамики портфеля",
+  portfolioPerformanceUnavailable: "Динамика портфеля недоступна",
+  portfolioPerformanceLoadError:
+    "Не удалось загрузить историю динамики портфеля. Попробуйте снова.",
+  portfolioPerformanceEmpty: "Истории портфеля пока нет.",
+  portfolioPerformanceEmptyDescription:
+    "Добавьте позицию или дождитесь следующего дневного снимка, чтобы отслеживать изменения стоимости.",
+  periodChangePercent: "Изменение %",
+  periodChangeAmount: "Изменение $",
+  notAvailable: "Н/Д",
   yourTransactions: "Ваши сделки покупки",
   yourPositions: "Ваши позиции",
   noPortfolioPositionsYet: "Позиций в портфеле пока нет",

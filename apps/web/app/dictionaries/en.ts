@@ -139,6 +139,18 @@ export const en = {
   allocationByCurrentValue: "By current market value",
   allocationLegend: "Portfolio allocation legend",
   noAllocationData: "No allocation data",
+  portfolioPerformance: "Portfolio Performance",
+  portfolioPerformanceSubtitle: "Total portfolio value over time",
+  portfolioPerformanceRange: "Portfolio performance range",
+  portfolioPerformanceUnavailable: "Portfolio performance unavailable",
+  portfolioPerformanceLoadError:
+    "Could not load portfolio performance history. Try again.",
+  portfolioPerformanceEmpty: "No portfolio history available yet.",
+  portfolioPerformanceEmptyDescription:
+    "Add a position or wait for the next daily snapshot to start tracking value changes over time.",
+  periodChangePercent: "Change %",
+  periodChangeAmount: "Change $",
+  notAvailable: "N/A",
   yourTransactions: "Your purchase transactions",
   yourPositions: "Your positions",
   noPortfolioPositionsYet: "No portfolio positions yet",

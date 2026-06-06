@@ -245,6 +245,21 @@ export interface PortfolioAllocationDto {
   allocations: PortfolioAllocationItemDto[];
 }
 
+export type PortfolioPerformanceRange =
+  | "1D"
+  | "1W"
+  | "1M"
+  | "3M"
+  | "6M"
+  | "1Y"
+  | "5Y"
+  | "ALL";
+
+export interface PortfolioPerformancePointDto {
+  date: string;
+  totalValue: number;
+}
+
 export interface CreatePortfolioPositionRequest {
   ticker: string;
   companyName: string;

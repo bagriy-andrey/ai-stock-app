@@ -142,6 +142,18 @@ export const uk = {
   allocationByCurrentValue: "За поточною ринковою вартістю",
   allocationLegend: "Легенда розподілу портфеля",
   noAllocationData: "Немає даних про розподіл",
+  portfolioPerformance: "Динаміка портфеля",
+  portfolioPerformanceSubtitle: "Загальна вартість портфеля з часом",
+  portfolioPerformanceRange: "Період динаміки портфеля",
+  portfolioPerformanceUnavailable: "Динаміка портфеля недоступна",
+  portfolioPerformanceLoadError:
+    "Не вдалося завантажити історію динаміки портфеля. Спробуйте ще раз.",
+  portfolioPerformanceEmpty: "Історії портфеля поки немає.",
+  portfolioPerformanceEmptyDescription:
+    "Додайте позицію або дочекайтеся наступного денного знімка, щоб відстежувати зміни вартості.",
+  periodChangePercent: "Зміна %",
+  periodChangeAmount: "Зміна $",
+  notAvailable: "Н/Д",
   yourTransactions: "Ваші угоди купівлі",
   yourPositions: "Ваші позиції",
   noPortfolioPositionsYet: "Позицій у портфелі поки немає",

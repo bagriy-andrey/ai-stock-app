@@ -3,6 +3,8 @@ import type {
   PaginationQuery,
   PortfolioAllocationDto,
   PortfolioDto,
+  PortfolioPerformancePointDto,
+  PortfolioPerformanceRange,
   PortfolioPositionDto,
   UpdatePortfolioPositionRequest,
 } from "@ai-stock-advisor/shared";
@@ -60,6 +62,18 @@ export function fetchPortfolioAllocation(
   return apiRequest<PortfolioAllocationDto>("/portfolio/allocation", {
     headers: authHeaders(accessToken),
   });
+}
+
+export function fetchPortfolioPerformance(
+  accessToken: string,
+  range: PortfolioPerformanceRange,
+): Promise<PortfolioPerformancePointDto[]> {
+  return apiRequest<PortfolioPerformancePointDto[]>(
+    `/portfolio/performance?range=${range}`,
+    {
+      headers: authHeaders(accessToken),
+    },
+  );
 }
 
 export function buildPortfolioSearchParams(

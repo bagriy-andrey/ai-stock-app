@@ -348,6 +348,16 @@ p {
   }
 }
 
+@keyframes skeleton-shimmer {
+  from {
+    background-position: 120% 0;
+  }
+
+  to {
+    background-position: -120% 0;
+  }
+}
+
 .positive {
   color: var(--positive);
 }
@@ -582,6 +592,55 @@ p {
 
 .error-text {
   color: var(--negative);
+}
+
+.error-state {
+  display: grid;
+  min-height: 260px;
+  gap: 8px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--negative), transparent 64%);
+  border-radius: 16px;
+  background: var(--negative-background);
+  padding: 24px;
+  text-align: center;
+}
+
+.error-state-mark {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border: 2px solid var(--negative);
+  border-radius: 999px;
+}
+
+.error-state-mark::before,
+.error-state-mark::after {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 16px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--negative);
+  content: "";
+}
+
+.error-state-mark::before {
+  transform: translate(-50%, -50%) rotate(45deg);
+}
+
+.error-state-mark::after {
+  transform: translate(-50%, -50%) rotate(-45deg);
+}
+
+.error-state strong {
+  color: var(--foreground);
+}
+
+.error-state p {
+  max-width: 420px;
+  margin: 0;
 }
 
 .field-error {
@@ -1591,6 +1650,225 @@ p {
   padding: 18px;
 }
 
+.portfolio-performance-card {
+  display: grid;
+  gap: 18px;
+  overflow: hidden;
+  padding: 22px;
+}
+
+.portfolio-performance-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 18px;
+}
+
+.portfolio-performance-header h2 {
+  margin: 0;
+}
+
+.portfolio-performance-header p {
+  margin: 6px 0 0;
+  color: var(--subtle-foreground);
+}
+
+.portfolio-performance-ranges {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.portfolio-performance-ranges button {
+  min-height: 34px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--panel-muted);
+  color: var(--subtle-foreground);
+  padding: 0 12px;
+  font-size: 0.78rem;
+  font-weight: 900;
+  transition:
+    background-color 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease;
+}
+
+.portfolio-performance-ranges button:hover,
+.portfolio-performance-ranges button:focus-visible,
+.portfolio-performance-ranges button[aria-pressed="true"] {
+  border-color: color-mix(in srgb, var(--link), transparent 38%);
+  background: color-mix(in srgb, var(--link), transparent 84%);
+  color: var(--foreground);
+}
+
+.portfolio-performance-ranges button[aria-pressed="true"] {
+  transform: translateY(-1px);
+}
+
+.portfolio-performance-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.portfolio-performance-metric {
+  display: grid;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--panel-muted);
+  padding: 16px;
+}
+
+.portfolio-performance-metric span {
+  color: var(--subtle-foreground);
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.portfolio-performance-metric strong {
+  font-size: 1.25rem;
+  letter-spacing: -0.04em;
+}
+
+.portfolio-performance-value-positive {
+  color: var(--positive);
+}
+
+.portfolio-performance-value-negative {
+  color: var(--negative);
+}
+
+.portfolio-performance-value-neutral {
+  color: var(--neutral);
+}
+
+.portfolio-performance-skeleton {
+  display: grid;
+  min-height: 412px;
+  gap: 14px;
+}
+
+.portfolio-performance-skeleton-chart,
+.portfolio-performance-skeleton-summary span {
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    linear-gradient(90deg, transparent, rgb(255 255 255 / 7%), transparent),
+    var(--panel-muted);
+  background-size: 220% 100%;
+  animation: skeleton-shimmer 1.3s ease-in-out infinite;
+}
+
+.portfolio-performance-skeleton-chart {
+  min-height: 300px;
+}
+
+.portfolio-performance-skeleton-summary {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.portfolio-performance-skeleton-summary span {
+  min-height: 76px;
+}
+
+.responsive-line-chart {
+  position: relative;
+  min-height: 330px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    radial-gradient(circle at 20% 0%, color-mix(in srgb, var(--link), transparent 84%), transparent 34%),
+    linear-gradient(180deg, rgb(255 255 255 / 3%), transparent),
+    var(--panel-muted);
+  padding: 12px;
+}
+
+.responsive-line-chart svg {
+  display: block;
+  width: 100%;
+  min-height: 300px;
+}
+
+.responsive-line-chart-grid line {
+  stroke: color-mix(in srgb, var(--border), transparent 20%);
+  stroke-width: 1;
+}
+
+.responsive-line-chart-grid text,
+.responsive-line-chart-x-label {
+  fill: var(--subtle-foreground);
+  font-size: 0.74rem;
+  font-weight: 800;
+}
+
+.responsive-line-chart-x-label {
+  text-anchor: middle;
+}
+
+.responsive-line-chart-area {
+  fill: color-mix(in srgb, var(--link), transparent 84%);
+}
+
+.responsive-line-chart-line {
+  fill: none;
+  stroke: var(--link);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 3;
+  filter: drop-shadow(0 10px 20px color-mix(in srgb, var(--link), transparent 74%));
+  vector-effect: non-scaling-stroke;
+}
+
+.responsive-line-chart-active line {
+  stroke: color-mix(in srgb, var(--foreground), transparent 62%);
+  stroke-dasharray: 5 5;
+  stroke-width: 1;
+}
+
+.responsive-line-chart-active circle {
+  fill: var(--foreground);
+  stroke: var(--link);
+  stroke-width: 3;
+}
+
+.responsive-line-chart-tooltip {
+  position: absolute;
+  left: var(--tooltip-x);
+  top: var(--tooltip-y);
+  z-index: 2;
+  display: grid;
+  min-width: 150px;
+  gap: 3px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel), #000 10%);
+  box-shadow: 0 18px 38px rgb(0 0 0 / 28%);
+  color: var(--foreground);
+  padding: 10px 12px;
+  pointer-events: none;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+
+.responsive-line-chart-tooltip strong {
+  font-size: 0.9rem;
+}
+
+.responsive-line-chart-tooltip span {
+  color: var(--subtle-foreground);
+  font-size: 0.76rem;
+}
+
 .portfolio-table-wrap {
   overflow-x: auto;
   overflow-y: hidden;
@@ -2167,6 +2445,34 @@ p {
   .portfolio-overview-grid,
   .portfolio-allocation-content {
     grid-template-columns: 1fr;
+  }
+
+  .portfolio-performance-header {
+    flex-direction: column;
+  }
+
+  .portfolio-performance-ranges {
+    width: 100%;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    padding-bottom: 4px;
+  }
+
+  .portfolio-performance-ranges button {
+    flex: 0 0 auto;
+  }
+
+  .portfolio-performance-summary,
+  .portfolio-performance-skeleton-summary {
+    grid-template-columns: 1fr;
+  }
+
+  .responsive-line-chart {
+    padding: 6px;
+  }
+
+  .responsive-line-chart-grid text {
+    font-size: 0.68rem;
   }
 
   .portfolio-allocation-chart {

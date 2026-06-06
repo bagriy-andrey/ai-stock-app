@@ -11,6 +11,7 @@ import type {
   ProfileLanguage,
 } from "@ai-stock-advisor/shared";
 import {
+  type QueryClient,
   keepPreviousData,
   useMutation,
   useQuery,
@@ -27,6 +28,7 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { AddPurchaseModal } from "../components/portfolio/AddPurchaseModal";
+import { PortfolioPerformanceCard } from "../components/portfolio/PortfolioPerformanceCard";
 import { CompanyLogoAvatar } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
@@ -86,6 +88,8 @@ import {
 } from "../lib/url-state";
 
 const portfolioQueryKey = ["portfolio"] as const;
+const portfolioAllocationQueryKey = ["portfolio", "allocation"] as const;
+const portfolioPerformanceQueryKey = ["portfolio", "performance"] as const;
 const transactionsQueryKey = ["transactions"] as const;
 const tablePageSize = 10;
 const companyLogoBaseUrl = "https://financialmodelingprep.com/image-stock";
@@ -129,6 +133,17 @@ function serializePortfolioUrlState(
     order: state.sort ? state.order : undefined,
     page: state.page,
   };
+}
+
+async function invalidatePortfolioAndTransactions(
+  queryClient: QueryClient,
+): Promise<void> {
+  await Promise.all([
+    queryClient.invalidateQueries({ exact: true, queryKey: portfolioQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioAllocationQueryKey }),
+    queryClient.invalidateQueries({ queryKey: portfolioPerformanceQueryKey }),
+    queryClient.invalidateQueries({ queryKey: transactionsQueryKey }),
+  ]);
 }
 
 type PortfolioAction = "add" | "edit" | "sell" | "delete";
@@ -182,7 +197,7 @@ export function PortfolioPage() {
     retry: false,
   });
   const allocationQuery = useQuery({
-    queryKey: ["portfolio", "allocation"],
+    queryKey: portfolioAllocationQueryKey,
     queryFn: () => fetchPortfolioAllocation(accessToken ?? ""),
     enabled: Boolean(accessToken),
     refetchInterval: 2 * 60 * 1_000,
@@ -196,8 +211,7 @@ export function PortfolioPage() {
       setIsAddOpen(false);
       setCurrentPage(1);
       setStatusMessage(t.portfolioActionSuccess);
-      await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
-      await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+      await invalidatePortfolioAndTransactions(queryClient);
     },
   });
 
@@ -272,6 +286,15 @@ export function PortfolioPage() {
           portfolioError={
             portfolioQuery.error instanceof Error ? portfolioQuery.error : null
           }
+          t={t}
+        />
+      </section>
+
+      <section className="page-section">
+        <PortfolioPerformanceCard
+          accessToken={accessToken ?? ""}
+          currency={summaryCurrency}
+          language={language}
           t={t}
         />
       </section>
@@ -966,8 +989,7 @@ function PortfolioActionModal({
   });
   const invalidatePortfolioData = async () => {
     onDataRefresh();
-    await queryClient.invalidateQueries({ queryKey: portfolioQueryKey });
-    await queryClient.invalidateQueries({ queryKey: transactionsQueryKey });
+    await invalidatePortfolioAndTransactions(queryClient);
   };
   const tickerTransactionsQuery = useQuery({
     queryKey: buildTransactionsQueryKey(tickerTransactionsQueryState),

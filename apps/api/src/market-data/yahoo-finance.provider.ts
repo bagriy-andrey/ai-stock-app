@@ -47,7 +47,7 @@ const YAHOO_CHART_CONFIG: Record<StockCandleRange, YahooChartConfig> = {
   "1m": { period: "1mo", interval: "1d" },
   "3m": { period: "3mo", interval: "1d" },
   "6m": { period: "6mo", interval: "1d" },
-  "1y": { period: "1y", interval: "1wk" },
+  "1y": { period: "1y", interval: "1d" },
   "5y": { period: "5y", interval: "1wk" },
   all: { period: "all", interval: "1wk" },
 };

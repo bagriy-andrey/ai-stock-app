@@ -54,6 +54,12 @@ export class TransactionsService {
     return transactions.map((transaction) => this.toDto(transaction));
   }
 
+  async findUserIdsWithTransactions(): Promise<string[]> {
+    const userIds = await this.portfolioTransactionModel.distinct("userId").exec();
+
+    return userIds.map((userId) => userId.toString());
+  }
+
   async findPageForUser(
     userId: string,
     filters: Partial<ListTransactionsQueryDto> = {},

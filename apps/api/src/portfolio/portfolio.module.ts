@@ -4,11 +4,17 @@ import { AuthModule } from "../auth/auth.module";
 import { MarketDataModule } from "../market-data/market-data.module";
 import { TransactionsModule } from "../transactions/transactions.module";
 import { PortfolioController } from "./portfolio.controller";
+import { PortfolioPerformanceService } from "./portfolio-performance.service";
+import { PortfolioSnapshotScheduler } from "./portfolio-snapshot.scheduler";
 import { PortfolioService } from "./portfolio.service";
 import {
   PortfolioPosition,
   PortfolioPositionSchema,
 } from "./schemas/portfolio-position.schema";
+import {
+  PortfolioSnapshot,
+  PortfolioSnapshotSchema,
+} from "./schemas/portfolio-snapshot.schema";
 
 @Module({
   imports: [
@@ -17,9 +23,14 @@ import {
     TransactionsModule,
     MongooseModule.forFeature([
       { name: PortfolioPosition.name, schema: PortfolioPositionSchema },
+      { name: PortfolioSnapshot.name, schema: PortfolioSnapshotSchema },
     ]),
   ],
   controllers: [PortfolioController],
-  providers: [PortfolioService],
+  providers: [
+    PortfolioPerformanceService,
+    PortfolioService,
+    PortfolioSnapshotScheduler,
+  ],
 })
 export class PortfolioModule {}
