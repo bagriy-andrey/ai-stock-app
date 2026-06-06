@@ -6,6 +6,7 @@ import type {
   ProfileLanguage,
 } from "@ai-stock-advisor/shared";
 import { useQuery } from "@tanstack/react-query";
+import { BarChart3 } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   ResponsiveLineChart,
@@ -38,6 +39,7 @@ const performanceRanges: PortfolioPerformanceRange[] = [
 interface PortfolioPerformanceCardProps {
   accessToken: string;
   currency: string;
+  isPortfolioEmpty: boolean;
   language: ProfileLanguage;
   t: Dictionary;
 }
@@ -45,6 +47,7 @@ interface PortfolioPerformanceCardProps {
 export function PortfolioPerformanceCard({
   accessToken,
   currency,
+  isPortfolioEmpty,
   language,
   t,
 }: PortfolioPerformanceCardProps) {
@@ -98,7 +101,12 @@ export function PortfolioPerformanceCard({
         />
       ) : !performanceQuery.data || performanceQuery.data.length === 0 ? (
         <EmptyState
-          description={t.portfolioPerformanceEmptyDescription}
+          description={
+            isPortfolioEmpty
+              ? t.portfolioPerformanceEmptyPortfolioDescription
+              : t.portfolioPerformanceEmptyDescription
+          }
+          icon={<BarChart3 size={26} strokeWidth={2.1} />}
           title={t.portfolioPerformanceEmpty}
         />
       ) : (

@@ -364,7 +364,11 @@ contains summary cards, allocation, and portfolio insights. Performance contains
 the performance chart plus deposited capital, current value, investment gain,
 and total return metrics. Positions contains search, position actions, the
 positions table, sorting, and pagination. Analytics currently shows an
-empty-state placeholder for future advanced analytics.
+empty-state placeholder for future advanced analytics. Empty-state UI is shared
+across portfolio tabs: empty portfolios show an "Add First Position" action
+that opens the add-purchase modal, performance history shows snapshot-specific
+empty copy, and search misses show search-specific guidance instead of the
+generic portfolio empty state.
 
 The portfolio summary and positions returned by `GET /portfolio` are derived
 from owned transaction records, not from individual purchase rows. Multiple
@@ -469,9 +473,10 @@ Today's P/L uses `GET /portfolio/performance?range=1D` and compares the latest
 value point with the previous trading-day point. If that comparison is
 unavailable, the card shows `N/A` with an explanatory tooltip. The section shows
 current value for position-based insight cards, opens the stock details modal
-when those cards are clicked, supports loading skeletons, an empty state for
-portfolios with no positions, and responsive 4-column, 2-column, and
-single-column layouts.
+when those cards are clicked, supports loading skeletons, and responsive
+4-column, 2-column, and single-column layouts. When the portfolio has no open
+positions, the Overview tab shows the portfolio empty state and does not render
+allocation or insights content.
 
 The positions table supports client-side search by ticker or company name and
 sorting by name, quantity, current stock price, current value, profit/loss USD,

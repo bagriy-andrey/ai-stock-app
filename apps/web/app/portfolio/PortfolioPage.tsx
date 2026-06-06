@@ -17,7 +17,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Info, Pencil } from "lucide-react";
+import { BarChart3, Briefcase, Info, Pencil, SearchX } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CSSProperties,
@@ -212,6 +212,9 @@ export function PortfolioPage() {
   const setActiveTab = useCallback((tab: string) => {
     setUrlState({ tab: parsePortfolioTab(tab) });
   }, [setUrlState]);
+  const openAddPurchase = useCallback(() => {
+    setIsAddOpen(true);
+  }, []);
   const setSort = useCallback((sort: PortfolioSortField) => {
     const nextSortState = toggleSortState(sortState, sort);
 
@@ -250,6 +253,8 @@ export function PortfolioPage() {
   });
 
   const portfolio = portfolioQuery.data;
+  const portfolioIsEmpty = Boolean(portfolio && portfolio.items.length === 0);
+  const hasPortfolioSearch = portfolioSearch.trim().length > 0;
   const filteredPositions = useMemo(() => {
     const normalizedSearch = portfolioSearch.trim().toLowerCase();
     const items = portfolio?.items ?? [];
@@ -284,7 +289,8 @@ export function PortfolioPage() {
     limit: tablePageSize,
   });
   const showPagination = shouldShowPagination(paginationMeta, tablePageSize);
-  const summaryCurrency = positions[0]?.currency ?? "USD";
+  const summaryCurrency =
+    portfolio?.items[0]?.currency ?? positions[0]?.currency ?? "USD";
 
   useEffect(() => {
     const validPage = resolveValidPage(currentPage, paginationMeta);
@@ -333,33 +339,45 @@ export function PortfolioPage() {
             <div className="section-heading portfolio-heading">
               <h2 id="portfolio-summary-heading">{t.portfolioSummary}</h2>
             </div>
-            <PortfolioOverview
-              allocation={allocationQuery.data}
-              allocationError={allocationQuery.error}
+            {portfolioIsEmpty ? (
+              <EmptyState
+                actionLabel={t.addFirstPosition}
+                description={t.portfolioEmptyDescription}
+                icon={<Briefcase size={26} strokeWidth={2.1} />}
+                onAction={openAddPurchase}
+                title={t.portfolioEmptyTitle}
+              />
+            ) : (
+              <PortfolioOverview
+                allocation={allocationQuery.data}
+                allocationError={allocationQuery.error}
+                currency={summaryCurrency}
+                isAllocationLoading={allocationQuery.isLoading}
+                isPortfolioLoading={portfolioQuery.isLoading}
+                language={language}
+                portfolio={portfolio}
+                portfolioError={
+                  portfolioQuery.error instanceof Error ? portfolioQuery.error : null
+                }
+                t={t}
+              />
+            )}
+          </section>
+
+          {portfolioIsEmpty ? null : (
+            <PortfolioInsightsSection
+              accessToken={accessToken ?? ""}
               currency={summaryCurrency}
-              isAllocationLoading={allocationQuery.isLoading}
               isPortfolioLoading={portfolioQuery.isLoading}
               language={language}
+              onOpenStock={setDetailsTicker}
               portfolio={portfolio}
               portfolioError={
                 portfolioQuery.error instanceof Error ? portfolioQuery.error : null
               }
               t={t}
             />
-          </section>
-
-          <PortfolioInsightsSection
-            accessToken={accessToken ?? ""}
-            currency={summaryCurrency}
-            isPortfolioLoading={portfolioQuery.isLoading}
-            language={language}
-            onOpenStock={setDetailsTicker}
-            portfolio={portfolio}
-            portfolioError={
-              portfolioQuery.error instanceof Error ? portfolioQuery.error : null
-            }
-            t={t}
-          />
+          )}
         </TabsContent>
 
         <TabsContent className="portfolio-tab-panel" value="performance">
@@ -367,6 +385,7 @@ export function PortfolioPage() {
             <PortfolioPerformanceCard
               accessToken={accessToken ?? ""}
               currency={summaryCurrency}
+              isPortfolioEmpty={portfolioIsEmpty}
               language={language}
               t={t}
             />
@@ -377,7 +396,7 @@ export function PortfolioPage() {
           <section aria-labelledby="portfolio-positions-heading" className="page-section">
             <div className="section-heading portfolio-heading">
               <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
-              <Button onClick={() => setIsAddOpen(true)}>{t.addPosition}</Button>
+              <Button onClick={openAddPurchase}>{t.addPosition}</Button>
             </div>
             <div className="table-toolbar portfolio-positions-filters">
               <div className="profile-field table-search-field">
@@ -401,11 +420,24 @@ export function PortfolioPage() {
               <p className="error-text" role="alert">{t.positionsLoadError}</p>
             ) : positions.length === 0 ? (
               <EmptyState
+                actionLabel={hasPortfolioSearch ? undefined : t.addFirstPosition}
                 description={
-                  portfolioSearch.trim() ? t.noMatchingStocks : t.portfolioEmpty
+                  hasPortfolioSearch
+                    ? t.noMatchingPositionsDescription
+                    : t.noPositionsFoundDescription
                 }
+                icon={
+                  hasPortfolioSearch ? (
+                    <SearchX size={26} strokeWidth={2.1} />
+                  ) : (
+                    <Briefcase size={26} strokeWidth={2.1} />
+                  )
+                }
+                onAction={hasPortfolioSearch ? undefined : openAddPurchase}
                 title={
-                  portfolioSearch.trim() ? t.noMatchingStocks : t.noPortfolioPositionsYet
+                  hasPortfolioSearch
+                    ? t.noMatchingPositionsFound
+                    : t.noPositionsFound
                 }
               />
             ) : (
@@ -448,8 +480,9 @@ export function PortfolioPage() {
         <TabsContent className="portfolio-tab-panel" value="analytics">
           <section className="page-section">
             <EmptyState
-              description={t.portfolioAnalyticsSoon}
-              title={t.portfolioAnalytics}
+              description={t.portfolioAnalyticsComingSoonDescription}
+              icon={<BarChart3 size={28} strokeWidth={2.1} />}
+              title={t.portfolioAdvancedAnalytics}
             />
           </section>
         </TabsContent>

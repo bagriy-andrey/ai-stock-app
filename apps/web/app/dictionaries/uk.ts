@@ -107,7 +107,11 @@ export const uk = {
   portfolioTabAnalytics: "Аналітика",
   portfolioAnalytics: "Аналітика портфеля",
   portfolioAnalyticsSoon: "Розширена аналітика буде доступна незабаром.",
+  portfolioAdvancedAnalytics: "Розширена аналітика портфеля",
+  portfolioAnalyticsComingSoonDescription:
+    "Метрики диверсифікації, галузева експозиція, аналіз ризиків та AI-інсайти скоро з'являться.",
   portfolioSummary: "Підсумок портфеля",
+  addFirstPosition: "Додати першу позицію",
   addPosition: "Додати покупку",
   addPurchase: "Додати покупку",
   editPosition: "Редагувати покупку",
@@ -159,9 +163,11 @@ export const uk = {
   portfolioPerformanceUnavailable: "Динаміка портфеля недоступна",
   portfolioPerformanceLoadError:
     "Не вдалося завантажити історію динаміки портфеля. Спробуйте ще раз.",
-  portfolioPerformanceEmpty: "Історії портфеля поки немає.",
+  portfolioPerformanceEmpty: "Історія динаміки недоступна",
   portfolioPerformanceEmptyDescription:
-    "Додайте позицію або дочекайтеся наступного денного знімка, щоб відстежувати зміни вартості.",
+    "Дані про динаміку портфеля з'являться після збору знімків.",
+  portfolioPerformanceEmptyPortfolioDescription:
+    "Додайте першу інвестицію, щоб почати відстежувати динаміку.",
   portfolioValue: "Вартість портфеля",
   depositedCapital: "Інвестований капітал",
   investmentGain: "Інвестиційний прибуток",
@@ -185,7 +191,14 @@ export const uk = {
   yourTransactions: "Ваші угоди купівлі",
   yourPositions: "Ваші позиції",
   noPortfolioPositionsYet: "Позицій у портфелі поки немає",
+  noPositionsFound: "Позицій не знайдено",
+  noPositionsFoundDescription: "Ваші активні інвестиції з'являться тут.",
+  noMatchingPositionsFound: "Відповідних позицій не знайдено",
+  noMatchingPositionsDescription: "Спробуйте змінити критерії пошуку.",
   portfolioEmpty: "Додайте позицію, щоб почати відстежувати показники портфеля.",
+  portfolioEmptyTitle: "Ваш портфель порожній",
+  portfolioEmptyDescription:
+    "Почніть формувати портфель, додавши першу інвестицію.",
   loadingPortfolio: "Завантаження підсумку портфеля...",
   portfolioLoadError: "Не вдалося завантажити підсумок портфеля. Спробуйте ще раз.",
   loadingPositions: "Завантаження позицій портфеля...",

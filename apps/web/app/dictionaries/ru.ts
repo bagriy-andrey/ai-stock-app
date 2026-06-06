@@ -106,7 +106,11 @@ export const ru = {
   portfolioTabAnalytics: "Аналитика",
   portfolioAnalytics: "Аналитика портфеля",
   portfolioAnalyticsSoon: "Расширенная аналитика скоро будет доступна.",
+  portfolioAdvancedAnalytics: "Расширенная аналитика портфеля",
+  portfolioAnalyticsComingSoonDescription:
+    "Метрики диверсификации, секторная экспозиция, анализ рисков и AI-инсайты скоро появятся.",
   portfolioSummary: "Сводка портфеля",
+  addFirstPosition: "Добавить первую позицию",
   addPosition: "Добавить покупку",
   addPurchase: "Добавить покупку",
   editPosition: "Редактировать покупку",
@@ -158,9 +162,11 @@ export const ru = {
   portfolioPerformanceUnavailable: "Динамика портфеля недоступна",
   portfolioPerformanceLoadError:
     "Не удалось загрузить историю динамики портфеля. Попробуйте снова.",
-  portfolioPerformanceEmpty: "Истории портфеля пока нет.",
+  portfolioPerformanceEmpty: "История динамики недоступна",
   portfolioPerformanceEmptyDescription:
-    "Добавьте позицию или дождитесь следующего дневного снимка, чтобы отслеживать изменения стоимости.",
+    "Данные о динамике портфеля появятся после сбора снимков.",
+  portfolioPerformanceEmptyPortfolioDescription:
+    "Добавьте первую инвестицию, чтобы начать отслеживать динамику.",
   portfolioValue: "Стоимость портфеля",
   depositedCapital: "Инвестированный капитал",
   investmentGain: "Инвестиционная прибыль",
@@ -184,7 +190,14 @@ export const ru = {
   yourTransactions: "Ваши сделки покупки",
   yourPositions: "Ваши позиции",
   noPortfolioPositionsYet: "Позиций в портфеле пока нет",
+  noPositionsFound: "Позиции не найдены",
+  noPositionsFoundDescription: "Ваши активные инвестиции появятся здесь.",
+  noMatchingPositionsFound: "Подходящие позиции не найдены",
+  noMatchingPositionsDescription: "Попробуйте изменить критерии поиска.",
   portfolioEmpty: "Добавьте позицию, чтобы начать отслеживать показатели портфеля.",
+  portfolioEmptyTitle: "Ваш портфель пуст",
+  portfolioEmptyDescription:
+    "Начните формировать портфель, добавив первую инвестицию.",
   loadingPortfolio: "Загрузка сводки портфеля...",
   portfolioLoadError: "Не удалось загрузить сводку портфеля. Попробуйте снова.",
   loadingPositions: "Загрузка позиций портфеля...",

@@ -104,7 +104,11 @@ export const en = {
   portfolioTabAnalytics: "Analytics",
   portfolioAnalytics: "Portfolio Analytics",
   portfolioAnalyticsSoon: "Advanced analytics will be available soon.",
+  portfolioAdvancedAnalytics: "Advanced Portfolio Analytics",
+  portfolioAnalyticsComingSoonDescription:
+    "Diversification metrics, sector exposure, risk analysis, and AI-powered insights are coming soon.",
   portfolioSummary: "Portfolio summary",
+  addFirstPosition: "Add First Position",
   addPosition: "Add purchase",
   addPurchase: "Add purchase",
   editPosition: "Edit purchase",
@@ -155,9 +159,11 @@ export const en = {
   portfolioPerformanceUnavailable: "Portfolio performance unavailable",
   portfolioPerformanceLoadError:
     "Could not load portfolio performance history. Try again.",
-  portfolioPerformanceEmpty: "No portfolio history available yet.",
+  portfolioPerformanceEmpty: "No performance history available",
   portfolioPerformanceEmptyDescription:
-    "Add a position or wait for the next daily snapshot to start tracking value changes over time.",
+    "Portfolio performance data will appear after snapshots are collected.",
+  portfolioPerformanceEmptyPortfolioDescription:
+    "Add your first investment to start tracking performance.",
   portfolioValue: "Portfolio Value",
   depositedCapital: "Deposited Capital",
   investmentGain: "Investment Gain",
@@ -181,7 +187,14 @@ export const en = {
   yourTransactions: "Your purchase transactions",
   yourPositions: "Your positions",
   noPortfolioPositionsYet: "No portfolio positions yet",
+  noPositionsFound: "No positions found",
+  noPositionsFoundDescription: "Your active investments will appear here.",
+  noMatchingPositionsFound: "No matching positions found",
+  noMatchingPositionsDescription: "Try adjusting your search criteria.",
   portfolioEmpty: "Add a position to start tracking your portfolio performance.",
+  portfolioEmptyTitle: "Your portfolio is empty",
+  portfolioEmptyDescription:
+    "Start building your portfolio by adding your first investment.",
   loadingPortfolio: "Loading portfolio summary...",
   portfolioLoadError: "Could not load your portfolio summary. Try again.",
   loadingPositions: "Loading portfolio positions...",

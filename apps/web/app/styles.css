@@ -1315,16 +1315,22 @@ p {
 .empty-state {
   display: grid;
   justify-items: start;
-  gap: 8px;
+  gap: 10px;
   border: 1px solid var(--border);
   border-radius: 16px;
   background: var(--panel-muted);
   padding: 28px;
 }
 
+.empty-state strong {
+  font-size: 1.05rem;
+  letter-spacing: -0.02em;
+}
+
 .empty-state p {
   max-width: 620px;
   margin: 0;
+  color: var(--subtle-foreground);
 }
 
 .empty-state-mark {
@@ -1335,8 +1341,31 @@ p {
   background: linear-gradient(90deg, #38bdf8, #2563eb);
 }
 
+.empty-state-icon {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  margin-bottom: 4px;
+  border: 1px solid color-mix(in srgb, var(--link), transparent 68%);
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--link), transparent 88%);
+  color: var(--link);
+  place-items: center;
+}
+
+.empty-state-icon svg {
+  display: block;
+}
+
 .empty-state-action {
   margin-top: 8px;
+  text-decoration: none;
+}
+
+.empty-state-action.ui-button-default,
+.empty-state-primary-action {
+  background: var(--foreground);
+  color: var(--background);
 }
 
 .profile-layout {
