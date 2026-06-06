@@ -1801,31 +1801,31 @@ p {
 }
 
 .transactions-table th:nth-child(1) {
-  width: 24%;
+  width: 26%;
 }
 
 .transactions-table th:nth-child(2) {
-  width: 8%;
+  width: 10%;
 }
 
 .transactions-table th:nth-child(3) {
-  width: 7%;
+  width: 10%;
 }
 
 .transactions-table th:nth-child(4) {
-  width: 11%;
+  width: 13%;
 }
 
 .transactions-table th:nth-child(5) {
-  width: 7%;
+  width: 14%;
 }
 
 .transactions-table th:nth-child(6) {
-  width: 17%;
+  width: 15%;
 }
 
 .transactions-table th:nth-child(7) {
-  width: 16%;
+  width: 12%;
 }
 
 .transactions-table-row {
@@ -1864,13 +1864,6 @@ p {
   background: var(--panel-hover);
 }
 
-.transactions-notes-cell {
-  max-width: 220px;
-  overflow: hidden;
-  color: var(--muted-foreground);
-  text-overflow: ellipsis;
-}
-
 .transaction-type-badge {
   display: inline-flex;
   align-items: center;
@@ -1906,7 +1899,7 @@ p {
 .transactions-actions-heading,
 .transactions-actions-cell {
   width: 10%;
-  text-align: center;
+  text-align: right;
 }
 
 .transactions-actions-cell {
@@ -1914,7 +1907,7 @@ p {
 }
 
 .transactions-actions-cell .portfolio-row-actions {
-  justify-content: center;
+  justify-content: flex-end;
 }
 
 .portfolio-row-actions,

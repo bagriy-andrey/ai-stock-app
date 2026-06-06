@@ -10,10 +10,11 @@ export const portfolioSortFields = [
 export type PortfolioSortField = (typeof portfolioSortFields)[number];
 
 export const transactionSortFields = [
-  "ticker",
+  "name",
   "type",
   "quantity",
   "price",
+  "totalValue",
   "date",
 ] as const;
 

@@ -75,10 +75,11 @@ const transactionSortAccessors: Record<
   TransactionSortField,
   (transaction: PortfolioTransactionDto) => string | number | Date
 > = {
-  ticker: (transaction) => transaction.ticker,
+  name: (transaction) => transaction.companyName || transaction.ticker,
   type: (transaction) => transaction.type,
   quantity: (transaction) => transaction.quantity,
   price: (transaction) => transaction.price,
+  totalValue: (transaction) => getTransactionTotalValue(transaction),
   date: (transaction) => new Date(transaction.transactionDate),
 };
 const transactionsUrlKeys = [
@@ -462,9 +463,9 @@ function TransactionsTable({
         <thead>
           <tr>
             <SortableHeader
-              label={t.ticker}
+              label={t.name}
               onSort={onSort}
-              sort="ticker"
+              sort="name"
               sortState={sortState}
             />
             <SortableHeader
@@ -485,15 +486,21 @@ function TransactionsTable({
               sort="price"
               sortState={sortState}
             />
-            <th>{t.currency}</th>
             <SortableHeader
-              label={t.transactionDate}
+              label={t.totalValue}
+              onSort={onSort}
+              sort="totalValue"
+              sortState={sortState}
+            />
+            <SortableHeader
+              label={t.date}
               onSort={onSort}
               sort="date"
               sortState={sortState}
             />
-            <th>{t.notes}</th>
-            <th className="transactions-actions-heading">{t.actions}</th>
+            <th className="transactions-actions-heading">
+              <span className="visually-hidden">{t.actions}</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -525,11 +532,14 @@ function TransactionsTable({
               </td>
               <td>{formatNumber(transaction.quantity, language)}</td>
               <td>{formatCurrency(transaction.price, transaction.currency, language)}</td>
-              <td>{transaction.currency}</td>
-              <td>{formatTransactionDate(transaction.transactionDate, language)}</td>
-              <td className="transactions-notes-cell">
-                {transaction.notes ? transaction.notes : t.notesUnavailable}
+              <td>
+                {formatCurrency(
+                  getTransactionTotalValue(transaction),
+                  transaction.currency || "USD",
+                  language,
+                )}
               </td>
+              <td>{formatTransactionDate(transaction.transactionDate, language)}</td>
               <td className="transactions-actions-cell">
                 <div className="portfolio-row-actions">
                   <IconTooltipButton
@@ -564,6 +574,10 @@ function getTransactionCompanyLogoUrl(ticker: string): string {
   const normalizedTicker = ticker.trim().toUpperCase();
 
   return `${companyLogoBaseUrl}/${encodeURIComponent(normalizedTicker)}.png`;
+}
+
+function getTransactionTotalValue(transaction: PortfolioTransactionDto): number {
+  return transaction.quantity * transaction.price;
 }
 
 function TransactionEditModal({
@@ -833,7 +847,6 @@ function formatTransactionDate(
 ): string {
   return new Intl.DateTimeFormat(language, {
     dateStyle: "medium",
-    timeStyle: "short",
   }).format(new Date(value));
 }
 

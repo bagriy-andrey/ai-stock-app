@@ -183,6 +183,7 @@ export const en = {
   paginationPrevious: "Previous",
   paginationNext: "Next",
   paginationPageIndicator: "Page {page} of {totalPages}",
+  date: "Date",
   transactionsTitle: "Transactions",
   transactionsSubtitle:
     "Review every buy, sell, manual adjustment, and deleted position recorded for your portfolio.",

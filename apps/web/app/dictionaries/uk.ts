@@ -187,6 +187,7 @@ export const uk = {
   paginationPrevious: "Назад",
   paginationNext: "Далі",
   paginationPageIndicator: "Сторінка {page} з {totalPages}",
+  date: "Дата",
   transactionsTitle: "Угоди",
   transactionsSubtitle:
     "Переглядайте всі купівлі, продажі, ручні коригування та видалені позиції портфеля.",

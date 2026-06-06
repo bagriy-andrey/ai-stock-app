@@ -186,6 +186,7 @@ export const ru = {
   paginationPrevious: "Назад",
   paginationNext: "Далее",
   paginationPageIndicator: "Страница {page} из {totalPages}",
+  date: "Дата",
   transactionsTitle: "Сделки",
   transactionsSubtitle:
     "Просматривайте все покупки, продажи, ручные корректировки и удаленные позиции портфеля.",
