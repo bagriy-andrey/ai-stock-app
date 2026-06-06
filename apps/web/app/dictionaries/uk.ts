@@ -143,6 +143,9 @@ export const uk = {
   totalValue: "Загальна вартість",
   totalCost: "Загальна собівартість",
   totalProfitLoss: "Загальний прибуток/збиток",
+  totalReturn: "Загальна дохідність",
+  totalReturnTooltip:
+    "Дохідність портфеля на основі загального інвестованого капіталу.",
   numberOfPositions: "Кількість позицій",
   totalStocks: "Усього акцій",
   portfolioAllocation: "Розподіл портфеля",

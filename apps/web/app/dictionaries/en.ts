@@ -140,6 +140,8 @@ export const en = {
   totalValue: "Total value",
   totalCost: "Total cost",
   totalProfitLoss: "Total profit/loss",
+  totalReturn: "Total return",
+  totalReturnTooltip: "Portfolio return based on total invested capital.",
   numberOfPositions: "Number of positions",
   totalStocks: "Total stocks",
   portfolioAllocation: "Portfolio allocation",

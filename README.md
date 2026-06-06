@@ -352,6 +352,9 @@ menu. The page uses TanStack Query, shows portfolio summary cards, renders a
 responsive portfolio performance chart, renders a responsive allocation pie
 chart, and renders one table row per open ticker. Detailed purchase, sale,
 adjustment, and delete records remain on the Transactions page.
+The summary cards include total value, total cost, total profit/loss, total
+return percentage, number of positions, and total stocks. Total return is based
+on the displayed total value and total cost.
 
 The Portfolio page is organized into URL-backed tabs with a compact sticky
 navigation bar below the hero header. Supported tab URLs are

@@ -17,7 +17,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Pencil } from "lucide-react";
+import { Info, Pencil } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CSSProperties,
@@ -65,6 +65,7 @@ import {
   buildPortfolioQueryKey,
   getPageAfterPortfolioFilterChange,
 } from "../lib/portfolio-query-state";
+import { calculatePortfolioReturnPercentage } from "../lib/portfolio-summary";
 import type { SortState } from "../lib/table-sorting";
 import { sortItems, toggleSortState } from "../lib/table-sorting";
 import {
@@ -556,6 +557,8 @@ function PortfolioSummary({
   t: Dictionary;
 }) {
   const { summary } = portfolio;
+  const portfolioReturnPercentage =
+    calculatePortfolioReturnPercentage(summary);
 
   return (
     <div className="portfolio-summary-grid">
@@ -571,6 +574,20 @@ function PortfolioSummary({
         label={t.totalProfitLoss}
         value={formatCurrency(summary.totalProfitLoss, currency, language, true)}
         variant={getChangeVariant(summary.totalProfitLoss)}
+      />
+      <SummaryCard
+        label={t.totalReturn}
+        tooltip={t.totalReturnTooltip}
+        value={
+          portfolioReturnPercentage === null
+            ? t.notAvailable
+            : formatPercent(portfolioReturnPercentage, language)
+        }
+        variant={
+          portfolioReturnPercentage === null
+            ? "neutral"
+            : getChangeVariant(portfolioReturnPercentage)
+        }
       />
       <SummaryCard
         label={t.numberOfPositions}
@@ -872,16 +889,30 @@ function formatAllocationLabel(
 
 function SummaryCard({
   label,
+  tooltip,
   value,
   variant,
 }: {
   label: string;
+  tooltip?: string;
   value: string;
   variant?: "positive" | "negative" | "neutral";
 }) {
   return (
     <Card className="portfolio-summary-card">
-      <span>{label}</span>
+      <div className="portfolio-summary-card-header">
+        <span>{label}</span>
+        {tooltip ? (
+          <IconTooltipButton
+            aria-label={tooltip}
+            className="portfolio-summary-tooltip-button"
+            tooltip={tooltip}
+            type="button"
+          >
+            <Info aria-hidden="true" size={14} strokeWidth={2.3} />
+          </IconTooltipButton>
+        ) : null}
+      </div>
       <strong className={variant}>{value}</strong>
     </Card>
   );

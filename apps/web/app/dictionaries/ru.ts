@@ -142,6 +142,9 @@ export const ru = {
   totalValue: "Общая стоимость",
   totalCost: "Общая себестоимость",
   totalProfitLoss: "Общая прибыль/убыток",
+  totalReturn: "Общая доходность",
+  totalReturnTooltip:
+    "Доходность портфеля на основе общего инвестированного капитала.",
   numberOfPositions: "Количество позиций",
   totalStocks: "Всего акций",
   portfolioAllocation: "Распределение портфеля",
