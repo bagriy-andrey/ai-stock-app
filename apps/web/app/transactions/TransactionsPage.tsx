@@ -13,7 +13,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Pencil, Trash2 } from "lucide-react";
-import type { FormEvent } from "react";
+import type { FocusEvent, FormEvent } from "react";
 import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
@@ -27,8 +27,25 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
+import { Textarea } from "../components/ui/textarea";
 import { SortableHeader } from "../components/ui/SortableHeader";
 import type { Dictionary } from "../dictionaries";
+import {
+  canAcceptPurchaseNumberInput,
+  defaultPurchaseCurrency,
+  editableTransactionTypes,
+  getInitialPurchaseCurrency,
+  isEditableTransactionType,
+  isSupportedPurchaseCurrency,
+  normalizePurchaseNumberInput,
+  purchaseNotesMaxLength,
+  supportedPurchaseCurrencies,
+  toUpdatePortfolioTransactionRequest,
+  validateEditTransactionForm,
+  type EditTransactionField,
+  type EditTransactionValidationMessages,
+  type PurchaseCurrency,
+} from "../lib/add-purchase-validation";
 import {
   createClientPaginationMeta,
   paginateClientItems,
@@ -69,6 +86,11 @@ import {
 } from "../lib/url-state";
 
 const transactionTypes: PortfolioTransactionType[] = [...transactionTypeFilters];
+const editableTransactionTypeOptions = [...editableTransactionTypes];
+const transactionCurrencyOptions = supportedPurchaseCurrencies.map((currency) => ({
+  label: currency,
+  value: currency,
+}));
 const companyLogoBaseUrl = "https://financialmodelingprep.com/image-stock";
 const tablePageSize = 10;
 const transactionSortAccessors: Record<
@@ -141,6 +163,7 @@ export function TransactionsPage() {
   const [deletingTransaction, setDeletingTransaction] =
     useState<PortfolioTransactionDto | null>(null);
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
+  const [statusMessage, setStatusMessage] = useState<string | null>(null);
   const { setState: setUrlState, state: urlState } = useUrlState({
     defaults: { page: 1 },
     managedKeys: transactionsUrlKeys,
@@ -225,6 +248,7 @@ export function TransactionsPage() {
     }) => updateTransaction(accessToken ?? "", id, input),
     onSuccess: async (updatedTransaction) => {
       setEditingTransaction(null);
+      setStatusMessage(t.portfolioActionSuccess);
       if (!transactionMatchesFilters(updatedTransaction, queryState)) {
         setCurrentPage((page) =>
           getPageAfterRemovingCurrentItem({
@@ -380,8 +404,14 @@ export function TransactionsPage() {
           <>
             <TransactionsTable
               language={language}
-              onDelete={setDeletingTransaction}
-              onEdit={setEditingTransaction}
+              onDelete={(transaction) => {
+                setStatusMessage(null);
+                setDeletingTransaction(transaction);
+              }}
+              onEdit={(transaction) => {
+                setStatusMessage(null);
+                setEditingTransaction(transaction);
+              }}
               onOpenStock={setDetailsTicker}
               onSort={setSort}
               sortState={sortState}
@@ -403,6 +433,11 @@ export function TransactionsPage() {
             ) : null}
           </>
         )}
+        {statusMessage ? (
+          <p className="app-toast" role="status">
+            {statusMessage}
+          </p>
+        ) : null}
       </section>
 
       {editingTransaction ? (
@@ -596,158 +631,405 @@ function TransactionEditModal({
   onSubmit: (input: UpdatePortfolioTransactionRequest) => void;
 }) {
   const headingId = useId();
-  const [ticker, setTicker] = useState(transaction.ticker);
-  const [companyName, setCompanyName] = useState(transaction.companyName);
-  const [type, setType] = useState<PortfolioTransactionType>(transaction.type);
+  const formId = useId();
+  const formErrorId = useId();
+  const serverErrorId = useId();
+  const [type, setType] = useState<string>(
+    isEditableTransactionType(transaction.type) ? transaction.type : "",
+  );
   const [quantity, setQuantity] = useState(String(transaction.quantity));
   const [price, setPrice] = useState(String(transaction.price));
-  const [currency, setCurrency] = useState(transaction.currency);
+  const [currency, setCurrency] = useState<PurchaseCurrency>(
+    getInitialPurchaseCurrency(transaction.currency || defaultPurchaseCurrency),
+  );
   const [transactionDate, setTransactionDate] = useState(
     formatDateTimeLocalValue(new Date(transaction.transactionDate)),
   );
   const [notes, setNotes] = useState(transaction.notes ?? "");
+  const [touchedFields, setTouchedFields] = useState<
+    Partial<Record<EditTransactionField, boolean>>
+  >({});
   const [formError, setFormError] = useState<string | null>(null);
   const latestTransactionDate = getCurrentLocalDateTime();
+  const validationMessages = useMemo(() => getEditTransactionValidationMessages(t), [t]);
+  const formValues = useMemo(
+    () => ({
+      companyName: transaction.companyName,
+      currency,
+      notes,
+      price,
+      quantity,
+      ticker: transaction.ticker,
+      transactionDate,
+      type,
+    }),
+    [
+      currency,
+      notes,
+      price,
+      quantity,
+      transaction.companyName,
+      transaction.ticker,
+      transactionDate,
+      type,
+    ],
+  );
+  const validation = useMemo(
+    () => validateEditTransactionForm(formValues, validationMessages),
+    [formValues, validationMessages],
+  );
+  const fieldErrors = validation.errors;
+  const isFormValid = validation.success;
+  const submissionError = error instanceof Error ? error.message : null;
 
   useModalEffects(onClose);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const parsedTransactionDate = new Date(transactionDate);
 
-    if (
-      Number.isNaN(parsedTransactionDate.getTime()) ||
-      parsedTransactionDate.getTime() > Date.now()
-    ) {
-      setFormError(t.futureTransactionDateError);
+    if (isPending) {
       return;
     }
 
-    onSubmit({
-      ticker,
-      companyName,
-      type,
-      quantity: Number(quantity),
-      price: Number(price),
-      currency,
-      transactionDate: parsedTransactionDate.toISOString(),
-      notes: notes.trim() || undefined,
-    });
+    if (!validation.success) {
+      setFormError(t.editTransactionFormValidationError);
+      return;
+    }
+
+    setFormError(null);
+    onSubmit(toUpdatePortfolioTransactionRequest(validation.data));
   };
 
+  const markTouched = (field: EditTransactionField) => {
+    setTouchedFields((current) => ({ ...current, [field]: true }));
+  };
+
+  const normalizeNumericField = (
+    event: FocusEvent<HTMLInputElement>,
+    setValue: (value: string) => void,
+  ) => {
+    setValue(normalizePurchaseNumberInput(event.target.value));
+  };
+
+  const showFieldError = (field: EditTransactionField) =>
+    Boolean(fieldErrors[field] && (touchedFields[field] || formError));
+  const getFieldError = (field: EditTransactionField) =>
+    showFieldError(field) ? fieldErrors[field] : undefined;
+
   return (
-    <div className="stock-modal-backdrop">
+    <div
+      className="stock-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <section
+        aria-describedby={`${formError ? formErrorId : ""} ${
+          submissionError ? serverErrorId : ""
+        }`.trim() || undefined}
         aria-labelledby={headingId}
         aria-modal="true"
         className="stock-modal portfolio-modal"
+        onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <h2 id={headingId}>{t.editTransaction}</h2>
-        <form className="portfolio-form" onSubmit={handleSubmit}>
+        <button
+          aria-label={t.close}
+          className="stock-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          X
+        </button>
+        <div className="stock-modal-header">
+          <h2 id={headingId}>{t.editTransaction}</h2>
+        </div>
+        <form
+          className="portfolio-form"
+          id={formId}
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="profile-field">
-            <Label htmlFor="transaction-edit-ticker">{t.ticker}</Label>
+            <Label htmlFor="transaction-edit-ticker">{t.name}</Label>
             <Input
+              disabled
               id="transaction-edit-ticker"
-              maxLength={10}
-              onChange={(event) => setTicker(event.target.value.toUpperCase())}
-              required
-              value={ticker}
+              value={transaction.ticker}
             />
           </div>
           <div className="profile-field">
             <Label htmlFor="transaction-edit-company">{t.companyName}</Label>
             <Input
+              disabled
               id="transaction-edit-company"
-              onChange={(event) => setCompanyName(event.target.value)}
-              required
-              value={companyName}
+              value={transaction.companyName}
             />
           </div>
           <div className="profile-field">
-            <Label htmlFor="transaction-edit-type">{t.transactionType}</Label>
+            <RequiredLabel htmlFor="transaction-edit-type" label={t.transactionType} />
             <Select
+              aria-describedby={
+                getFieldError("type") ? "transaction-edit-type-error" : undefined
+              }
+              aria-invalid={showFieldError("type")}
+              className={showFieldError("type") ? "ui-control-invalid" : ""}
+              disabled={isPending}
               id="transaction-edit-type"
-              onChange={(event) => setType(event.target.value as PortfolioTransactionType)}
+              onBlur={() => markTouched("type")}
+              onChange={(event) => {
+                setType(event.target.value);
+                setFormError(null);
+              }}
+              required
               value={type}
             >
-              {transactionTypes.map((transactionType) => (
+              <option disabled value="">
+                {t.selectTransaction}
+              </option>
+              {editableTransactionTypeOptions.map((transactionType) => (
                 <option key={transactionType} value={transactionType}>
                   {transactionType}
                 </option>
               ))}
             </Select>
+            <FieldError
+              id="transaction-edit-type-error"
+              message={getFieldError("type")}
+            />
           </div>
           <div className="profile-field">
-            <Label htmlFor="transaction-edit-quantity">{t.quantity}</Label>
+            <RequiredLabel htmlFor="transaction-edit-quantity" label={t.quantity} />
             <Input
+              aria-describedby={
+                getFieldError("quantity")
+                  ? "transaction-edit-quantity-error"
+                  : undefined
+              }
+              aria-invalid={showFieldError("quantity")}
+              className={showFieldError("quantity") ? "ui-control-invalid" : ""}
+              disabled={isPending}
               id="transaction-edit-quantity"
-              min="0.00000001"
-              onChange={(event) => setQuantity(event.target.value)}
+              inputMode="decimal"
+              onBlur={(event) => {
+                markTouched("quantity");
+                normalizeNumericField(event, setQuantity);
+              }}
+              onChange={(event) => {
+                if (canAcceptPurchaseNumberInput(event.target.value)) {
+                  setQuantity(event.target.value);
+                  setFormError(null);
+                }
+              }}
               required
-              step="any"
-              type="number"
+              type="text"
               value={quantity}
             />
-          </div>
-          <div className="profile-field">
-            <Label htmlFor="transaction-edit-price">{t.price}</Label>
-            <Input
-              id="transaction-edit-price"
-              min="0.00000001"
-              onChange={(event) => setPrice(event.target.value)}
-              required
-              step="any"
-              type="number"
-              value={price}
+            <FieldError
+              id="transaction-edit-quantity-error"
+              message={getFieldError("quantity")}
             />
           </div>
           <div className="profile-field">
-            <Label htmlFor="transaction-edit-currency">{t.currency}</Label>
+            <RequiredLabel htmlFor="transaction-edit-price" label={t.price} />
             <Input
+              aria-describedby={
+                getFieldError("price") ? "transaction-edit-price-error" : undefined
+              }
+              aria-invalid={showFieldError("price")}
+              className={showFieldError("price") ? "ui-control-invalid" : ""}
+              disabled={isPending}
+              id="transaction-edit-price"
+              inputMode="decimal"
+              onBlur={(event) => {
+                markTouched("price");
+                normalizeNumericField(event, setPrice);
+              }}
+              onChange={(event) => {
+                if (canAcceptPurchaseNumberInput(event.target.value)) {
+                  setPrice(event.target.value);
+                  setFormError(null);
+                }
+              }}
+              required
+              type="text"
+              value={price}
+            />
+            <FieldError
+              id="transaction-edit-price-error"
+              message={getFieldError("price")}
+            />
+          </div>
+          <div className="profile-field">
+            <RequiredLabel htmlFor="transaction-edit-currency" label={t.currency} />
+            <Select
+              aria-describedby={
+                getFieldError("currency")
+                  ? "transaction-edit-currency-error"
+                  : undefined
+              }
+              aria-invalid={showFieldError("currency")}
+              className={showFieldError("currency") ? "ui-control-invalid" : ""}
+              disabled={isPending}
               id="transaction-edit-currency"
-              maxLength={3}
-              onChange={(event) => setCurrency(event.target.value.toUpperCase())}
+              onBlur={() => markTouched("currency")}
+              onChange={(event) => {
+                if (isSupportedPurchaseCurrency(event.target.value)) {
+                  setCurrency(event.target.value);
+                }
+                setFormError(null);
+              }}
               required
               value={currency}
+            >
+              {transactionCurrencyOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </Select>
+            <FieldError
+              id="transaction-edit-currency-error"
+              message={getFieldError("currency")}
             />
           </div>
           <div className="profile-field profile-field-full">
-            <Label htmlFor="transaction-edit-date">{t.transactionDate}</Label>
+            <RequiredLabel htmlFor="transaction-edit-date" label={t.transactionDate} />
             <Input
+              aria-describedby={
+                getFieldError("transactionDate")
+                  ? "transaction-edit-date-error"
+                  : undefined
+              }
+              aria-invalid={showFieldError("transactionDate")}
+              className={showFieldError("transactionDate") ? "ui-control-invalid" : ""}
+              disabled={isPending}
               id="transaction-edit-date"
               max={latestTransactionDate}
-              onChange={(event) => setTransactionDate(event.target.value)}
+              onBlur={() => markTouched("transactionDate")}
+              onChange={(event) => {
+                setTransactionDate(event.target.value);
+                setFormError(null);
+              }}
               required
               step="60"
               type="datetime-local"
               value={transactionDate}
             />
+            <FieldError
+              id="transaction-edit-date-error"
+              message={getFieldError("transactionDate")}
+            />
           </div>
           <div className="profile-field profile-field-full">
             <Label htmlFor="transaction-edit-notes">{t.notes}</Label>
-            <Input
+            <Textarea
+              aria-describedby={
+                getFieldError("notes")
+                  ? "transaction-edit-notes-error transaction-edit-notes-help"
+                  : "transaction-edit-notes-help"
+              }
+              aria-invalid={showFieldError("notes")}
+              className={showFieldError("notes") ? "ui-control-invalid" : ""}
+              disabled={isPending}
               id="transaction-edit-notes"
-              onChange={(event) => setNotes(event.target.value)}
+              maxLength={purchaseNotesMaxLength}
+              onBlur={() => markTouched("notes")}
+              onChange={(event) => {
+                setNotes(event.target.value);
+                setFormError(null);
+              }}
+              rows={4}
               value={notes}
             />
-          </div>
-          <div className="portfolio-modal-actions profile-field-full">
-            <Button disabled={isPending} type="submit">
-              {isPending ? t.saving : t.saveTransaction}
-            </Button>
-            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
-              {t.cancel}
-            </Button>
+            <small className="portfolio-field-status" id="transaction-edit-notes-help">
+              {t.notesMaxLengthHelp.replace(
+                "{count}",
+                String(Math.max(0, purchaseNotesMaxLength - notes.length)),
+              )}
+            </small>
+            <FieldError
+              id="transaction-edit-notes-error"
+              message={getFieldError("notes")}
+            />
           </div>
         </form>
-        {formError ? <p className="error-text" role="alert">{formError}</p> : null}
-        {error instanceof Error ? (
-          <p className="error-text" role="alert">{t.transactionSaveError}</p>
+        <div className="portfolio-modal-actions">
+          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+            {t.cancel}
+          </Button>
+          <Button
+            disabled={!isFormValid || isPending}
+            form={formId}
+            type="submit"
+          >
+            {isPending ? t.saving : t.saveTransaction}
+          </Button>
+        </div>
+        {formError ? (
+          <p className="error-text" id={formErrorId} role="alert">
+            {formError}
+          </p>
+        ) : null}
+        {submissionError ? (
+          <p className="error-text" id={serverErrorId} role="alert">
+            {t.transactionSaveError} {submissionError}
+          </p>
         ) : null}
       </section>
     </div>
   );
+}
+
+function RequiredLabel({ htmlFor, label }: { htmlFor: string; label: string }) {
+  return (
+    <Label htmlFor={htmlFor}>
+      {label} <span aria-hidden="true" className="required-indicator">*</span>
+      <span className="visually-hidden"> required</span>
+    </Label>
+  );
+}
+
+function FieldError({
+  id,
+  message,
+}: {
+  id: string;
+  message?: string;
+}) {
+  return (
+    <small
+      aria-hidden={message ? undefined : true}
+      className="field-error"
+      id={id}
+      role={message ? "alert" : undefined}
+    >
+      {message}
+    </small>
+  );
+}
+
+function getEditTransactionValidationMessages(
+  t: Dictionary,
+): EditTransactionValidationMessages {
+  return {
+    currencyRequiredError: t.currencyRequiredError,
+    currencyUnsupportedError: t.currencyUnsupportedError,
+    futureTransactionDateError: t.futureTransactionDateError,
+    notesDangerousError: t.notesDangerousError,
+    notesMaxLengthError: t.notesMaxLengthError,
+    priceInvalidNumberError: t.priceInvalidNumberError,
+    priceRangeError: t.priceRangeError,
+    priceRequiredError: t.priceRequiredError,
+    quantityInvalidNumberError: t.quantityInvalidNumberError,
+    quantityRangeError: t.quantityRangeError,
+    quantityRequiredError: t.quantityRequiredError,
+    stockSelectionRequiredError: t.stockSelectionRequiredError,
+    transactionDateRequiredError: t.transactionDateRequiredError,
+    transactionTypeRequiredError: t.transactionTypeRequiredError,
+  };
 }
 
 function TransactionDeleteModal({

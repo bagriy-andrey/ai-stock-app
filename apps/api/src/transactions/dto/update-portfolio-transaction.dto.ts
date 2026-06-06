@@ -17,6 +17,7 @@ import { IsNotFutureDate } from "../../portfolio/dto/is-not-future-date.validato
 import {
   currencyPattern,
   IsSafeNotes,
+  normalizePurchaseNumber,
   purchaseNotesMaxLength,
   purchaseNumberMax,
   purchaseNumberMin,
@@ -25,7 +26,7 @@ import {
   trimString,
   trimUppercaseString,
 } from "../../portfolio/dto/portfolio-position-validation";
-import { portfolioTransactionTypes } from "./create-portfolio-transaction.dto";
+import { editablePortfolioTransactionTypes } from "./create-portfolio-transaction.dto";
 
 export class UpdatePortfolioTransactionDto {
   @Transform(trimUppercaseString)
@@ -46,16 +47,18 @@ export class UpdatePortfolioTransactionDto {
 
   @Transform(trimUppercaseString)
   @IsOptional()
-  @IsEnum(portfolioTransactionTypes)
+  @IsEnum(editablePortfolioTransactionTypes)
   type?: PortfolioTransactionType;
 
   @IsOptional()
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)
   quantity?: number;
 
   @IsOptional()
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)

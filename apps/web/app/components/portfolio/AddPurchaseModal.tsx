@@ -9,11 +9,11 @@ import type { FocusEvent, FormEvent, RefObject } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { Dictionary } from "../../dictionaries";
 import {
+  canAcceptPurchaseNumberInput,
   defaultPurchaseCurrency,
   getInitialPurchaseCurrency,
   isSupportedPurchaseCurrency,
   normalizePurchaseNumberInput,
-  purchaseNumberMax,
   purchaseNotesMaxLength,
   supportedPurchaseCurrencies,
   toCreatePortfolioPositionRequest,
@@ -60,6 +60,7 @@ export function AddPurchaseModal({
   onSubmit,
 }: AddPurchaseModalProps) {
   const headingId = useId();
+  const formId = useId();
   const formErrorId = useId();
   const serverErrorId = useId();
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -245,7 +246,12 @@ export function AddPurchaseModal({
             <p>{t.requiredFieldsHelp}</p>
           </div>
         </div>
-        <form className="portfolio-form" noValidate onSubmit={handleSubmit}>
+        <form
+          className="portfolio-form"
+          id={formId}
+          noValidate
+          onSubmit={handleSubmit}
+        >
           <div className="profile-field profile-field-full stock-search">
             <RequiredLabel htmlFor="portfolio-ticker" label={t.ticker} />
             <div
@@ -548,15 +554,19 @@ export function AddPurchaseModal({
               />
             ) : null}
           </div>
-          <div className="portfolio-modal-actions profile-field-full">
-            <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
-              {t.cancel}
-            </Button>
-            <Button disabled={!isFormValid || isPending} type="submit">
-              {isPending ? t.saving : t.savePosition}
-            </Button>
-          </div>
         </form>
+        <div className="portfolio-modal-actions">
+          <Button disabled={isPending} onClick={onClose} type="button" variant="outline">
+            {t.cancel}
+          </Button>
+          <Button
+            disabled={!isFormValid || isPending}
+            form={formId}
+            type="submit"
+          >
+            {isPending ? t.saving : t.savePosition}
+          </Button>
+        </div>
         {formError ? (
           <p className="error-text" id={formErrorId} role="alert">
             {formError}
@@ -652,19 +662,6 @@ function getSearchControlStatus({
   }
 
   return null;
-}
-
-function canAcceptPurchaseNumberInput(value: string): boolean {
-  if (value === "") {
-    return true;
-  }
-
-  if (!/^(?:0|[1-9]\d*)(?:[\.,]\d*)?$/.test(value)) {
-    return false;
-  }
-
-  const normalizedValue = Number(normalizePurchaseNumberInput(value));
-  return !Number.isFinite(normalizedValue) || normalizedValue <= purchaseNumberMax;
 }
 
 function getValidationMessages(t: Dictionary): AddPurchaseValidationMessages {

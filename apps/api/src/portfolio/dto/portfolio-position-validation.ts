@@ -10,6 +10,7 @@ export const purchaseNumberMax = 100_000_000;
 export const purchaseNotesMaxLength = 500;
 export const tickerPattern = /^[A-Z][A-Z0-9.-]{0,9}$/;
 export const currencyPattern = /^USD$/;
+const purchaseNumberPattern = /^(?:0(?:[\.,]\d+)?|[1-9]\d*(?:[\.,]\d+)?)$/;
 const dangerousNotesPattern =
   /<|>|javascript:|vbscript:|data:text\/html|on[a-z]+\s*=|[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/i;
 
@@ -28,6 +29,24 @@ export function trimOptionalNotes({ value }: TransformFnParams): unknown {
 
 export function trimUppercaseString({ value }: TransformFnParams): unknown {
   return typeof value === "string" ? value.trim().toUpperCase() : value;
+}
+
+export function normalizePurchaseNumber({ value }: TransformFnParams): unknown {
+  if (typeof value === "number") {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmedValue = value.trim();
+
+  if (!purchaseNumberPattern.test(trimmedValue)) {
+    return value;
+  }
+
+  return Number(trimmedValue.replace(",", "."));
 }
 
 export function IsSafeNotes(validationOptions?: ValidationOptions) {

@@ -421,8 +421,9 @@ The MVP does not perform FX conversion. Keep positions in one currency when
 using aggregate summary values.
 
 Add purchase validation runs in both the web form and API DTOs. Users must pick
-a ticker from autocomplete, quantity and purchase price must be JSON numbers
-between `0.0001` and `100000000`, currency is currently limited to `USD`, and
+a ticker from autocomplete, quantity and purchase price must be positive decimal
+values between `0.0001` and `100000000`, using `.` or `,` as the decimal
+separator when entered as text. Currency is currently limited to `USD`, and
 purchase dates cannot be in the future. Notes are optional, capped at 500
 characters, normalized for line endings, and rejected if they contain HTML,
 script-like payloads, or control characters. Successful saves close the modal
@@ -471,10 +472,14 @@ survives refresh and supports browser back/forward navigation and bookmarks.
 Transaction records are stored with `userId`, uppercase `ticker`,
 `companyName`, `type` (`BUY`, `SELL`, `UPDATE`, or `DELETE`), positive
 `quantity`, positive `price`, three-letter `currency`, `transactionDate`,
-optional `notes`, `createdAt`, and `updatedAt`. All transaction endpoints
-require `Authorization: Bearer <jwt>` and only read, update, or delete records
-owned by the authenticated user. Date-only `toDate` filters include the full
-selected UTC day.
+optional `notes`, `createdAt`, and `updatedAt`. Create and update transaction
+requests accept only `BUY` or `SELL`, while `UPDATE` and `DELETE` remain
+internal audit record types. Quantity and price validation accepts positive
+decimal values between `0.0001` and `100000000`, using `.` or `,` as the
+decimal separator when entered as text. All transaction endpoints require
+`Authorization: Bearer <jwt>` and only read, update, or delete records owned by
+the authenticated user. Date-only `toDate` filters include the full selected UTC
+day.
 
 Example manual transaction request:
 

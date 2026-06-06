@@ -1,13 +1,19 @@
 import { z } from "zod";
-import type { CreatePortfolioPositionRequest } from "@ai-stock-advisor/shared";
+import type {
+  CreatePortfolioPositionRequest,
+  PortfolioTransactionType,
+  UpdatePortfolioTransactionRequest,
+} from "@ai-stock-advisor/shared";
 
 export const purchaseNumberMin = 0.0001;
 export const purchaseNumberMax = 100_000_000;
 export const purchaseNotesMaxLength = 500;
 export const supportedPurchaseCurrencies = ["USD"] as const;
 export const defaultPurchaseCurrency = "USD";
+export const editableTransactionTypes = ["BUY", "SELL"] as const satisfies readonly PortfolioTransactionType[];
 
 export type PurchaseCurrency = (typeof supportedPurchaseCurrencies)[number];
+export type EditableTransactionType = (typeof editableTransactionTypes)[number];
 
 export interface AddPurchaseValidationMessages {
   currencyRequiredError: string;
@@ -47,6 +53,50 @@ export interface ParsedAddPurchaseForm {
   purchaseDate: string;
   quantity: number;
   ticker: string;
+}
+
+export interface EditTransactionValidationMessages {
+  currencyRequiredError: string;
+  currencyUnsupportedError: string;
+  futureTransactionDateError: string;
+  notesDangerousError: string;
+  notesMaxLengthError: string;
+  priceInvalidNumberError: string;
+  priceRangeError: string;
+  priceRequiredError: string;
+  quantityInvalidNumberError: string;
+  quantityRangeError: string;
+  quantityRequiredError: string;
+  stockSelectionRequiredError: string;
+  transactionDateRequiredError: string;
+  transactionTypeRequiredError: string;
+}
+
+export interface EditTransactionFormValues {
+  companyName: string;
+  currency: string;
+  notes: string;
+  price: string;
+  quantity: string;
+  ticker: string;
+  transactionDate: string;
+  type: string;
+}
+
+export type EditTransactionField = keyof EditTransactionFormValues;
+export type EditTransactionFieldErrors = Partial<
+  Record<EditTransactionField, string>
+>;
+
+export interface ParsedEditTransactionForm {
+  companyName: string;
+  currency: PurchaseCurrency;
+  notes?: string;
+  price: number;
+  quantity: number;
+  ticker: string;
+  transactionDate: string;
+  type: EditableTransactionType;
 }
 
 const tickerPattern = /^[A-Z][A-Z0-9.-]{0,9}$/;
@@ -92,15 +142,59 @@ export function createAddPurchaseSchema(messages: AddPurchaseValidationMessages)
           purchaseDate.getTime() <= Date.now()
         );
       }, messages.futurePurchaseDateError),
-    notes: z
+    notes: createNotesSchema({
+      dangerousMessage: messages.notesDangerousError,
+      maxLengthMessage: messages.notesMaxLengthError,
+    }),
+  });
+}
+
+export function createEditTransactionSchema(
+  messages: EditTransactionValidationMessages,
+) {
+  return z.object({
+    ticker: z
       .string()
-      .transform(normalizeNotesInput)
-      .refine((value) => value.length <= purchaseNotesMaxLength, {
-        message: messages.notesMaxLengthError,
-      })
-      .refine((value) => !dangerousNotesPattern.test(value), {
-        message: messages.notesDangerousError,
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .refine((value) => tickerPattern.test(value), {
+        message: messages.stockSelectionRequiredError,
       }),
+    companyName: z.string().trim().min(1, messages.stockSelectionRequiredError),
+    type: z
+      .string()
+      .trim()
+      .transform((value) => value.toUpperCase())
+      .refine(isEditableTransactionType, messages.transactionTypeRequiredError),
+    quantity: createPurchaseNumberSchema({
+      invalidMessage: messages.quantityInvalidNumberError,
+      rangeMessage: messages.quantityRangeError,
+      requiredMessage: messages.quantityRequiredError,
+    }),
+    price: createPurchaseNumberSchema({
+      invalidMessage: messages.priceInvalidNumberError,
+      rangeMessage: messages.priceRangeError,
+      requiredMessage: messages.priceRequiredError,
+    }),
+    currency: z
+      .string()
+      .trim()
+      .min(1, messages.currencyRequiredError)
+      .refine(isSupportedPurchaseCurrency, messages.currencyUnsupportedError),
+    transactionDate: z
+      .string()
+      .min(1, messages.transactionDateRequiredError)
+      .refine((value) => {
+        const transactionDate = new Date(value);
+        return (
+          !Number.isNaN(transactionDate.getTime()) &&
+          transactionDate.getTime() <= Date.now()
+        );
+      }, messages.futureTransactionDateError),
+    notes: createNotesSchema({
+      dangerousMessage: messages.notesDangerousError,
+      maxLengthMessage: messages.notesMaxLengthError,
+    }),
   });
 }
 
@@ -148,6 +242,50 @@ export function validateAddPurchaseForm(
   };
 }
 
+export function validateEditTransactionForm(
+  values: EditTransactionFormValues,
+  messages: EditTransactionValidationMessages,
+):
+  | { data: ParsedEditTransactionForm; errors: EditTransactionFieldErrors; success: true }
+  | { data: null; errors: EditTransactionFieldErrors; success: false } {
+  const result = createEditTransactionSchema(messages).safeParse(values);
+
+  if (result.success) {
+    const data = result.data;
+    return {
+      data: {
+        companyName: data.companyName,
+        currency: data.currency as PurchaseCurrency,
+        notes: data.notes || undefined,
+        price: data.price,
+        quantity: data.quantity,
+        ticker: data.ticker,
+        transactionDate: new Date(data.transactionDate).toISOString(),
+        type: data.type as EditableTransactionType,
+      },
+      errors: {},
+      success: true,
+    };
+  }
+
+  return {
+    data: null,
+    errors: result.error.issues.reduce<EditTransactionFieldErrors>(
+      (errors, issue) => {
+        const field = issue.path[0] as EditTransactionField | undefined;
+
+        if (field && !errors[field]) {
+          errors[field] = issue.message;
+        }
+
+        return errors;
+      },
+      {},
+    ),
+    success: false,
+  };
+}
+
 export function toCreatePortfolioPositionRequest(
   parsedForm: ParsedAddPurchaseForm,
 ): CreatePortfolioPositionRequest {
@@ -162,8 +300,34 @@ export function toCreatePortfolioPositionRequest(
   };
 }
 
+export function toUpdatePortfolioTransactionRequest(
+  parsedForm: ParsedEditTransactionForm,
+): UpdatePortfolioTransactionRequest {
+  return {
+    type: parsedForm.type,
+    quantity: parsedForm.quantity,
+    price: parsedForm.price,
+    currency: parsedForm.currency,
+    transactionDate: parsedForm.transactionDate,
+    notes: parsedForm.notes,
+  };
+}
+
 export function normalizePurchaseNumberInput(value: string): string {
   return value.trim().replace(",", ".");
+}
+
+export function canAcceptPurchaseNumberInput(value: string): boolean {
+  if (value === "") {
+    return true;
+  }
+
+  if (!/^(?:0|[1-9]\d*)(?:[\.,]\d*)?$/.test(value)) {
+    return false;
+  }
+
+  const normalizedValue = Number(normalizePurchaseNumberInput(value));
+  return !Number.isFinite(normalizedValue) || normalizedValue <= purchaseNumberMax;
 }
 
 export function getInitialPurchaseCurrency(
@@ -180,6 +344,15 @@ export function isSupportedPurchaseCurrency(
   return (
     typeof value === "string" &&
     supportedPurchaseCurrencies.includes(value as PurchaseCurrency)
+  );
+}
+
+export function isEditableTransactionType(
+  value: unknown,
+): value is EditableTransactionType {
+  return (
+    typeof value === "string" &&
+    editableTransactionTypes.includes(value as EditableTransactionType)
   );
 }
 
@@ -205,6 +378,24 @@ function createPurchaseNumberSchema({
         value <= purchaseNumberMax,
       rangeMessage,
     );
+}
+
+function createNotesSchema({
+  dangerousMessage,
+  maxLengthMessage,
+}: {
+  dangerousMessage: string;
+  maxLengthMessage: string;
+}) {
+  return z
+    .string()
+    .transform(normalizeNotesInput)
+    .refine((value) => value.length <= purchaseNotesMaxLength, {
+      message: maxLengthMessage,
+    })
+    .refine((value) => !dangerousNotesPattern.test(value), {
+      message: dangerousMessage,
+    });
 }
 
 function normalizeNotesInput(value: string): string {

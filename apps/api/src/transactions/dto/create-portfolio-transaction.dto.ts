@@ -17,6 +17,7 @@ import { IsNotFutureDate } from "../../portfolio/dto/is-not-future-date.validato
 import {
   currencyPattern,
   IsSafeNotes,
+  normalizePurchaseNumber,
   purchaseNotesMaxLength,
   purchaseNumberMax,
   purchaseNumberMin,
@@ -31,6 +32,10 @@ export const portfolioTransactionTypes = [
   "SELL",
   "UPDATE",
   "DELETE",
+] as const satisfies readonly PortfolioTransactionType[];
+export const editablePortfolioTransactionTypes = [
+  "BUY",
+  "SELL",
 ] as const satisfies readonly PortfolioTransactionType[];
 
 export class CreatePortfolioTransactionDto {
@@ -49,14 +54,16 @@ export class CreatePortfolioTransactionDto {
   companyName!: string;
 
   @Transform(trimUppercaseString)
-  @IsEnum(portfolioTransactionTypes)
+  @IsEnum(editablePortfolioTransactionTypes)
   type!: PortfolioTransactionType;
 
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)
   quantity!: number;
 
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)

@@ -15,6 +15,7 @@ import { IsNotFutureDate } from "./is-not-future-date.validator";
 import {
   currencyPattern,
   IsSafeNotes,
+  normalizePurchaseNumber,
   purchaseNotesMaxLength,
   purchaseNumberMax,
   purchaseNumberMin,
@@ -42,12 +43,14 @@ export class UpdatePortfolioPositionDto {
   companyName?: string;
 
   @IsOptional()
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)
   quantity?: number;
 
   @IsOptional()
+  @Transform(normalizePurchaseNumber)
   @IsNumber({ allowInfinity: false, allowNaN: false })
   @Min(purchaseNumberMin)
   @Max(purchaseNumberMax)

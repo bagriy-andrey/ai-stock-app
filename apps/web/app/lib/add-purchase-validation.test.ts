@@ -1,13 +1,16 @@
 import {
   defaultPurchaseCurrency,
   purchaseNumberMax,
+  toUpdatePortfolioTransactionRequest,
   validateAddPurchaseForm,
+  validateEditTransactionForm,
 } from "./add-purchase-validation";
 
 const messages = {
   currencyRequiredError: "Currency is required.",
   currencyUnsupportedError: "Select a supported currency.",
   futurePurchaseDateError: "Purchase date cannot be in the future.",
+  futureTransactionDateError: "Transaction date cannot be in the future.",
   notesDangerousError: "Notes cannot contain HTML.",
   notesMaxLengthError: "Notes must be 500 characters or fewer.",
   priceInvalidNumberError: "Enter a valid purchase price.",
@@ -18,6 +21,8 @@ const messages = {
   quantityRangeError: "Quantity is out of range.",
   quantityRequiredError: "Quantity is required.",
   stockSelectionRequiredError: "Please select a stock from the list.",
+  transactionDateRequiredError: "Transaction date is required.",
+  transactionTypeRequiredError: "Select BUY or SELL.",
 };
 
 const validInput = {
@@ -103,5 +108,106 @@ describe("add purchase validation", () => {
     expect(result.success).toBe(false);
     expect(result.errors.currency).toBe(messages.currencyUnsupportedError);
     expect(result.errors.notes).toBe(messages.notesDangerousError);
+  });
+});
+
+describe("edit transaction validation", () => {
+  const validTransactionInput = {
+    companyName: "Apple Inc.",
+    currency: defaultPurchaseCurrency,
+    notes: "  Trimmed position  ",
+    price: "150,25",
+    quantity: "1.5",
+    ticker: "AAPL",
+    transactionDate: "2026-05-01T10:30",
+    type: "SELL",
+  };
+
+  it("normalizes valid transaction input", () => {
+    const result = validateEditTransactionForm(validTransactionInput, messages);
+
+    expect(result.success).toBe(true);
+
+    if (result.success) {
+      expect(result.data).toMatchObject({
+        currency: "USD",
+        notes: "Trimmed position",
+        price: 150.25,
+        quantity: 1.5,
+        ticker: "AAPL",
+        type: "SELL",
+      });
+      expect(toUpdatePortfolioTransactionRequest(result.data)).toMatchObject({
+        currency: "USD",
+        notes: "Trimmed position",
+        price: 150.25,
+        quantity: 1.5,
+        type: "SELL",
+      });
+    }
+  });
+
+  it.each([
+    ["quantity", "0"],
+    ["quantity", "-1"],
+    ["quantity", "00001"],
+    ["quantity", "abc"],
+    ["quantity", "1e10"],
+    ["quantity", "$1"],
+    ["price", "0"],
+    ["price", "-1"],
+    ["price", "00001"],
+    ["price", "abc"],
+    ["price", "1e10"],
+    ["price", "$1"],
+  ])("rejects invalid transaction %s input %s", (field, value) => {
+    const result = validateEditTransactionForm(
+      {
+        ...validTransactionInput,
+        [field]: value,
+      },
+      messages,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.errors[field as "quantity" | "price"]).toBeDefined();
+  });
+
+  it("only accepts BUY or SELL transaction types", () => {
+    const updateResult = validateEditTransactionForm(
+      {
+        ...validTransactionInput,
+        type: "UPDATE",
+      },
+      messages,
+    );
+    const buyResult = validateEditTransactionForm(
+      {
+        ...validTransactionInput,
+        type: "buy",
+      },
+      messages,
+    );
+
+    expect(updateResult.success).toBe(false);
+    expect(updateResult.errors.type).toBe(messages.transactionTypeRequiredError);
+    expect(buyResult.success).toBe(true);
+  });
+
+  it("rejects unsupported currencies, future dates, and unsafe notes", () => {
+    const result = validateEditTransactionForm(
+      {
+        ...validTransactionInput,
+        currency: "EUR",
+        notes: "<script>alert(1)</script>",
+        transactionDate: "2999-01-01T10:00",
+      },
+      messages,
+    );
+
+    expect(result.success).toBe(false);
+    expect(result.errors.currency).toBe(messages.currencyUnsupportedError);
+    expect(result.errors.notes).toBe(messages.notesDangerousError);
+    expect(result.errors.transactionDate).toBe(messages.futureTransactionDateError);
   });
 });
