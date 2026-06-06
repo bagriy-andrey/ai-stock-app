@@ -18,10 +18,11 @@ import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
-import { CompanyLogo } from "../components/stocks/CompanyLogo";
+import { CompanyLogoAvatar } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { EmptyState } from "../components/ui/EmptyState";
+import { IconTooltipButton } from "../components/ui/IconTooltipButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
@@ -505,7 +506,7 @@ function TransactionsTable({
                   onClick={() => onOpenStock(transaction.ticker)}
                   type="button"
                 >
-                  <CompanyLogo
+                  <CompanyLogoAvatar
                     className="company-logo--table company-logo--transaction"
                     companyName={transaction.companyName}
                     logoUrl={getTransactionCompanyLogoUrl(transaction.ticker)}
@@ -531,26 +532,24 @@ function TransactionsTable({
               </td>
               <td className="transactions-actions-cell">
                 <div className="portfolio-row-actions">
-                  <Button
+                  <IconTooltipButton
                     aria-label={t.editTransaction}
                     className="portfolio-row-icon-button"
-                    data-tooltip={t.editTransaction}
+                    tooltip={t.editTransaction}
                     type="button"
-                    variant="outline"
                     onClick={() => onEdit(transaction)}
                   >
                     <Pencil aria-hidden="true" size={16} strokeWidth={2.2} />
-                  </Button>
-                  <Button
+                  </IconTooltipButton>
+                  <IconTooltipButton
                     aria-label={t.deleteTransaction}
                     className="portfolio-row-icon-button transactions-row-icon-button-danger"
-                    data-tooltip={t.deleteTransaction}
+                    tooltip={t.deleteTransaction}
                     type="button"
-                    variant="outline"
                     onClick={() => onDelete(transaction)}
                   >
                     <Trash2 aria-hidden="true" size={16} strokeWidth={2.2} />
-                  </Button>
+                  </IconTooltipButton>
                 </div>
               </td>
             </tr>

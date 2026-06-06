@@ -27,11 +27,12 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { AddPurchaseModal } from "../components/portfolio/AddPurchaseModal";
-import { CompanyLogo } from "../components/stocks/CompanyLogo";
+import { CompanyLogoAvatar } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import { Button } from "../components/ui/button";
 import { Card } from "../components/ui/card";
 import { EmptyState } from "../components/ui/EmptyState";
+import { IconTooltipButton } from "../components/ui/IconTooltipButton";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
@@ -865,7 +866,7 @@ function PositionsTable({
               >
                 <td>
                   <div className="stock-table-identity">
-                    <CompanyLogo
+                    <CompanyLogoAvatar
                       className="company-logo--table company-logo--portfolio-position"
                       companyName={position.companyName}
                       logoUrl={getPortfolioCompanyLogoUrl(position.ticker)}
@@ -905,19 +906,18 @@ function PositionsTable({
                 </td>
                 <td className="portfolio-positions-actions-cell">
                   <div className="portfolio-row-actions">
-                    <Button
-                      aria-label="Edit position"
+                    <IconTooltipButton
+                      aria-label={t.editPosition}
                       className="portfolio-row-icon-button"
-                      data-tooltip="Edit position"
+                      tooltip={t.editPosition}
                       type="button"
-                      variant="outline"
                       onClick={(event) => {
                         event.stopPropagation();
                         onEdit(position);
                       }}
                     >
                       <Pencil aria-hidden="true" size={16} strokeWidth={2.2} />
-                    </Button>
+                    </IconTooltipButton>
                   </div>
                 </td>
               </tr>

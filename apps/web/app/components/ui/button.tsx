@@ -1,18 +1,17 @@
-import type { ButtonHTMLAttributes } from "react";
+import { forwardRef, type ButtonHTMLAttributes } from "react";
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: "default" | "outline" | "danger";
 }
 
-export function Button({
-  className = "",
-  variant = "default",
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={`ui-button ui-button-${variant} ${className}`.trim()}
-      {...props}
-    />
-  );
-}
+export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
+  function Button({ className = "", variant = "default", ...props }, ref) {
+    return (
+      <button
+        className={`ui-button ui-button-${variant} ${className}`.trim()}
+        ref={ref}
+        {...props}
+      />
+    );
+  },
+);
