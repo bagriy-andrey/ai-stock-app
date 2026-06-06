@@ -902,6 +902,16 @@ p {
   font-size: 0.72rem;
 }
 
+.company-logo--portfolio-position {
+  padding: 7px;
+}
+
+.company-logo--portfolio-position img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 .stock-card-remove,
 .stock-modal-close {
   display: grid;
@@ -1804,6 +1814,72 @@ p {
   min-height: 34px;
   padding: 0 10px;
   font-size: 0.8rem;
+}
+
+.portfolio-row-icon-button.ui-button {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  min-height: 34px;
+  border-color: var(--border);
+  border-radius: 10px;
+  background: var(--panel-muted);
+  color: var(--subtle-foreground);
+  padding: 0;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.portfolio-row-icon-button svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+}
+
+.portfolio-row-icon-button:hover,
+.portfolio-row-icon-button:focus-visible {
+  border-color: color-mix(in srgb, var(--link), transparent 36%);
+  background: var(--panel-hover);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--link), transparent 84%);
+  color: var(--foreground);
+  transform: translateY(-1px);
+}
+
+.portfolio-row-icon-button::after {
+  position: absolute;
+  z-index: 5;
+  bottom: calc(100% + 10px);
+  left: 50%;
+  width: max-content;
+  max-width: 180px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel), #000 14%);
+  box-shadow: 0 14px 32px rgb(0 0 0 / 28%);
+  color: var(--foreground);
+  content: attr(data-tooltip);
+  font-size: 0.76rem;
+  font-weight: 800;
+  line-height: 1;
+  opacity: 0;
+  padding: 8px 10px;
+  pointer-events: none;
+  transform: translate(-50%, 4px);
+  transition:
+    opacity 140ms ease,
+    transform 140ms ease;
+  white-space: nowrap;
+}
+
+.portfolio-row-icon-button:hover::after,
+.portfolio-row-icon-button:focus-visible::after {
+  opacity: 1;
+  transform: translate(-50%, 0);
 }
 
 .portfolio-modal {

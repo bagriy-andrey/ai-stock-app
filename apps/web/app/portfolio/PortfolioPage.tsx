@@ -16,6 +16,7 @@ import {
   useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
+import { Pencil } from "lucide-react";
 import type {
   CSSProperties,
   FormEvent,
@@ -86,6 +87,7 @@ import {
 const portfolioQueryKey = ["portfolio"] as const;
 const transactionsQueryKey = ["transactions"] as const;
 const tablePageSize = 10;
+const companyLogoBaseUrl = "https://financialmodelingprep.com/image-stock";
 const portfolioSortAccessors: Record<
   PortfolioSortField,
   (position: PortfolioPositionDto) => string | number
@@ -862,8 +864,9 @@ function PositionsTable({
                 <td>
                   <div className="stock-table-identity">
                     <CompanyLogo
-                      className="company-logo--table"
+                      className="company-logo--table company-logo--portfolio-position"
                       companyName={position.companyName}
+                      logoUrl={getPortfolioCompanyLogoUrl(position.ticker)}
                       ticker={position.ticker}
                     />
                     <div className="stock-table-identity-text">
@@ -901,13 +904,16 @@ function PositionsTable({
                 <td>
                   <div className="portfolio-row-actions">
                     <Button
+                      aria-label="Edit position"
+                      className="portfolio-row-icon-button"
+                      data-tooltip="Edit position"
                       variant="outline"
                       onClick={(event) => {
                         event.stopPropagation();
                         onEdit(position);
                       }}
                     >
-                      {t.edit}
+                      <Pencil aria-hidden="true" size={16} strokeWidth={2.2} />
                     </Button>
                   </div>
                 </td>
@@ -918,6 +924,12 @@ function PositionsTable({
       </table>
     </div>
   );
+}
+
+function getPortfolioCompanyLogoUrl(ticker: string): string {
+  const normalizedTicker = ticker.trim().toUpperCase();
+
+  return `${companyLogoBaseUrl}/${encodeURIComponent(normalizedTicker)}.png`;
 }
 
 function PortfolioActionModal({
