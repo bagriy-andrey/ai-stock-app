@@ -1593,8 +1593,10 @@ p {
 
 .portfolio-table-wrap {
   overflow-x: auto;
+  overflow-y: hidden;
   border: 1px solid var(--border);
   border-radius: 16px;
+  background: var(--panel);
 }
 
 .portfolio-table {
@@ -1702,10 +1704,6 @@ p {
   table-layout: fixed;
 }
 
-.portfolio-positions-table-wrap {
-  overflow: visible;
-}
-
 .portfolio-positions-table th,
 .portfolio-positions-table td {
   overflow: hidden;
@@ -1793,10 +1791,6 @@ p {
 .transactions-table {
   min-width: 0;
   table-layout: fixed;
-}
-
-.transactions-table-wrap {
-  overflow: visible;
 }
 
 .transactions-table th,
