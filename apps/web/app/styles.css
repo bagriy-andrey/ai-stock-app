@@ -2868,6 +2868,39 @@ p {
   padding: 16px 24px;
 }
 
+.stock-modal.portfolio-modal.portfolio-delete-modal {
+  width: min(100%, 480px);
+  max-height: min(85vh, 640px);
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.stock-modal.portfolio-modal.portfolio-delete-modal .stock-modal-header {
+  margin-bottom: 12px;
+}
+
+.stock-modal.portfolio-modal.portfolio-delete-modal .stock-modal-header h2 {
+  line-height: 1.15;
+}
+
+.portfolio-delete-modal-message {
+  color: var(--subtle-foreground);
+  line-height: 1.6;
+  margin: 0;
+  padding-right: 8px;
+}
+
+.stock-modal.portfolio-modal.portfolio-delete-modal .portfolio-modal-actions {
+  position: static;
+  align-items: center;
+  justify-content: flex-end;
+  border-top: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel), #020617 8%);
+  gap: 10px;
+  margin: 22px -24px -24px;
+  padding: 16px 24px;
+}
+
 @media (max-width: 760px) {
   .stock-modal.portfolio-modal {
     max-height: 92vh;
@@ -2888,5 +2921,21 @@ p {
 
   .stock-modal.portfolio-modal .portfolio-modal-actions .ui-button {
     width: 100%;
+  }
+
+  .stock-modal.portfolio-modal.portfolio-delete-modal {
+    width: min(100%, 480px);
+    padding: 18px;
+  }
+
+  .stock-modal.portfolio-modal.portfolio-delete-modal .portfolio-modal-actions {
+    align-items: center;
+    flex-direction: row;
+    margin: 20px -18px -18px;
+    padding: 14px 18px;
+  }
+
+  .stock-modal.portfolio-modal.portfolio-delete-modal .portfolio-modal-actions .ui-button {
+    width: auto;
   }
 }

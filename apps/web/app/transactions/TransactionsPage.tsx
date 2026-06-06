@@ -752,24 +752,46 @@ function TransactionDeleteModal({
   onConfirm: () => void;
 }) {
   const headingId = useId();
+  const descriptionId = useId();
   useModalEffects(onClose);
 
   return (
-    <div className="stock-modal-backdrop">
+    <div
+      className="stock-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
       <section
+        aria-describedby={descriptionId}
         aria-labelledby={headingId}
         aria-modal="true"
-        className="stock-modal portfolio-delete-modal"
+        className="stock-modal portfolio-modal portfolio-delete-modal"
+        onMouseDown={(event) => event.stopPropagation()}
         role="dialog"
       >
-        <h2 id={headingId}>{t.deleteTransaction}</h2>
-        <p>{t.deleteTransactionConfirmation.replace("{ticker}", transaction.ticker)}</p>
+        <button
+          aria-label={t.close}
+          className="stock-modal-close"
+          onClick={onClose}
+          type="button"
+        >
+          X
+        </button>
+        <div className="stock-modal-header">
+          <h2 id={headingId}>{t.deleteTransaction}</h2>
+        </div>
+        <p className="portfolio-delete-modal-message" id={descriptionId}>
+          {t.deleteTransactionConfirmation.replace("{ticker}", transaction.ticker)}
+        </p>
         <div className="portfolio-modal-actions">
-          <Button disabled={isPending} onClick={onConfirm} variant="danger">
-            {isPending ? t.deleting : t.delete}
-          </Button>
           <Button disabled={isPending} onClick={onClose} variant="outline">
             {t.cancel}
+          </Button>
+          <Button disabled={isPending} onClick={onConfirm} variant="danger">
+            {isPending ? t.deleting : t.delete}
           </Button>
         </div>
         {error instanceof Error ? (
