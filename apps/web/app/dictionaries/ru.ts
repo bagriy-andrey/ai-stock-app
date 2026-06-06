@@ -99,6 +99,13 @@ export const ru = {
   portfolioPositions: "Позиции портфеля",
   portfolioSubtitle:
     "Управляйте инвестиционными позициями и просматривайте текущие показатели портфеля.",
+  portfolioTabNavigation: "Разделы портфеля",
+  portfolioTabOverview: "Обзор",
+  portfolioTabPerformance: "Динамика",
+  portfolioTabPositions: "Позиции",
+  portfolioTabAnalytics: "Аналитика",
+  portfolioAnalytics: "Аналитика портфеля",
+  portfolioAnalyticsSoon: "Расширенная аналитика скоро будет доступна.",
   portfolioSummary: "Сводка портфеля",
   addPosition: "Добавить покупку",
   addPurchase: "Добавить покупку",

@@ -353,6 +353,16 @@ responsive portfolio performance chart, renders a responsive allocation pie
 chart, and renders one table row per open ticker. Detailed purchase, sale,
 adjustment, and delete records remain on the Transactions page.
 
+The Portfolio page is organized into URL-backed tabs with a compact sticky
+navigation bar below the hero header. Supported tab URLs are
+`/portfolio?tab=overview`, `/portfolio?tab=performance`,
+`/portfolio?tab=positions`, and `/portfolio?tab=analytics`. The Overview tab
+contains summary cards, allocation, and portfolio insights. Performance contains
+the performance chart and its current value, change percentage, and change
+amount metrics. Positions contains search, position actions, the positions
+table, sorting, and pagination. Analytics currently shows an empty-state
+placeholder for future advanced analytics.
+
 The portfolio summary and positions returned by `GET /portfolio` are derived
 from owned transaction records, not from individual purchase rows. Multiple
 `BUY` transactions for the same ticker are aggregated into one position.
@@ -418,9 +428,9 @@ transaction deletes are reflected after the frontend invalidates the
 doing temporary portfolio math and creates a reusable foundation for daily P/L,
 Telegram digests, AI reports, and portfolio insights.
 
-The Portfolio Insights section appears below the performance chart and above the
-positions table. It reuses aggregated open positions from `GET /portfolio` to
-show the best performer, worst performer, and largest position in one compact
+The Portfolio Insights section appears in the Overview tab below the summary
+and allocation content. It reuses aggregated open positions from `GET /portfolio`
+to show the best performer, worst performer, and largest position in one compact
 card grid. Today's P/L uses `GET /portfolio/performance?range=1D` and compares
 the latest value point with the previous trading-day point. If that comparison
 is unavailable, the card shows `N/A` with an explanatory tooltip. The section
@@ -434,10 +444,11 @@ sorting by name, quantity, current stock price, current value, profit/loss USD,
 and profit/loss percentage. Search is applied first, then sorting, then local
 table pagination. Search, sort, order, and page state are stored in URL query
 parameters, for example
-`/portfolio?search=aapl&sort=currentValue&order=desc&page=2`. Empty and default
-values are omitted where possible; opening the page without query parameters
-keeps the default aggregated-position order and starts on page 1. The URL state
-survives refresh and supports browser back/forward navigation and bookmarks.
+`/portfolio?tab=positions&search=aapl&sort=currentValue&order=desc&page=2`.
+Empty and default table values are omitted where possible; opening the page
+without query parameters selects the Overview tab, keeps the default
+aggregated-position order, and starts on page 1. The URL state survives refresh
+and supports browser back/forward navigation and bookmarks.
 
 `GET /portfolio` loads the latest cached Finnhub quote for each open ticker and
 returns:

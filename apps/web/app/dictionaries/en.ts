@@ -97,6 +97,13 @@ export const en = {
   portfolioPositions: "Portfolio Positions",
   portfolioSubtitle:
     "Maintain your investment positions and review current portfolio performance.",
+  portfolioTabNavigation: "Portfolio sections",
+  portfolioTabOverview: "Overview",
+  portfolioTabPerformance: "Performance",
+  portfolioTabPositions: "Positions",
+  portfolioTabAnalytics: "Analytics",
+  portfolioAnalytics: "Portfolio Analytics",
+  portfolioAnalyticsSoon: "Advanced analytics will be available soon.",
   portfolioSummary: "Portfolio summary",
   addPosition: "Add purchase",
   addPurchase: "Add purchase",

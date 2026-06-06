@@ -18,6 +18,7 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 import { Pencil } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type {
   CSSProperties,
   FormEvent,
@@ -41,6 +42,7 @@ import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
 import { Select } from "../components/ui/select";
 import { SortableHeader } from "../components/ui/SortableHeader";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import type { Dictionary } from "../dictionaries";
 import {
   createClientPaginationMeta,
@@ -94,6 +96,7 @@ const portfolioPerformanceQueryKey = ["portfolio", "performance"] as const;
 const transactionsQueryKey = ["transactions"] as const;
 const tablePageSize = 10;
 const companyLogoBaseUrl = "https://financialmodelingprep.com/image-stock";
+const portfolioTabs = ["overview", "performance", "positions", "analytics"] as const;
 const portfolioSortAccessors: Record<
   PortfolioSortField,
   (position: PortfolioPositionDto) => string | number
@@ -105,11 +108,22 @@ const portfolioSortAccessors: Record<
   profitLoss: (position) => position.profitLoss,
   profitLossPercent: (position) => position.profitLossPercent,
 };
-const portfolioUrlKeys = ["search", "sort", "order", "page"] as const;
+const portfolioUrlKeys = ["tab", "search", "sort", "order", "page"] as const;
+
+type PortfolioTab = (typeof portfolioTabs)[number];
 
 interface PortfolioUrlState extends SortState<PortfolioSortField> {
   page: number;
   search: string;
+  tab: PortfolioTab;
+}
+
+function isPortfolioTab(value: string | null | undefined): value is PortfolioTab {
+  return portfolioTabs.includes(value as PortfolioTab);
+}
+
+function parsePortfolioTab(value: string | null | undefined): PortfolioTab {
+  return isPortfolioTab(value) ? value : "overview";
 }
 
 function parsePortfolioUrlState(params: QueryParamsReader): PortfolioUrlState {
@@ -121,6 +135,7 @@ function parsePortfolioUrlState(params: QueryParamsReader): PortfolioUrlState {
   return {
     page: parsePageParam(params.get("page")),
     search: parseStringParam(params.get("search")),
+    tab: parsePortfolioTab(params.get("tab")),
     ...sortState,
   };
 }
@@ -129,6 +144,7 @@ function serializePortfolioUrlState(
   state: PortfolioUrlState,
 ): Record<string, string | number | undefined> {
   return {
+    tab: state.tab,
     search: state.search,
     sort: state.sort,
     order: state.sort ? state.order : undefined,
@@ -154,6 +170,9 @@ export function PortfolioPage() {
   const queryClient = useQueryClient();
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [actionPosition, setActionPosition] =
     useState<PortfolioPositionDto | null>(null);
@@ -174,11 +193,24 @@ export function PortfolioPage() {
     }),
     [urlState.order, urlState.sort],
   );
+  const activeTab = urlState.tab;
+  const tabItems = useMemo(
+    () => [
+      { label: t.portfolioTabOverview, value: "overview" },
+      { label: t.portfolioTabPerformance, value: "performance" },
+      { label: t.portfolioTabPositions, value: "positions" },
+      { label: t.portfolioTabAnalytics, value: "analytics" },
+    ] satisfies Array<{ label: string; value: PortfolioTab }>,
+    [t],
+  );
   const setCurrentPage = useCallback((page: number | ((currentPage: number) => number)) => {
     setUrlState({
       page: typeof page === "function" ? page(currentPage) : page,
     });
   }, [currentPage, setUrlState]);
+  const setActiveTab = useCallback((tab: string) => {
+    setUrlState({ tab: parsePortfolioTab(tab) });
+  }, [setUrlState]);
   const setSort = useCallback((sort: PortfolioSortField) => {
     const nextSortState = toggleSortState(sortState, sort);
 
@@ -261,6 +293,14 @@ export function PortfolioPage() {
     }
   }, [currentPage, paginationMeta, setCurrentPage]);
 
+  useEffect(() => {
+    if (!isPortfolioTab(searchParams.get("tab"))) {
+      const params = new URLSearchParams(searchParams.toString());
+      params.set("tab", "overview");
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    }
+  }, [pathname, router, searchParams]);
+
   return (
     <main>
       <AppHeader />
@@ -271,116 +311,148 @@ export function PortfolioPage() {
         <p className="subtitle">{t.portfolioSubtitle}</p>
       </header>
 
-      <section aria-labelledby="portfolio-summary-heading" className="page-section">
-        <div className="section-heading portfolio-heading">
-          <h2 id="portfolio-summary-heading">{t.portfolioSummary}</h2>
-          <Button onClick={() => setIsAddOpen(true)}>{t.addPosition}</Button>
+      <Tabs
+        className="portfolio-tabs"
+        onValueChange={setActiveTab}
+        value={activeTab}
+      >
+        <div className="portfolio-sticky-tabs">
+          <strong>{t.portfolio}</strong>
+          <TabsList aria-label={t.portfolioTabNavigation} className="portfolio-tabs-list">
+            {tabItems.map((tab) => (
+              <TabsTrigger key={tab.value} value={tab.value}>
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
         </div>
-        <PortfolioOverview
-          allocation={allocationQuery.data}
-          allocationError={allocationQuery.error}
-          currency={summaryCurrency}
-          isAllocationLoading={allocationQuery.isLoading}
-          isPortfolioLoading={portfolioQuery.isLoading}
-          language={language}
-          portfolio={portfolio}
-          portfolioError={
-            portfolioQuery.error instanceof Error ? portfolioQuery.error : null
-          }
-          t={t}
-        />
-      </section>
 
-      <section className="page-section">
-        <PortfolioPerformanceCard
-          accessToken={accessToken ?? ""}
-          currency={summaryCurrency}
-          language={language}
-          t={t}
-        />
-      </section>
-
-      <PortfolioInsightsSection
-        accessToken={accessToken ?? ""}
-        currency={summaryCurrency}
-        isPortfolioLoading={portfolioQuery.isLoading}
-        language={language}
-        onOpenStock={setDetailsTicker}
-        portfolio={portfolio}
-        portfolioError={
-          portfolioQuery.error instanceof Error ? portfolioQuery.error : null
-        }
-        t={t}
-      />
-
-      <section aria-labelledby="portfolio-positions-heading" className="page-section">
-        <div className="section-heading">
-          <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
-          <div className="table-toolbar">
-            <div className="profile-field table-search-field">
-              <Label htmlFor="portfolio-search">{t.tickerOrCompanyName}</Label>
-              <Input
-                id="portfolio-search"
-                onChange={(event) =>
-                  setUrlState({
-                    search: event.target.value,
-                    page: getPageAfterPortfolioFilterChange(),
-                  })
-                }
-                placeholder="AAPL"
-                value={portfolioSearch}
-              />
+        <TabsContent className="portfolio-tab-panel" value="overview">
+          <section aria-labelledby="portfolio-summary-heading" className="page-section">
+            <div className="section-heading portfolio-heading">
+              <h2 id="portfolio-summary-heading">{t.portfolioSummary}</h2>
             </div>
-          </div>
-        </div>
-        {portfolioQuery.isLoading ? (
-          <p role="status">{t.loadingPositions}</p>
-        ) : portfolioQuery.error instanceof Error ? (
-          <p className="error-text" role="alert">{t.positionsLoadError}</p>
-        ) : positions.length === 0 ? (
-          <EmptyState
-            description={
-              portfolioSearch.trim() ? t.noMatchingStocks : t.portfolioEmpty
-            }
-            title={
-              portfolioSearch.trim() ? t.noMatchingStocks : t.noPortfolioPositionsYet
-            }
-          />
-        ) : (
-          <>
-            <PositionsTable
+            <PortfolioOverview
+              allocation={allocationQuery.data}
+              allocationError={allocationQuery.error}
+              currency={summaryCurrency}
+              isAllocationLoading={allocationQuery.isLoading}
+              isPortfolioLoading={portfolioQuery.isLoading}
               language={language}
-              onEdit={(position) => {
-                setStatusMessage(null);
-                setActionPosition(position);
-              }}
-              onOpenStock={setDetailsTicker}
-              onSort={setSort}
-              positions={positions}
-              sortState={sortState}
+              portfolio={portfolio}
+              portfolioError={
+                portfolioQuery.error instanceof Error ? portfolioQuery.error : null
+              }
               t={t}
             />
-            {showPagination && paginationMeta ? (
-              <PaginationControls
-                ariaLabel={t.paginationNavigation}
-                currentPage={currentPage}
-                isBusy={portfolioQuery.isFetching}
-                nextLabel={t.paginationNext}
-                onNext={() => setCurrentPage((page) => page + 1)}
-                onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
-                pageLabel={t.paginationPageIndicator}
-                previousLabel={t.paginationPrevious}
-                totalPages={paginationMeta.totalPages}
+          </section>
+
+          <PortfolioInsightsSection
+            accessToken={accessToken ?? ""}
+            currency={summaryCurrency}
+            isPortfolioLoading={portfolioQuery.isLoading}
+            language={language}
+            onOpenStock={setDetailsTicker}
+            portfolio={portfolio}
+            portfolioError={
+              portfolioQuery.error instanceof Error ? portfolioQuery.error : null
+            }
+            t={t}
+          />
+        </TabsContent>
+
+        <TabsContent className="portfolio-tab-panel" value="performance">
+          <section className="page-section">
+            <PortfolioPerformanceCard
+              accessToken={accessToken ?? ""}
+              currency={summaryCurrency}
+              language={language}
+              t={t}
+            />
+          </section>
+        </TabsContent>
+
+        <TabsContent className="portfolio-tab-panel" value="positions">
+          <section aria-labelledby="portfolio-positions-heading" className="page-section">
+            <div className="section-heading portfolio-heading">
+              <h2 id="portfolio-positions-heading">{t.yourPositions}</h2>
+              <Button onClick={() => setIsAddOpen(true)}>{t.addPosition}</Button>
+            </div>
+            <div className="table-toolbar portfolio-positions-filters">
+              <div className="profile-field table-search-field">
+                <Label htmlFor="portfolio-search">{t.tickerOrCompanyName}</Label>
+                <Input
+                  id="portfolio-search"
+                  onChange={(event) =>
+                    setUrlState({
+                      search: event.target.value,
+                      page: getPageAfterPortfolioFilterChange(),
+                    })
+                  }
+                  placeholder="AAPL"
+                  value={portfolioSearch}
+                />
+              </div>
+            </div>
+            {portfolioQuery.isLoading ? (
+              <p role="status">{t.loadingPositions}</p>
+            ) : portfolioQuery.error instanceof Error ? (
+              <p className="error-text" role="alert">{t.positionsLoadError}</p>
+            ) : positions.length === 0 ? (
+              <EmptyState
+                description={
+                  portfolioSearch.trim() ? t.noMatchingStocks : t.portfolioEmpty
+                }
+                title={
+                  portfolioSearch.trim() ? t.noMatchingStocks : t.noPortfolioPositionsYet
+                }
               />
+            ) : (
+              <>
+                <PositionsTable
+                  language={language}
+                  onEdit={(position) => {
+                    setStatusMessage(null);
+                    setActionPosition(position);
+                  }}
+                  onOpenStock={setDetailsTicker}
+                  onSort={setSort}
+                  positions={positions}
+                  sortState={sortState}
+                  t={t}
+                />
+                {showPagination && paginationMeta ? (
+                  <PaginationControls
+                    ariaLabel={t.paginationNavigation}
+                    currentPage={currentPage}
+                    isBusy={portfolioQuery.isFetching}
+                    nextLabel={t.paginationNext}
+                    onNext={() => setCurrentPage((page) => page + 1)}
+                    onPrevious={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                    pageLabel={t.paginationPageIndicator}
+                    previousLabel={t.paginationPrevious}
+                    totalPages={paginationMeta.totalPages}
+                  />
+                ) : null}
+              </>
+            )}
+            {statusMessage ? (
+              <p className="app-toast" role="status">
+                {statusMessage}
+              </p>
             ) : null}
-          </>
-        )}
-        {statusMessage ? (
-          <p className="app-toast" role="status">
-            {statusMessage}
-          </p>
-        ) : null}
-      </section>
+          </section>
+        </TabsContent>
+
+        <TabsContent className="portfolio-tab-panel" value="analytics">
+          <section className="page-section">
+            <EmptyState
+              description={t.portfolioAnalyticsSoon}
+              title={t.portfolioAnalytics}
+            />
+          </section>
+        </TabsContent>
+      </Tabs>
 
       {isAddOpen ? (
         <AddPurchaseModal

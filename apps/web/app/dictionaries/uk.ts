@@ -100,6 +100,13 @@ export const uk = {
   portfolioPositions: "Позиції портфеля",
   portfolioSubtitle:
     "Керуйте інвестиційними позиціями та переглядайте поточні показники портфеля.",
+  portfolioTabNavigation: "Розділи портфеля",
+  portfolioTabOverview: "Огляд",
+  portfolioTabPerformance: "Динаміка",
+  portfolioTabPositions: "Позиції",
+  portfolioTabAnalytics: "Аналітика",
+  portfolioAnalytics: "Аналітика портфеля",
+  portfolioAnalyticsSoon: "Розширена аналітика буде доступна незабаром.",
   portfolioSummary: "Підсумок портфеля",
   addPosition: "Додати покупку",
   addPurchase: "Додати покупку",
