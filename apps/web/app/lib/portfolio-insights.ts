@@ -70,20 +70,26 @@ export function getTodaysProfitLoss(
   );
   const currentPoint = sortedPoints[sortedPoints.length - 1];
   const previousPoint = sortedPoints[sortedPoints.length - 2];
+  const currentValue = currentPoint ? getPerformanceValue(currentPoint) : 0;
+  const previousValue = previousPoint ? getPerformanceValue(previousPoint) : 0;
 
-  if (!currentPoint || !previousPoint || previousPoint.totalValue <= 0) {
+  if (!currentPoint || !previousPoint || previousValue <= 0) {
     return null;
   }
 
-  const profitLoss = currentPoint.totalValue - previousPoint.totalValue;
+  const profitLoss = currentValue - previousValue;
 
   return {
     profitLoss,
-    profitLossPercent: (profitLoss / previousPoint.totalValue) * 100,
+    profitLossPercent: (profitLoss / previousValue) * 100,
   };
 }
 
 export const getDailyProfitLoss = getTodaysProfitLoss;
+
+function getPerformanceValue(point: PortfolioPerformancePointDto): number {
+  return point.portfolioValue ?? point.totalValue;
+}
 
 function hasValidProfitCalculation(position: PortfolioPositionDto): boolean {
   return (

@@ -25,8 +25,8 @@ interface PositionState {
 
 interface SnapshotInput {
   snapshotDate: Date;
-  totalValue: number;
-  totalCost: number;
+  depositedCapital: number;
+  portfolioValue: number;
   positionCount: number;
 }
 
@@ -89,8 +89,8 @@ export class PortfolioPerformanceService {
     if (openStates.length === 0) {
       await this.upsertSnapshot(ownerId, {
         snapshotDate: today,
-        totalValue: 0,
-        totalCost: 0,
+        depositedCapital: 0,
+        portfolioValue: 0,
         positionCount: 0,
       });
       return;
@@ -172,7 +172,12 @@ export class PortfolioPerformanceService {
 
     return recalculatedSnapshots.map((snapshot) => ({
       date: this.toDateKey(snapshot.snapshotDate),
-      totalValue: snapshot.totalValue,
+      depositedCapital: snapshot.depositedCapital,
+      portfolioValue: snapshot.portfolioValue,
+      totalValue: snapshot.portfolioValue,
+      totalProfit: this.getTotalProfit(snapshot),
+      totalReturnPercent: this.getTotalReturnPercent(snapshot),
+      positionCount: snapshot.positionCount,
     }));
   }
 
@@ -188,8 +193,8 @@ export class PortfolioPerformanceService {
     if (openStates.length === 0) {
       return {
         snapshotDate: today,
-        totalValue: 0,
-        totalCost: 0,
+        depositedCapital: 0,
+        portfolioValue: 0,
         positionCount: 0,
       };
     }
@@ -292,8 +297,8 @@ export class PortfolioPerformanceService {
     historicalPrices: Map<string, Map<string, number>>,
   ): SnapshotInput {
     const states = this.aggregatePositionStates(transactions, snapshotDate);
-    let totalValue = 0;
-    let totalCost = 0;
+    let portfolioValue = 0;
+    let depositedCapital = 0;
     let positionCount = 0;
     const dateKey = this.toDateKey(snapshotDate);
 
@@ -310,15 +315,15 @@ export class PortfolioPerformanceService {
         continue;
       }
 
-      totalValue += quantity * close;
-      totalCost += this.getOpenCostBasis(state);
+      portfolioValue += quantity * close;
+      depositedCapital += this.getOpenCostBasis(state);
       positionCount += 1;
     }
 
     return {
       snapshotDate,
-      totalValue,
-      totalCost,
+      depositedCapital,
+      portfolioValue,
       positionCount,
     };
   }
@@ -328,8 +333,8 @@ export class PortfolioPerformanceService {
     states: PositionState[],
     quotesByTicker: Map<string, StockQuote>,
   ): SnapshotInput {
-    let totalValue = 0;
-    let totalCost = 0;
+    let portfolioValue = 0;
+    let depositedCapital = 0;
     let positionCount = 0;
 
     for (const state of states) {
@@ -340,15 +345,15 @@ export class PortfolioPerformanceService {
       }
 
       const quantity = this.getOpenQuantity(state);
-      totalValue += quantity * quote.currentPrice;
-      totalCost += this.getOpenCostBasis(state);
+      portfolioValue += quantity * quote.currentPrice;
+      depositedCapital += this.getOpenCostBasis(state);
       positionCount += 1;
     }
 
     return {
       snapshotDate,
-      totalValue,
-      totalCost,
+      depositedCapital,
+      portfolioValue,
       positionCount,
     };
   }
@@ -416,9 +421,12 @@ export class PortfolioPerformanceService {
           },
           update: {
             $set: {
-              totalValue: snapshot.totalValue,
-              totalCost: snapshot.totalCost,
-              totalProfit: snapshot.totalValue - snapshot.totalCost,
+              depositedCapital: snapshot.depositedCapital,
+              portfolioValue: snapshot.portfolioValue,
+              totalValue: snapshot.portfolioValue,
+              totalCost: snapshot.depositedCapital,
+              totalProfit: this.getTotalProfit(snapshot),
+              totalReturnPercent: this.getTotalReturnPercent(snapshot),
               positionCount: snapshot.positionCount,
             },
           },
@@ -438,10 +446,32 @@ export class PortfolioPerformanceService {
   private toPerformancePoint(
     snapshot: PortfolioSnapshotDocument,
   ): PortfolioPerformancePointDto {
+    const depositedCapital = snapshot.depositedCapital ?? snapshot.totalCost;
+    const portfolioValue = snapshot.portfolioValue ?? snapshot.totalValue;
+    const totalProfit = portfolioValue - depositedCapital;
+
     return {
       date: this.toDateKey(snapshot.snapshotDate),
-      totalValue: snapshot.totalValue,
+      depositedCapital,
+      portfolioValue,
+      totalValue: portfolioValue,
+      totalProfit,
+      totalReturnPercent:
+        depositedCapital <= 0 ? 0 : (totalProfit / depositedCapital) * 100,
+      positionCount: snapshot.positionCount,
     };
+  }
+
+  private getTotalProfit(snapshot: SnapshotInput): number {
+    return snapshot.portfolioValue - snapshot.depositedCapital;
+  }
+
+  private getTotalReturnPercent(snapshot: SnapshotInput): number {
+    if (snapshot.depositedCapital <= 0) {
+      return 0;
+    }
+
+    return (this.getTotalProfit(snapshot) / snapshot.depositedCapital) * 100;
   }
 
   private getOpenQuantity(state: PositionState): number {

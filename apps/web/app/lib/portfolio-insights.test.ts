@@ -117,8 +117,8 @@ describe("portfolio insights", () => {
 
   it("calculates daily profit/loss from the previous trading point", () => {
     const points: PortfolioPerformancePointDto[] = [
-      { date: "2026-06-05", totalValue: 8_000 },
-      { date: "2026-06-06", totalValue: 8_042.18 },
+      buildPerformancePoint("2026-06-05", 8_000),
+      buildPerformancePoint("2026-06-06", 8_042.18),
     ];
     const dailyProfitLoss = getDailyProfitLoss(points);
     const todaysProfitLoss = getTodaysProfitLoss(points);
@@ -129,11 +129,27 @@ describe("portfolio insights", () => {
   });
 
   it("returns null when daily profit/loss has no previous value", () => {
-    expect(getDailyProfitLoss([{ date: "2026-06-06", totalValue: 8_000 }]))
+    expect(getDailyProfitLoss([buildPerformancePoint("2026-06-06", 8_000)]))
       .toBeNull();
     expect(getDailyProfitLoss([
-      { date: "2026-06-05", totalValue: 0 },
-      { date: "2026-06-06", totalValue: 8_000 },
+      buildPerformancePoint("2026-06-05", 0),
+      buildPerformancePoint("2026-06-06", 8_000),
     ])).toBeNull();
   });
 });
+
+function buildPerformancePoint(
+  date: string,
+  portfolioValue: number,
+): PortfolioPerformancePointDto {
+  return {
+    date,
+    depositedCapital: 7_500,
+    portfolioValue,
+    totalValue: portfolioValue,
+    totalProfit: portfolioValue - 7_500,
+    totalReturnPercent:
+      portfolioValue === 0 ? 0 : ((portfolioValue - 7_500) / 7_500) * 100,
+    positionCount: portfolioValue > 0 ? 3 : 0,
+  };
+}

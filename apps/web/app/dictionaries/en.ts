@@ -149,7 +149,8 @@ export const en = {
   allocationLegend: "Portfolio allocation legend",
   noAllocationData: "No allocation data",
   portfolioPerformance: "Portfolio Performance",
-  portfolioPerformanceSubtitle: "Total portfolio value over time",
+  portfolioPerformanceSubtitle:
+    "Compare money invested with current market value over time.",
   portfolioPerformanceRange: "Portfolio performance range",
   portfolioPerformanceUnavailable: "Portfolio performance unavailable",
   portfolioPerformanceLoadError:
@@ -157,6 +158,10 @@ export const en = {
   portfolioPerformanceEmpty: "No portfolio history available yet.",
   portfolioPerformanceEmptyDescription:
     "Add a position or wait for the next daily snapshot to start tracking value changes over time.",
+  portfolioValue: "Portfolio Value",
+  depositedCapital: "Deposited Capital",
+  investmentGain: "Investment Gain",
+  investmentGainShort: "Gain",
   periodChangePercent: "Change %",
   periodChangeAmount: "Change $",
   notAvailable: "N/A",

@@ -153,7 +153,8 @@ export const uk = {
   allocationLegend: "Легенда розподілу портфеля",
   noAllocationData: "Немає даних про розподіл",
   portfolioPerformance: "Динаміка портфеля",
-  portfolioPerformanceSubtitle: "Загальна вартість портфеля з часом",
+  portfolioPerformanceSubtitle:
+    "Порівняння інвестованих коштів із поточною ринковою вартістю.",
   portfolioPerformanceRange: "Період динаміки портфеля",
   portfolioPerformanceUnavailable: "Динаміка портфеля недоступна",
   portfolioPerformanceLoadError:
@@ -161,6 +162,10 @@ export const uk = {
   portfolioPerformanceEmpty: "Історії портфеля поки немає.",
   portfolioPerformanceEmptyDescription:
     "Додайте позицію або дочекайтеся наступного денного знімка, щоб відстежувати зміни вартості.",
+  portfolioValue: "Вартість портфеля",
+  depositedCapital: "Інвестований капітал",
+  investmentGain: "Інвестиційний прибуток",
+  investmentGainShort: "Прибуток",
   periodChangePercent: "Зміна %",
   periodChangeAmount: "Зміна $",
   notAvailable: "Н/Д",

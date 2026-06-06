@@ -152,7 +152,8 @@ export const ru = {
   allocationLegend: "Легенда распределения портфеля",
   noAllocationData: "Нет данных о распределении",
   portfolioPerformance: "Динамика портфеля",
-  portfolioPerformanceSubtitle: "Общая стоимость портфеля во времени",
+  portfolioPerformanceSubtitle:
+    "Сравнение инвестированных средств с текущей рыночной стоимостью.",
   portfolioPerformanceRange: "Период динамики портфеля",
   portfolioPerformanceUnavailable: "Динамика портфеля недоступна",
   portfolioPerformanceLoadError:
@@ -160,6 +161,10 @@ export const ru = {
   portfolioPerformanceEmpty: "Истории портфеля пока нет.",
   portfolioPerformanceEmptyDescription:
     "Добавьте позицию или дождитесь следующего дневного снимка, чтобы отслеживать изменения стоимости.",
+  portfolioValue: "Стоимость портфеля",
+  depositedCapital: "Инвестированный капитал",
+  investmentGain: "Инвестиционная прибыль",
+  investmentGainShort: "Прибыль",
   periodChangePercent: "Изменение %",
   periodChangeAmount: "Изменение $",
   notAvailable: "Н/Д",

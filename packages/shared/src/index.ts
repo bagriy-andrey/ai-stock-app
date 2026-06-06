@@ -257,7 +257,12 @@ export type PortfolioPerformanceRange =
 
 export interface PortfolioPerformancePointDto {
   date: string;
+  depositedCapital: number;
+  portfolioValue: number;
   totalValue: number;
+  totalProfit: number;
+  totalReturnPercent: number;
+  positionCount: number;
 }
 
 export interface CreatePortfolioPositionRequest {

@@ -134,7 +134,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
 | API | `GET` | `http://localhost:3001/portfolio?page=1&limit=10` | Return paginated aggregated open positions and portfolio summary |
 | API | `GET` | `http://localhost:3001/portfolio/allocation` | Return full-portfolio allocation data independent of pagination |
-| API | `GET` | `http://localhost:3001/portfolio/performance?range=1M` | Return historical total portfolio value points for `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `5Y`, or `ALL` |
+| API | `GET` | `http://localhost:3001/portfolio/performance?range=1M` | Return historical portfolio value, deposited capital, gain, and return points for `1D`, `1W`, `1M`, `3M`, `6M`, `1Y`, `5Y`, or `ALL` |
 | API | `POST` | `http://localhost:3001/portfolio` | Create one owned portfolio position |
 | API | `PATCH` | `http://localhost:3001/portfolio/:id` | Update one owned portfolio position |
 | API | `DELETE` | `http://localhost:3001/portfolio/:id` | Remove one owned portfolio position |
@@ -361,10 +361,10 @@ navigation bar below the hero header. Supported tab URLs are
 `/portfolio?tab=overview`, `/portfolio?tab=performance`,
 `/portfolio?tab=positions`, and `/portfolio?tab=analytics`. The Overview tab
 contains summary cards, allocation, and portfolio insights. Performance contains
-the performance chart and its current value, change percentage, and change
-amount metrics. Positions contains search, position actions, the positions
-table, sorting, and pagination. Analytics currently shows an empty-state
-placeholder for future advanced analytics.
+the performance chart plus deposited capital, current value, investment gain,
+and total return metrics. Positions contains search, position actions, the
+positions table, sorting, and pagination. Analytics currently shows an
+empty-state placeholder for future advanced analytics.
 
 The portfolio summary and positions returned by `GET /portfolio` are derived
 from owned transaction records, not from individual purchase rows. Multiple
@@ -398,11 +398,18 @@ provides them, grouped into date points, plus the live current-value point. It
 does not fabricate intraday portfolio points. `1W` uses the last seven calendar
 days of available market candles, with non-trading days represented only when
 the provider has data. `5Y` uses the last five years of available history.
-Each point represents total portfolio value:
+Each point represents both current open-position market value and the deposited
+capital still allocated to open positions:
 
 ```text
 portfolioValue = sum(openPositionQuantityOnDate * historicalClosePriceOnDate)
+depositedCapital = sum(openPositionQuantityOnDate * weightedAverageBuyPriceOnDate)
+investmentGain = portfolioValue - depositedCapital
+totalReturnPercent = investmentGain / depositedCapital * 100
 ```
+
+`SELL` transactions reduce open quantity and therefore reduce remaining
+deposited capital proportionally. They do not add to deposited capital.
 
 The API returns a compact chart response:
 
@@ -410,26 +417,38 @@ The API returns a compact chart response:
 [
   {
     "date": "2026-05-01",
-    "totalValue": 7200
+    "depositedCapital": 6370.89,
+    "portfolioValue": 7120.05,
+    "totalValue": 7120.05,
+    "totalProfit": 749.16,
+    "totalReturnPercent": 11.76,
+    "positionCount": 4
   },
   {
     "date": "2026-05-02",
-    "totalValue": 7250
+    "depositedCapital": 6370.89,
+    "portfolioValue": 7188.42,
+    "totalValue": 7188.42,
+    "totalProfit": 817.53,
+    "totalReturnPercent": 12.83,
+    "positionCount": 4
   }
 ]
 ```
 
 Historical values are persisted in `PortfolioSnapshot` documents with
-`userId`, `snapshotDate`, `totalValue`, `totalCost`, `totalProfit`, and
-`positionCount`. A unique `{ userId, snapshotDate }` index keeps one snapshot
-per user per day. The performance endpoint recalculates the requested range
-from the latest owned transactions and Yahoo historical candles on each request,
-then idempotently upserts those snapshots. The last point is always recalculated
-from current live quotes so new purchases, sells, transaction edits, and
-transaction deletes are reflected after the frontend invalidates the
-`["portfolio", "performance"]` TanStack Query key. This keeps the frontend from
-doing temporary portfolio math and creates a reusable foundation for daily P/L,
-Telegram digests, AI reports, and portfolio insights.
+`userId`, `snapshotDate`, `depositedCapital`, `portfolioValue`, `totalProfit`,
+`totalReturnPercent`, and `positionCount`. Legacy `totalValue` and `totalCost`
+fields are also populated for compatibility. A unique `{ userId, snapshotDate }`
+index keeps one snapshot per user per day. The performance endpoint recalculates
+the requested range from the latest owned transactions and Yahoo historical
+candles on each request, then idempotently upserts those snapshots. The last
+point is always recalculated from current live quotes so new purchases, sells,
+transaction edits, and transaction deletes are reflected after the frontend
+invalidates the `["portfolio", "performance"]` TanStack Query key. This keeps
+the frontend from doing temporary portfolio math and creates a reusable
+foundation for daily P/L, benchmark comparison, CAGR, Telegram digests, AI
+reports, and portfolio insights.
 
 The Portfolio Insights section appears in the Overview tab below the summary
 and allocation content. It reuses aggregated open positions from `GET /portfolio`

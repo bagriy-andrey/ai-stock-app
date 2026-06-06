@@ -1792,7 +1792,7 @@ p {
 .portfolio-performance-summary {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .portfolio-performance-metric {
@@ -1853,7 +1853,7 @@ p {
 .portfolio-performance-skeleton-summary {
   display: grid;
   gap: 12px;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .portfolio-performance-skeleton-summary span {
@@ -2106,12 +2106,20 @@ p {
 
 .responsive-line-chart-line {
   fill: none;
-  stroke: var(--link);
   stroke-linecap: round;
   stroke-linejoin: round;
   stroke-width: 3;
-  filter: drop-shadow(0 10px 20px color-mix(in srgb, var(--link), transparent 74%));
   vector-effect: non-scaling-stroke;
+}
+
+.responsive-line-chart-line-primary {
+  stroke: var(--link);
+  filter: drop-shadow(0 10px 20px color-mix(in srgb, var(--link), transparent 74%));
+}
+
+.responsive-line-chart-line-secondary {
+  stroke: color-mix(in srgb, var(--foreground), transparent 42%);
+  stroke-dasharray: 8 8;
 }
 
 .responsive-line-chart-active line {
@@ -2122,8 +2130,45 @@ p {
 
 .responsive-line-chart-active circle {
   fill: var(--foreground);
-  stroke: var(--link);
   stroke-width: 3;
+}
+
+.responsive-line-chart-active-primary {
+  stroke: var(--link);
+}
+
+.responsive-line-chart-active-secondary {
+  stroke: color-mix(in srgb, var(--foreground), transparent 35%);
+}
+
+.responsive-line-chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 0 6px 2px;
+}
+
+.responsive-line-chart-legend span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--subtle-foreground);
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.responsive-line-chart-legend-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 999px;
+}
+
+.responsive-line-chart-legend-dot-primary {
+  background: var(--link);
+}
+
+.responsive-line-chart-legend-dot-secondary {
+  background: color-mix(in srgb, var(--foreground), transparent 42%);
 }
 
 .responsive-line-chart-tooltip {
@@ -2132,8 +2177,8 @@ p {
   top: var(--tooltip-y);
   z-index: 2;
   display: grid;
-  min-width: 150px;
-  gap: 3px;
+  min-width: 220px;
+  gap: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: color-mix(in srgb, var(--panel), #000 10%);
@@ -2148,9 +2193,32 @@ p {
   font-size: 0.9rem;
 }
 
-.responsive-line-chart-tooltip span {
+.responsive-line-chart-tooltip-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.responsive-line-chart-tooltip-row span {
   color: var(--subtle-foreground);
   font-size: 0.76rem;
+}
+
+.responsive-line-chart-tooltip-row b {
+  font-size: 0.82rem;
+}
+
+.responsive-line-chart-tooltip-value-positive {
+  color: var(--positive);
+}
+
+.responsive-line-chart-tooltip-value-negative {
+  color: var(--negative);
+}
+
+.responsive-line-chart-tooltip-value-neutral {
+  color: var(--neutral);
 }
 
 .portfolio-table-wrap {

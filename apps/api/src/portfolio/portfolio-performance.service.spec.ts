@@ -153,10 +153,42 @@ describe("PortfolioPerformanceService", () => {
     ]);
 
     await expect(service.getPerformanceForUser(userId, "3M")).resolves.toEqual([
-      { date: "2026-05-01", totalValue: 220 },
-      { date: "2026-05-02", totalValue: 460 },
-      { date: "2026-05-03", totalValue: 350 },
-      { date: "2026-06-06", totalValue: 380 },
+      {
+        date: "2026-05-01",
+        depositedCapital: 200,
+        portfolioValue: 220,
+        totalValue: 220,
+        totalProfit: 20,
+        totalReturnPercent: 10,
+        positionCount: 1,
+      },
+      {
+        date: "2026-05-02",
+        depositedCapital: 400,
+        portfolioValue: 460,
+        totalValue: 460,
+        totalProfit: 60,
+        totalReturnPercent: 15,
+        positionCount: 2,
+      },
+      {
+        date: "2026-05-03",
+        depositedCapital: 300,
+        portfolioValue: 350,
+        totalValue: 350,
+        totalProfit: 50,
+        totalReturnPercent: 16.666666666666664,
+        positionCount: 2,
+      },
+      {
+        date: "2026-06-06",
+        depositedCapital: 300,
+        portfolioValue: 380,
+        totalValue: 380,
+        totalProfit: 80,
+        totalReturnPercent: 26.666666666666668,
+        positionCount: 2,
+      },
     ]);
     expect(marketDataService.getCandles).toHaveBeenCalledWith("AAPL", "3m");
     expect(marketDataService.getCandles).toHaveBeenCalledWith("MSFT", "3m");
@@ -171,9 +203,12 @@ describe("PortfolioPerformanceService", () => {
             },
             update: {
               $set: {
+                depositedCapital: 300,
+                portfolioValue: 350,
                 totalValue: 350,
                 totalCost: 300,
                 totalProfit: 50,
+                totalReturnPercent: 16.666666666666664,
                 positionCount: 2,
               },
             },
@@ -188,9 +223,12 @@ describe("PortfolioPerformanceService", () => {
             },
             update: {
               $set: {
+                depositedCapital: 300,
+                portfolioValue: 380,
                 totalValue: 380,
                 totalCost: 300,
                 totalProfit: 80,
+                totalReturnPercent: 26.666666666666668,
                 positionCount: 2,
               },
             },
@@ -273,9 +311,12 @@ describe("PortfolioPerformanceService", () => {
           },
           update: {
             $set: {
+              depositedCapital: 100,
+              portfolioValue: 150,
               totalValue: 150,
               totalCost: 100,
               totalProfit: 50,
+              totalReturnPercent: 50,
               positionCount: 1,
             },
           },

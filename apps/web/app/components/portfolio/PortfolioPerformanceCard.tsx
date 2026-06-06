@@ -7,7 +7,12 @@ import type {
 } from "@ai-stock-advisor/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
-import { ResponsiveLineChart } from "../charts/ResponsiveLineChart";
+import {
+  ResponsiveLineChart,
+  type LineChartSeries,
+  type LineChartTooltipItem,
+  type LineChartTooltipPoint,
+} from "../charts/ResponsiveLineChart";
 import { EmptyState } from "../ui/EmptyState";
 import { ErrorState } from "../ui/ErrorState";
 import { Card } from "../ui/card";
@@ -54,6 +59,10 @@ export function PortfolioPerformanceCard({
     () => calculatePerformanceSummary(performanceQuery.data ?? []),
     [performanceQuery.data],
   );
+  const chartSeries = useMemo(
+    () => buildChartSeries(performanceQuery.data ?? [], t),
+    [performanceQuery.data, t],
+  );
 
   return (
     <Card className="portfolio-performance-card">
@@ -98,29 +107,31 @@ export function PortfolioPerformanceCard({
             ariaLabel={t.portfolioPerformance}
             currency={currency}
             language={language}
-            points={performanceQuery.data.map((point) => ({
-              date: point.date,
-              value: point.totalValue,
-            }))}
+            series={chartSeries}
+            tooltipItems={(point) =>
+              buildTooltipItems(point, currency, language, t)
+            }
           />
           <div className="portfolio-performance-summary">
+            <PerformanceMetric
+              label={t.depositedCapital}
+              value={formatCurrency(summary.depositedCapital, currency, language)}
+            />
             <PerformanceMetric
               label={t.currentValue}
               value={formatCurrency(summary.currentValue, currency, language)}
             />
             <PerformanceMetric
-              label={t.periodChangePercent}
+              label={t.investmentGain}
               value={
-                summary.changePercent === null
-                  ? t.notAvailable
-                  : formatPercent(summary.changePercent, language)
+                formatCurrency(summary.investmentGain, currency, language, true)
               }
-              variant={getChangeVariant(summary.changeValue)}
+              variant={getChangeVariant(summary.investmentGain)}
             />
             <PerformanceMetric
-              label={t.periodChangeAmount}
-              value={formatCurrency(summary.changeValue, currency, language, true)}
-              variant={getChangeVariant(summary.changeValue)}
+              label={t.totalReturn}
+              value={formatPercent(summary.totalReturnPercent, language)}
+              variant={getChangeVariant(summary.totalReturnPercent)}
             />
           </div>
         </>
@@ -134,6 +145,7 @@ function PortfolioPerformanceSkeleton() {
     <div aria-label="Loading portfolio performance" className="portfolio-performance-skeleton" role="status">
       <div className="portfolio-performance-skeleton-chart" />
       <div className="portfolio-performance-skeleton-summary">
+        <span />
         <span />
         <span />
         <span />
@@ -162,31 +174,85 @@ function PerformanceMetric({
 }
 
 function calculatePerformanceSummary(points: PortfolioPerformancePointDto[]): {
-  changePercent: number | null;
-  periodStartValue: number | null;
-  changeValue: number;
   currentValue: number;
+  depositedCapital: number;
+  investmentGain: number;
+  totalReturnPercent: number;
 } {
-  const firstPoint = points[0];
   const lastPoint = points[points.length - 1];
 
-  if (!firstPoint || !lastPoint) {
+  if (!lastPoint) {
     return {
-      changePercent: null,
-      changeValue: 0,
       currentValue: 0,
-      periodStartValue: null,
+      depositedCapital: 0,
+      investmentGain: 0,
+      totalReturnPercent: 0,
     };
   }
 
-  const changeValue = lastPoint.totalValue - firstPoint.totalValue;
-  const periodStartValue = firstPoint.totalValue;
+  const currentValue = lastPoint.portfolioValue ?? lastPoint.totalValue;
+  const depositedCapital = lastPoint.depositedCapital;
+  const investmentGain = lastPoint.totalProfit ?? currentValue - depositedCapital;
 
   return {
-    changePercent:
-      periodStartValue <= 0 ? null : (changeValue / periodStartValue) * 100,
-    changeValue,
-    currentValue: lastPoint.totalValue,
-    periodStartValue,
+    currentValue,
+    depositedCapital,
+    investmentGain,
+    totalReturnPercent:
+      lastPoint.totalReturnPercent ??
+      (depositedCapital <= 0 ? 0 : (investmentGain / depositedCapital) * 100),
   };
+}
+
+function buildChartSeries(
+  points: PortfolioPerformancePointDto[],
+  t: Dictionary,
+): LineChartSeries[] {
+  return [
+    {
+      id: "portfolioValue",
+      label: t.portfolioValue,
+      points: points.map((point) => ({
+        date: point.date,
+        value: point.portfolioValue ?? point.totalValue,
+      })),
+      variant: "primary",
+    },
+    {
+      id: "depositedCapital",
+      label: t.depositedCapital,
+      points: points.map((point) => ({
+        date: point.date,
+        value: point.depositedCapital,
+      })),
+      variant: "secondary",
+    },
+  ];
+}
+
+function buildTooltipItems(
+  point: LineChartTooltipPoint,
+  currency: string,
+  language: ProfileLanguage,
+  t: Dictionary,
+): LineChartTooltipItem[] {
+  const portfolioValue = point.values.portfolioValue ?? 0;
+  const depositedCapital = point.values.depositedCapital ?? 0;
+  const investmentGain = portfolioValue - depositedCapital;
+
+  return [
+    {
+      label: t.portfolioValue,
+      value: formatCurrency(portfolioValue, currency, language),
+    },
+    {
+      label: t.depositedCapital,
+      value: formatCurrency(depositedCapital, currency, language),
+    },
+    {
+      label: t.investmentGainShort,
+      value: formatCurrency(investmentGain, currency, language, true),
+      variant: getChangeVariant(investmentGain),
+    },
+  ];
 }

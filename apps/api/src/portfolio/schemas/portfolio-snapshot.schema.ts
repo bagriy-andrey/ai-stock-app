@@ -14,6 +14,12 @@ export class PortfolioSnapshot {
   snapshotDate!: Date;
 
   @Prop({ required: true, min: 0 })
+  depositedCapital!: number;
+
+  @Prop({ required: true, min: 0 })
+  portfolioValue!: number;
+
+  @Prop({ required: true, min: 0 })
   totalValue!: number;
 
   @Prop({ required: true, min: 0 })
@@ -21,6 +27,9 @@ export class PortfolioSnapshot {
 
   @Prop({ required: true })
   totalProfit!: number;
+
+  @Prop({ required: true })
+  totalReturnPercent!: number;
 
   @Prop({ required: true, min: 0 })
   positionCount!: number;
