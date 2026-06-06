@@ -168,7 +168,10 @@ export const ru = {
   largestPosition: "Крупнейшая позиция",
   todaysProfitLoss: "P/L за сегодня",
   dailyProfitLossUnavailableTooltip:
-    "Дневное изменение портфеля недоступно, потому что еще нет значения за предыдущий торговый день.",
+    "Недостаточно исторических данных.",
+  noWinningPositions: "Нет прибыльных позиций",
+  noLosingPositions: "Нет убыточных позиций",
+  noPositionsAvailable: "Нет доступных позиций",
   noPortfolioInsightsAvailable: "Аналитика портфеля пока недоступна.",
   yourTransactions: "Ваши сделки покупки",
   yourPositions: "Ваши позиции",

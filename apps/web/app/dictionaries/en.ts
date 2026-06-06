@@ -166,7 +166,10 @@ export const en = {
   largestPosition: "Largest Position",
   todaysProfitLoss: "Today's P/L",
   dailyProfitLossUnavailableTooltip:
-    "Today's portfolio change is unavailable because there is no previous trading-day value yet.",
+    "Not enough historical data available.",
+  noWinningPositions: "No winning positions",
+  noLosingPositions: "No losing positions",
+  noPositionsAvailable: "No positions available",
   noPortfolioInsightsAvailable: "No portfolio insights available yet.",
   yourTransactions: "Your purchase transactions",
   yourPositions: "Your positions",

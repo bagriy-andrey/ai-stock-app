@@ -6,6 +6,7 @@ import {
   getBestPerformer,
   getDailyProfitLoss,
   getLargestPosition,
+  getTodaysProfitLoss,
   getWorstPerformer,
 } from "./portfolio-insights";
 
@@ -57,6 +58,50 @@ describe("portfolio insights", () => {
     expect(getWorstPerformer(positions)?.ticker).toBe("NVDA");
   });
 
+  it("ignores zero-percent positions when selecting performers", () => {
+    const flatPosition = createPosition({
+      profitLoss: 0,
+      profitLossPercent: 0,
+      ticker: "FLAT",
+    });
+
+    expect(getBestPerformer([flatPosition])).toBeNull();
+    expect(getWorstPerformer([flatPosition])).toBeNull();
+    expect(getWorstPerformer([flatPosition, positions[1]])?.ticker).toBe("NVDA");
+  });
+
+  it("ignores positions with invalid profit calculations", () => {
+    const invalidWinner = createPosition({
+      averagePurchasePrice: 0,
+      costBasis: 0,
+      currentValue: 500,
+      profitLoss: 500,
+      profitLossPercent: 100,
+      ticker: "BADWIN",
+    });
+    const invalidLoser = createPosition({
+      costBasis: Number.NaN,
+      currentValue: 50,
+      profitLoss: -50,
+      profitLossPercent: -50,
+      ticker: "BADLOSS",
+    });
+
+    expect(getBestPerformer([invalidWinner, positions[2]])?.ticker).toBe("MSFT");
+    expect(getWorstPerformer([invalidLoser, positions[1]])?.ticker).toBe("NVDA");
+  });
+
+  it("allows zero current value as a valid losing position", () => {
+    const worthlessPosition = createPosition({
+      currentValue: 0,
+      profitLoss: -100,
+      profitLossPercent: -100,
+      ticker: "ZERO",
+    });
+
+    expect(getWorstPerformer([worthlessPosition])?.ticker).toBe("ZERO");
+  });
+
   it("selects the largest position and calculates allocation percentage", () => {
     const largest = getLargestPosition(positions, 7_965.12);
 
@@ -76,9 +121,11 @@ describe("portfolio insights", () => {
       { date: "2026-06-06", totalValue: 8_042.18 },
     ];
     const dailyProfitLoss = getDailyProfitLoss(points);
+    const todaysProfitLoss = getTodaysProfitLoss(points);
 
     expect(dailyProfitLoss?.profitLoss).toBeCloseTo(42.18, 2);
     expect(dailyProfitLoss?.profitLossPercent).toBeCloseTo(0.52725, 5);
+    expect(todaysProfitLoss).toEqual(dailyProfitLoss);
   });
 
   it("returns null when daily profit/loss has no previous value", () => {

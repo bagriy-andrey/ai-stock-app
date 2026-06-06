@@ -16,16 +16,26 @@ export interface DailyProfitLossInsight {
 export function getBestPerformer(
   positions: PortfolioPositionDto[],
 ): PortfolioPositionDto | null {
-  return getExtremePosition(positions, (current, candidate) =>
-    candidate.profitLossPercent > current.profitLossPercent,
+  return getExtremePosition(
+    positions.filter(
+      (position) =>
+        hasValidProfitCalculation(position) && position.profitLossPercent > 0,
+    ),
+    (current, candidate) =>
+      candidate.profitLossPercent > current.profitLossPercent,
   );
 }
 
 export function getWorstPerformer(
   positions: PortfolioPositionDto[],
 ): PortfolioPositionDto | null {
-  return getExtremePosition(positions, (current, candidate) =>
-    candidate.profitLossPercent < current.profitLossPercent,
+  return getExtremePosition(
+    positions.filter(
+      (position) =>
+        hasValidProfitCalculation(position) && position.profitLossPercent < 0,
+    ),
+    (current, candidate) =>
+      candidate.profitLossPercent < current.profitLossPercent,
   );
 }
 
@@ -33,24 +43,26 @@ export function getLargestPosition(
   positions: PortfolioPositionDto[],
   totalPortfolioValue: number,
 ): LargestPositionInsight | null {
-  const position = getExtremePosition(positions, (current, candidate) =>
-    candidate.currentValue > current.currentValue,
+  const position = getExtremePosition(
+    positions.filter(
+      (candidate) =>
+        Number.isFinite(candidate.currentValue) && candidate.currentValue > 0,
+    ),
+    (current, candidate) =>
+      candidate.currentValue > current.currentValue,
   );
 
-  if (!position) {
+  if (!position || !Number.isFinite(totalPortfolioValue) || totalPortfolioValue <= 0) {
     return null;
   }
 
   return {
-    allocationPercent:
-      totalPortfolioValue <= 0
-        ? 0
-        : (position.currentValue / totalPortfolioValue) * 100,
+    allocationPercent: (position.currentValue / totalPortfolioValue) * 100,
     position,
   };
 }
 
-export function getDailyProfitLoss(
+export function getTodaysProfitLoss(
   points: PortfolioPerformancePointDto[],
 ): DailyProfitLossInsight | null {
   const sortedPoints = [...points].sort((left, right) =>
@@ -69,6 +81,23 @@ export function getDailyProfitLoss(
     profitLoss,
     profitLossPercent: (profitLoss / previousPoint.totalValue) * 100,
   };
+}
+
+export const getDailyProfitLoss = getTodaysProfitLoss;
+
+function hasValidProfitCalculation(position: PortfolioPositionDto): boolean {
+  return (
+    Number.isFinite(position.quantity) &&
+    position.quantity > 0 &&
+    Number.isFinite(position.currentValue) &&
+    position.currentValue >= 0 &&
+    Number.isFinite(position.costBasis) &&
+    position.costBasis > 0 &&
+    Number.isFinite(position.averagePurchasePrice) &&
+    position.averagePurchasePrice > 0 &&
+    Number.isFinite(position.profitLoss) &&
+    Number.isFinite(position.profitLossPercent)
+  );
 }
 
 function getExtremePosition(

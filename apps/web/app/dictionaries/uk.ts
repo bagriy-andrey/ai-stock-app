@@ -169,7 +169,10 @@ export const uk = {
   largestPosition: "Найбільша позиція",
   todaysProfitLoss: "P/L за сьогодні",
   dailyProfitLossUnavailableTooltip:
-    "Денна зміна портфеля недоступна, бо ще немає вартості за попередній торговий день.",
+    "Недостатньо історичних даних.",
+  noWinningPositions: "Немає прибуткових позицій",
+  noLosingPositions: "Немає збиткових позицій",
+  noPositionsAvailable: "Немає доступних позицій",
   noPortfolioInsightsAvailable: "Аналітика портфеля поки недоступна.",
   yourTransactions: "Ваші угоди купівлі",
   yourPositions: "Ваші позиції",

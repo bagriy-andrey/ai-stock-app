@@ -11,8 +11,8 @@ import type { Dictionary } from "../../dictionaries";
 import { fetchPortfolioPerformance } from "../../lib/portfolio-api";
 import {
   getBestPerformer,
-  getDailyProfitLoss,
   getLargestPosition,
+  getTodaysProfitLoss,
   getWorstPerformer,
 } from "../../lib/portfolio-insights";
 import {
@@ -69,7 +69,7 @@ export function PortfolioInsightsSection({
     retry: false,
   });
   const dailyProfitLoss = useMemo(
-    () => getDailyProfitLoss(dailyPerformanceQuery.data ?? []),
+    () => getTodaysProfitLoss(dailyPerformanceQuery.data ?? []),
     [dailyPerformanceQuery.data],
   );
   const insightCards = useMemo<InsightCardConfig[]>(() => {
@@ -81,79 +81,103 @@ export function PortfolioInsightsSection({
     );
     const cards: InsightCardConfig[] = [];
 
-    if (bestPerformer) {
-      cards.push({
-        id: "best-performer",
-        identity: bestPerformer,
-        primary: {
-          text: formatPercent(bestPerformer.profitLossPercent, language),
-          variant: getChangeVariant(bestPerformer.profitLossPercent),
-        },
-        secondary: {
-          text: formatCurrency(
-            bestPerformer.profitLoss,
-            bestPerformer.currency,
-            language,
-            true,
-          ),
-          variant: getChangeVariant(bestPerformer.profitLoss),
-        },
-        currentValue: {
-          text: formatCurrency(
-            bestPerformer.currentValue,
-            bestPerformer.currency,
-            language,
-          ),
-        },
-        title: t.bestPerformer,
-      });
-    }
+    cards.push(
+      bestPerformer
+        ? {
+            id: "best-performer",
+            identity: bestPerformer,
+            primary: {
+              text: formatPercent(bestPerformer.profitLossPercent, language),
+              variant: getChangeVariant(bestPerformer.profitLossPercent),
+            },
+            secondary: {
+              text: formatCurrency(
+                bestPerformer.profitLoss,
+                bestPerformer.currency,
+                language,
+                true,
+              ),
+              variant: getChangeVariant(bestPerformer.profitLoss),
+            },
+            currentValue: {
+              text: formatCurrency(
+                bestPerformer.currentValue,
+                bestPerformer.currency,
+                language,
+              ),
+            },
+            title: t.bestPerformer,
+          }
+        : {
+            id: "best-performer",
+            primary: {
+              text: t.noWinningPositions,
+            },
+            title: t.bestPerformer,
+          },
+    );
 
-    if (worstPerformer) {
-      cards.push({
-        id: "worst-performer",
-        identity: worstPerformer,
-        primary: {
-          text: formatPercent(worstPerformer.profitLossPercent, language),
-          variant: getChangeVariant(worstPerformer.profitLossPercent),
-        },
-        secondary: {
-          text: formatCurrency(
-            worstPerformer.profitLoss,
-            worstPerformer.currency,
-            language,
-            true,
-          ),
-          variant: getChangeVariant(worstPerformer.profitLoss),
-        },
-        currentValue: {
-          text: formatCurrency(
-            worstPerformer.currentValue,
-            worstPerformer.currency,
-            language,
-          ),
-        },
-        title: t.worstPerformer,
-      });
-    }
+    cards.push(
+      worstPerformer
+        ? {
+            id: "worst-performer",
+            identity: worstPerformer,
+            primary: {
+              text: formatPercent(worstPerformer.profitLossPercent, language),
+              variant: getChangeVariant(worstPerformer.profitLossPercent),
+            },
+            secondary: {
+              text: formatCurrency(
+                worstPerformer.profitLoss,
+                worstPerformer.currency,
+                language,
+                true,
+              ),
+              variant: getChangeVariant(worstPerformer.profitLoss),
+            },
+            currentValue: {
+              text: formatCurrency(
+                worstPerformer.currentValue,
+                worstPerformer.currency,
+                language,
+              ),
+            },
+            title: t.worstPerformer,
+          }
+        : {
+            id: "worst-performer",
+            primary: {
+              text: t.noLosingPositions,
+            },
+            title: t.worstPerformer,
+          },
+    );
 
-    if (largestPosition) {
-      cards.push({
-        id: "largest-position",
-        identity: largestPosition.position,
-        primary: {
-          text: formatPercent(largestPosition.allocationPercent, language),
-        },
-        currentValue: {
-          text: formatCurrency(
-            largestPosition.position.currentValue,
-            largestPosition.position.currency,
-            language,
-          ),
-        },
-        title: t.largestPosition,
-      });
-    }
+    cards.push(
+      largestPosition
+        ? {
+            id: "largest-position",
+            identity: largestPosition.position,
+            primary: {
+              text: formatPercent(largestPosition.allocationPercent, language),
+            },
+            currentValue: {
+              text: formatCurrency(
+                largestPosition.position.currentValue,
+                largestPosition.position.currency,
+                language,
+              ),
+            },
+            title: t.largestPosition,
+          }
+        : {
+            id: "largest-position",
+            primary: {
+              text: t.noPositionsAvailable,
+            },
+            title: t.largestPosition,
+          },
+    );
 
     cards.push({
       id: "daily-profit-loss",

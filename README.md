@@ -431,12 +431,24 @@ Telegram digests, AI reports, and portfolio insights.
 The Portfolio Insights section appears in the Overview tab below the summary
 and allocation content. It reuses aggregated open positions from `GET /portfolio`
 to show the best performer, worst performer, and largest position in one compact
-card grid. Today's P/L uses `GET /portfolio/performance?range=1D` and compares
-the latest value point with the previous trading-day point. If that comparison
-is unavailable, the card shows `N/A` with an explanatory tooltip. The section
-shows current value for position-based insight cards, opens the stock details
-modal when those cards are clicked, supports loading skeletons, an empty state
-for portfolios with no positions, and responsive 4-column, 2-column, and
+card grid. Best performer only considers positions with valid quantity, current
+value, cost basis, purchase price, and positive profit percentage. Worst
+performer only considers valid positions with negative profit percentage, so
+flat `0.00%` positions are ignored. If no winning or losing position exists,
+the corresponding card shows an explicit empty state instead of selecting a
+misleading position. Largest position uses the same allocation formula as the
+allocation chart:
+
+```text
+largestPositionPercent = position.currentValue / totalPortfolioValue * 100
+```
+
+Today's P/L uses `GET /portfolio/performance?range=1D` and compares the latest
+value point with the previous trading-day point. If that comparison is
+unavailable, the card shows `N/A` with an explanatory tooltip. The section shows
+current value for position-based insight cards, opens the stock details modal
+when those cards are clicked, supports loading skeletons, an empty state for
+portfolios with no positions, and responsive 4-column, 2-column, and
 single-column layouts.
 
 The positions table supports client-side search by ticker or company name and
