@@ -28,6 +28,7 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { AddPurchaseModal } from "../components/portfolio/AddPurchaseModal";
+import { PortfolioInsightsSection } from "../components/portfolio/PortfolioInsightsSection";
 import { PortfolioPerformanceCard } from "../components/portfolio/PortfolioPerformanceCard";
 import { CompanyLogoAvatar } from "../components/stocks/CompanyLogo";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
@@ -298,6 +299,18 @@ export function PortfolioPage() {
           t={t}
         />
       </section>
+
+      <PortfolioInsightsSection
+        accessToken={accessToken ?? ""}
+        currency={summaryCurrency}
+        isPortfolioLoading={portfolioQuery.isLoading}
+        language={language}
+        portfolio={portfolio}
+        portfolioError={
+          portfolioQuery.error instanceof Error ? portfolioQuery.error : null
+        }
+        t={t}
+      />
 
       <section aria-labelledby="portfolio-positions-heading" className="page-section">
         <div className="section-heading">

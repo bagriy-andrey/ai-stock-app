@@ -153,6 +153,16 @@ export const ru = {
   periodChangePercent: "Изменение %",
   periodChangeAmount: "Изменение $",
   notAvailable: "Н/Д",
+  portfolioInsights: "Аналитика портфеля",
+  portfolioInsightsSubtitle:
+    "Краткий обзор показателей портфеля и концентрации риска.",
+  bestPerformer: "Лучший результат",
+  worstPerformer: "Худший результат",
+  largestPosition: "Крупнейшая позиция",
+  todaysProfitLoss: "P/L за сегодня",
+  dailyProfitLossUnavailableTooltip:
+    "Дневное изменение портфеля недоступно, потому что еще нет значения за предыдущий торговый день.",
+  noPortfolioInsightsAvailable: "Аналитика портфеля пока недоступна.",
   yourTransactions: "Ваши сделки покупки",
   yourPositions: "Ваши позиции",
   noPortfolioPositionsYet: "Позиций в портфеле пока нет",

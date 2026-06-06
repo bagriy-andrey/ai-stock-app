@@ -151,6 +151,16 @@ export const en = {
   periodChangePercent: "Change %",
   periodChangeAmount: "Change $",
   notAvailable: "N/A",
+  portfolioInsights: "Portfolio Insights",
+  portfolioInsightsSubtitle:
+    "Quick overview of your portfolio performance and risk concentration.",
+  bestPerformer: "Best Performer",
+  worstPerformer: "Worst Performer",
+  largestPosition: "Largest Position",
+  todaysProfitLoss: "Today's P/L",
+  dailyProfitLossUnavailableTooltip:
+    "Today's portfolio change is unavailable because there is no previous trading-day value yet.",
+  noPortfolioInsightsAvailable: "No portfolio insights available yet.",
   yourTransactions: "Your purchase transactions",
   yourPositions: "Your positions",
   noPortfolioPositionsYet: "No portfolio positions yet",

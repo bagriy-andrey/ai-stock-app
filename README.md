@@ -418,6 +418,15 @@ transaction deletes are reflected after the frontend invalidates the
 doing temporary portfolio math and creates a reusable foundation for daily P/L,
 Telegram digests, AI reports, and portfolio insights.
 
+The Portfolio Insights section appears below the performance chart and above the
+positions table. It reuses aggregated open positions from `GET /portfolio` to
+show the best performer, worst performer, and largest position in one compact
+card grid. Today's P/L uses `GET /portfolio/performance?range=1D` and compares
+the latest value point with the previous trading-day point. If that comparison
+is unavailable, the card shows `N/A` with an explanatory tooltip. The section
+supports loading skeletons, an empty state for portfolios with no positions, and
+responsive 4-column, 2-column, and single-column layouts.
+
 The positions table supports client-side search by ticker or company name and
 sorting by name, quantity, current stock price, current value, profit/loss USD,
 and profit/loss percentage. Search is applied first, then sorting, then local

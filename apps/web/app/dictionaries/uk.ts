@@ -154,6 +154,16 @@ export const uk = {
   periodChangePercent: "Зміна %",
   periodChangeAmount: "Зміна $",
   notAvailable: "Н/Д",
+  portfolioInsights: "Аналітика портфеля",
+  portfolioInsightsSubtitle:
+    "Короткий огляд показників портфеля та концентрації ризику.",
+  bestPerformer: "Найкращий результат",
+  worstPerformer: "Найгірший результат",
+  largestPosition: "Найбільша позиція",
+  todaysProfitLoss: "P/L за сьогодні",
+  dailyProfitLossUnavailableTooltip:
+    "Денна зміна портфеля недоступна, бо ще немає вартості за попередній торговий день.",
+  noPortfolioInsightsAvailable: "Аналітика портфеля поки недоступна.",
   yourTransactions: "Ваші угоди купівлі",
   yourPositions: "Ваші позиції",
   noPortfolioPositionsYet: "Позицій у портфелі поки немає",
