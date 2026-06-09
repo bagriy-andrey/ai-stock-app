@@ -1766,7 +1766,7 @@ p {
 
 .portfolio-performance-header {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: space-between;
   gap: 18px;
 }
@@ -1782,28 +1782,33 @@ p {
 
 .portfolio-performance-ranges {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
   justify-content: flex-end;
   gap: 8px;
+  min-width: 0;
   max-width: 100%;
   overflow-x: auto;
+  padding-block: 2px;
   scrollbar-width: thin;
 }
 
 .portfolio-performance-ranges button {
+  flex: 0 0 auto;
   min-height: 34px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--panel-muted);
   color: var(--subtle-foreground);
-  padding: 0 12px;
+  padding: 7px 12px;
   font-size: 0.78rem;
   font-weight: 900;
+  line-height: 1;
   transition:
     background-color 150ms ease,
     border-color 150ms ease,
-    color 150ms ease,
-    transform 150ms ease;
+    color 150ms ease;
 }
 
 .portfolio-performance-ranges button:hover,
@@ -1812,10 +1817,6 @@ p {
   border-color: color-mix(in srgb, var(--link), transparent 38%);
   background: color-mix(in srgb, var(--link), transparent 84%);
   color: var(--foreground);
-}
-
-.portfolio-performance-ranges button[aria-pressed="true"] {
-  transform: translateY(-1px);
 }
 
 .portfolio-performance-summary {
@@ -2835,18 +2836,14 @@ p {
   }
 
   .portfolio-performance-header {
+    align-items: flex-start;
     flex-direction: column;
   }
 
   .portfolio-performance-ranges {
     width: 100%;
-    flex-wrap: nowrap;
     justify-content: flex-start;
     padding-bottom: 4px;
-  }
-
-  .portfolio-performance-ranges button {
-    flex: 0 0 auto;
   }
 
   .portfolio-performance-summary,
