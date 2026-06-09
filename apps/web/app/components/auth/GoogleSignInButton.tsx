@@ -39,7 +39,7 @@ declare global {
 export function GoogleSignInButton() {
   const buttonRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
-  const { loginWithGoogleCredential } = useAuth();
+  const { loginWithGoogle } = useAuth();
   const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -61,7 +61,7 @@ export function GoogleSignInButton() {
 
         setError(null);
         setIsSubmitting(true);
-        loginWithGoogleCredential(response.credential)
+        loginWithGoogle(response.credential)
           .then(() => {
             router.replace("/");
           })

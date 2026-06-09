@@ -137,7 +137,7 @@ export interface TradingAgentAnalysisResponse {
   source: "mock";
 }
 
-export interface UserDto {
+export interface UserDto extends AuthUser {
   id: string;
   email: string;
   name: string;
@@ -159,6 +159,27 @@ export type ProfileTheme = "light" | "dark" | "system";
 
 export type WatchlistViewMode = "grid" | "list";
 
+export type AuthProvider = "google" | "email" | "apple" | "facebook" | "phone";
+
+export interface AuthProviderFlags {
+  google: boolean;
+  email: boolean;
+  apple: boolean;
+  facebook: boolean;
+  phone: boolean;
+}
+
+export interface AuthUser {
+  id: string;
+  email?: string;
+  nickname?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  authProviders: AuthProviderFlags;
+  twoFactorEnabled: boolean;
+}
+
 export interface UpdateProfileRequest {
   firstName?: string | null;
   lastName?: string | null;
@@ -174,7 +195,8 @@ export interface GoogleLoginRequest {
 
 export interface AuthResponse {
   accessToken: string;
-  user: UserDto;
+  refreshToken?: string;
+  user: AuthUser;
 }
 
 export interface WatchlistItemDto {

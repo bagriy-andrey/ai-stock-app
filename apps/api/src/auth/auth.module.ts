@@ -4,6 +4,7 @@ import { getRequiredEnv } from "../config/env";
 import { UsersModule } from "../users/users.module";
 import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
+import { GoogleAuthService } from "./google-auth.service";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 
 const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
@@ -20,7 +21,7 @@ const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtAuthGuard],
+  providers: [AuthService, GoogleAuthService, JwtAuthGuard],
   exports: [JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}

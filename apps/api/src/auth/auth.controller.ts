@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Request, UseGuards } from "@nestjs/common";
-import type { AuthResponse, UserDto } from "@ai-stock-advisor/shared";
+import type { AuthResponse, AuthUser } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "./authenticated-request";
 import { AuthService } from "./auth.service";
 import { GoogleLoginDto } from "./dto/google-login.dto";
@@ -16,7 +16,7 @@ export class AuthController {
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
-  getCurrentUser(@Request() request: AuthenticatedRequest): Promise<UserDto> {
+  getCurrentUser(@Request() request: AuthenticatedRequest): Promise<AuthUser> {
     if (!request.user) {
       throw new Error("Authenticated request is missing user payload");
     }

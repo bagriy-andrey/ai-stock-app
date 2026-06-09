@@ -1,64 +1,53 @@
 import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import type { AuthResponse, UserDto } from "@ai-stock-advisor/shared";
-import { OAuth2Client, TokenPayload } from "google-auth-library";
-import { getRequiredEnv } from "../config/env";
+import type {
+  AuthProviderFlags,
+  AuthResponse,
+  AuthUser,
+  UserDto,
+} from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
+import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
 
 @Injectable()
 export class AuthService {
-  private readonly googleClient = new OAuth2Client(getRequiredEnv("GOOGLE_CLIENT_ID"));
-
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
+    private readonly googleAuthService: GoogleAuthService,
   ) {}
 
   async loginWithGoogle(credential: string): Promise<AuthResponse> {
-    const payload = await this.verifyGoogleCredential(credential);
-    const email = payload.email;
+    const profile = await this.googleAuthService.verifyCredential(credential);
+    const email = profile.email;
 
-    if (!email || !payload.email_verified) {
+    if (!email || !profile.emailVerified) {
       throw new UnauthorizedException("Google account email is not verified");
     }
 
     const user = await this.usersService.findOrCreateFromGoogle({
       email,
-      name: payload.name ?? email,
-      avatarUrl: payload.picture,
+      providerId: profile.providerId,
+      name: profile.name,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
+      emailVerified: profile.emailVerified,
     });
 
+    return this.buildAuthResponse(user);
+  }
+
+  async getCurrentUser(userId: string): Promise<AuthUser> {
+    return this.toAuthUser(await this.usersService.findById(userId));
+  }
+
+  private async buildAuthResponse(user: UserDto): Promise<AuthResponse> {
     return {
       accessToken: await this.signUser(user),
-      user,
+      user: this.toAuthUser(user),
     };
-  }
-
-  async getCurrentUser(userId: string): Promise<UserDto> {
-    return this.usersService.findById(userId);
-  }
-
-  private async verifyGoogleCredential(credential: string): Promise<TokenPayload> {
-    try {
-      const ticket = await this.googleClient.verifyIdToken({
-        idToken: credential,
-        audience: getRequiredEnv("GOOGLE_CLIENT_ID"),
-      });
-      const payload = ticket.getPayload();
-
-      if (!payload) {
-        throw new UnauthorizedException("Invalid Google credential");
-      }
-
-      return payload;
-    } catch (error) {
-      if (error instanceof UnauthorizedException) {
-        throw error;
-      }
-
-      throw new UnauthorizedException("Invalid Google credential");
-    }
   }
 
   private signUser(user: UserDto): Promise<string> {
@@ -69,4 +58,29 @@ export class AuthService {
 
     return this.jwtService.signAsync(payload);
   }
+
+  private toAuthUser(user: UserDto): AuthUser {
+    return {
+      id: user.id,
+      email: user.email,
+      nickname: user.nickname,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+      authProviders: normalizeAuthProviderFlags(user.authProviders),
+      twoFactorEnabled: user.twoFactorEnabled === true,
+    };
+  }
+}
+
+function normalizeAuthProviderFlags(
+  authProviders: Partial<AuthProviderFlags> | undefined,
+): AuthProviderFlags {
+  return {
+    google: authProviders?.google === true,
+    email: authProviders?.email === true,
+    apple: authProviders?.apple === true,
+    facebook: authProviders?.facebook === true,
+    phone: authProviders?.phone === true,
+  };
 }

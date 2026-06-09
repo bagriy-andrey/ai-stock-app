@@ -67,6 +67,7 @@ export function AppHeader() {
 
   const getActivePage = (href: string) =>
     pathname === href ? "page" : undefined;
+  const avatarAlt = user.nickname ?? user.name ?? user.email ?? t.profile;
 
   return (
     <header className="app-header" ref={headerRef}>
@@ -95,7 +96,7 @@ export function AppHeader() {
           />
           <Link className="header-profile-link" href="/profile" aria-label={t.profile}>
             <Avatar
-              alt={user.nickname ?? user.name}
+              alt={avatarAlt}
               className="header-avatar"
               fallback={getUserInitials(user)}
               src={resolveAvatarUrl(user.avatarUrl)}

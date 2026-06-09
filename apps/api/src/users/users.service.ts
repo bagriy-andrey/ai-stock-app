@@ -1,14 +1,22 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
-import type { UpdateProfileRequest, UserDto } from "@ai-stock-advisor/shared";
+import type {
+  AuthProviderFlags,
+  UpdateProfileRequest,
+  UserDto,
+} from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "./schemas/user.schema";
 import { normalizeProfileLanguage } from "./profile-language";
 
 export interface GoogleUserProfile {
   email: string;
-  name: string;
+  providerId?: string;
+  name?: string;
+  firstName?: string;
+  lastName?: string;
   avatarUrl?: string;
+  emailVerified: boolean;
 }
 
 @Injectable()
@@ -18,20 +26,35 @@ export class UsersService {
   ) {}
 
   async findOrCreateFromGoogle(profile: GoogleUserProfile): Promise<UserDto> {
+    const email = profile.email.toLowerCase();
+    const existingUser = await this.findExistingGoogleUser(email, profile.providerId);
+    const displayName = buildDisplayName(profile, email);
+    const $set = removeUndefinedValues({
+      email,
+      name: displayName,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
+      emailVerified: profile.emailVerified,
+      "authProviders.google": true,
+      ...(profile.providerId ? { "providerIds.google": profile.providerId } : {}),
+    });
     const user = await this.userModel
       .findOneAndUpdate(
-        { email: profile.email.toLowerCase() },
+        existingUser ? { _id: existingUser._id } : { email },
         {
-          $set: {
-            email: profile.email.toLowerCase(),
-            name: profile.name,
-          },
+          $set,
           $setOnInsert: {
-            avatarUrl: profile.avatarUrl,
             language: "en",
+            watchlistViewMode: "grid",
           },
         },
-        { new: true, upsert: true, setDefaultsOnInsert: true },
+        {
+          new: true,
+          upsert: true,
+          setDefaultsOnInsert: true,
+          runValidators: true,
+        },
       )
       .exec();
 
@@ -114,15 +137,37 @@ export class UsersService {
     };
   }
 
+  private async findExistingGoogleUser(
+    email: string,
+    providerId: string | undefined,
+  ): Promise<UserDocument | null> {
+    if (providerId) {
+      const userByProviderId = await this.userModel
+        .findOne({ "providerIds.google": providerId })
+        .exec();
+
+      if (userByProviderId) {
+        return userByProviderId;
+      }
+    }
+
+    return this.userModel.findOne({ email }).exec();
+  }
+
   private toDto(user: UserDocument): UserDto {
+    const email = user.email ?? "";
+    const name = user.name ?? buildFallbackName(user, email);
+
     return {
       id: user._id.toString(),
-      email: user.email,
-      name: user.name,
+      email,
+      name,
       firstName: user.firstName,
       lastName: user.lastName,
       nickname: user.nickname,
       avatarUrl: user.avatarUrl,
+      authProviders: normalizeAuthProviderFlags(user.authProviders),
+      twoFactorEnabled: user.twoFactorEnabled === true,
       language: normalizeProfileLanguage(user.language),
       theme: user.theme,
       watchlistViewMode:
@@ -132,4 +177,32 @@ export class UsersService {
       updatedAt: user.updatedAt.toISOString(),
     };
   }
+}
+
+function normalizeAuthProviderFlags(
+  authProviders: Partial<AuthProviderFlags> | undefined,
+): AuthProviderFlags {
+  return {
+    google: authProviders?.google === true,
+    email: authProviders?.email === true,
+    apple: authProviders?.apple === true,
+    facebook: authProviders?.facebook === true,
+    phone: authProviders?.phone === true,
+  };
+}
+
+function buildDisplayName(profile: GoogleUserProfile, email: string): string {
+  const fullName = [profile.firstName, profile.lastName].filter(Boolean).join(" ");
+  return profile.name ?? (fullName || email);
+}
+
+function buildFallbackName(user: UserDocument, email: string): string {
+  const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
+  return user.nickname ?? (fullName || email || "User");
+}
+
+function removeUndefinedValues<T extends Record<string, unknown>>(input: T): T {
+  return Object.fromEntries(
+    Object.entries(input).filter(([, value]) => value !== undefined),
+  ) as T;
 }

@@ -1,6 +1,10 @@
 "use client";
 
-import type { AuthResponse, UserDto } from "@ai-stock-advisor/shared";
+import type {
+  AuthProvider as AuthProviderName,
+  AuthUser,
+  UserDto,
+} from "@ai-stock-advisor/shared";
 import {
   createContext,
   useCallback,
@@ -10,17 +14,36 @@ import {
   useState,
 } from "react";
 import { apiRequest } from "../../lib/api";
+import {
+  loginWithGoogle as loginWithGoogleRequest,
+  loginWithProvider as loginWithProviderRequest,
+} from "../../lib/auth-api";
 import { normalizeProfileLanguage } from "../../lib/profile-language";
 import { normalizeWatchlistViewMode } from "../../lib/watchlist-view-mode";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
+export type SessionUser = AuthUser &
+  Partial<
+    Pick<
+      UserDto,
+      "name" | "language" | "theme" | "watchlistViewMode" | "telegramChatId"
+    >
+  >;
 
 interface AuthContextValue {
   status: AuthStatus;
-  user: UserDto | null;
+  user: SessionUser | null;
   accessToken: string | null;
+  isAuthenticated: boolean;
+  isLoading: boolean;
+  loginWithGoogle: (credential: string) => Promise<void>;
   loginWithGoogleCredential: (credential: string) => Promise<void>;
-  updateUser: (user: UserDto) => void;
+  loginWithProvider: (
+    provider: AuthProviderName,
+    payload: unknown,
+  ) => Promise<void>;
+  refreshUser: () => Promise<void>;
+  updateUser: (user: SessionUser | UserDto) => void;
   logout: () => void;
 }
 
@@ -29,7 +52,7 @@ const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: Readonly<{ children: React.ReactNode }>) {
   const [status, setStatus] = useState<AuthStatus>("loading");
-  const [user, setUser] = useState<UserDto | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const logout = useCallback(() => {
@@ -38,6 +61,28 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     setUser(null);
     setStatus("unauthenticated");
   }, []);
+
+  const refreshUserWithToken = useCallback(
+    async (token: string | null) => {
+      if (!token) {
+        logout();
+        return;
+      }
+
+      const currentUser = await apiRequest<UserDto>("/users/me", {
+        headers: {
+          authorization: `Bearer ${token}`,
+        },
+      });
+      setUser(normalizeSessionUser(currentUser));
+      setStatus("authenticated");
+    },
+    [logout],
+  );
+
+  const refreshUser = useCallback(async () => {
+    await refreshUserWithToken(accessToken);
+  }, [accessToken, refreshUserWithToken]);
 
   useEffect(() => {
     const storedToken = window.localStorage.getItem(authStorageKey);
@@ -48,46 +93,68 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     }
 
     setAccessToken(storedToken);
-    apiRequest<UserDto>("/users/me", {
-      headers: {
-        authorization: `Bearer ${storedToken}`,
-      },
-    })
-      .then((currentUser) => {
-        setUser(normalizeUser(currentUser));
-        setStatus("authenticated");
-      })
+    refreshUserWithToken(storedToken)
       .catch(() => {
         logout();
       });
-  }, [logout]);
+  }, [logout, refreshUserWithToken]);
 
-  const loginWithGoogleCredential = useCallback(async (credential: string) => {
-    const response = await apiRequest<AuthResponse>("/auth/google", {
-      method: "POST",
-      body: JSON.stringify({ credential }),
-    });
-
+  const applyAuthResponse = useCallback((response: Awaited<ReturnType<typeof loginWithGoogleRequest>>) => {
     window.localStorage.setItem(authStorageKey, response.accessToken);
     setAccessToken(response.accessToken);
-    setUser(normalizeUser(response.user));
+    setUser(normalizeSessionUser(response.user));
     setStatus("authenticated");
   }, []);
 
-  const updateUser = useCallback((nextUser: UserDto) => {
-    setUser(normalizeUser(nextUser));
+  const loginWithGoogle = useCallback(async (credential: string) => {
+    applyAuthResponse(await loginWithGoogleRequest(credential));
+  }, [applyAuthResponse]);
+
+  const loginWithProvider = useCallback(async (
+    provider: AuthProviderName,
+    payload: unknown,
+  ) => {
+    applyAuthResponse(await loginWithProviderRequest(provider, payload));
+  }, [applyAuthResponse]);
+
+  const loginWithGoogleCredential = useCallback(async (credential: string) => {
+    await loginWithGoogle(credential);
+  }, [loginWithGoogle]);
+
+  const updateUser = useCallback((nextUser: SessionUser | UserDto) => {
+    setUser(normalizeSessionUser(nextUser));
   }, []);
+
+  const isAuthenticated = status === "authenticated";
+  const isLoading = status === "loading";
 
   const value = useMemo<AuthContextValue>(
     () => ({
       status,
       user,
       accessToken,
+      isAuthenticated,
+      isLoading,
+      loginWithGoogle,
       loginWithGoogleCredential,
+      loginWithProvider,
+      refreshUser,
       updateUser,
       logout,
     }),
-    [accessToken, loginWithGoogleCredential, logout, status, updateUser, user],
+    [
+      accessToken,
+      isAuthenticated,
+      isLoading,
+      loginWithGoogle,
+      loginWithGoogleCredential,
+      loginWithProvider,
+      logout,
+      refreshUser,
+      status,
+      updateUser,
+      user,
+    ],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -103,10 +170,18 @@ export function useAuth(): AuthContextValue {
   return value;
 }
 
-function normalizeUser(user: UserDto): UserDto {
+function normalizeSessionUser(user: AuthUser | UserDto): SessionUser {
+  const sessionUser = user as SessionUser;
+
   return {
-    ...user,
-    language: normalizeProfileLanguage(user.language),
-    watchlistViewMode: normalizeWatchlistViewMode(user.watchlistViewMode),
+    ...sessionUser,
+    language:
+      sessionUser.language === undefined
+        ? undefined
+        : normalizeProfileLanguage(sessionUser.language),
+    watchlistViewMode:
+      sessionUser.watchlistViewMode === undefined
+        ? undefined
+        : normalizeWatchlistViewMode(sessionUser.watchlistViewMode),
   };
 }

@@ -5,6 +5,7 @@ import type { UserDocument } from "./schemas/user.schema";
 
 describe("UsersService", () => {
   const userModel = {
+    findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
@@ -20,6 +21,20 @@ describe("UsersService", () => {
     lastName: "User",
     nickname: "Tester",
     avatarUrl: "https://example.com/avatar.png",
+    authProviders: {
+      google: true,
+      email: false,
+      apple: false,
+      facebook: false,
+      phone: false,
+    },
+    providerIds: {
+      google: "google-user-id",
+    },
+    emailVerified: true,
+    phoneVerified: false,
+    twoFactorEnabled: false,
+    twoFactorMethod: null,
     language: "en",
     theme: "dark",
     watchlistViewMode: "list",
@@ -33,14 +48,22 @@ describe("UsersService", () => {
   });
 
   it("creates or updates Google users by normalized email", async () => {
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(null);
     const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
     userModel.findOneAndUpdate.mockReturnValue({ exec });
 
     await expect(
       service.findOrCreateFromGoogle({
         email: "TEST@example.com",
+        providerId: "google-user-id",
         name: "Test User",
+        firstName: "Test",
+        lastName: "User",
         avatarUrl: "https://example.com/avatar.png",
+        emailVerified: true,
       }),
     ).resolves.toEqual({
       id: userId.toString(),
@@ -50,6 +73,8 @@ describe("UsersService", () => {
       lastName: userDocument.lastName,
       nickname: userDocument.nickname,
       avatarUrl: userDocument.avatarUrl,
+      authProviders: userDocument.authProviders,
+      twoFactorEnabled: false,
       language: userDocument.language,
       theme: userDocument.theme,
       watchlistViewMode: userDocument.watchlistViewMode,
@@ -58,19 +83,59 @@ describe("UsersService", () => {
       updatedAt: now.toISOString(),
     });
 
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      "providerIds.google": "google-user-id",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      email: "test@example.com",
+    });
     expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
       { email: "test@example.com" },
       {
         $set: {
           email: "test@example.com",
           name: "Test User",
+          firstName: "Test",
+          lastName: "User",
+          avatarUrl: "https://example.com/avatar.png",
+          emailVerified: true,
+          "authProviders.google": true,
+          "providerIds.google": "google-user-id",
         },
         $setOnInsert: {
-          avatarUrl: "https://example.com/avatar.png",
           language: "en",
+          watchlistViewMode: "grid",
         },
       },
-      { new: true, upsert: true, setDefaultsOnInsert: true },
+      {
+        new: true,
+        upsert: true,
+        setDefaultsOnInsert: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("reuses an existing Google user by provider id", async () => {
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(userDocument);
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
+    userModel.findOneAndUpdate.mockReturnValue({ exec });
+
+    await service.findOrCreateFromGoogle({
+      email: "test@example.com",
+      providerId: "google-user-id",
+      name: "Test User",
+      emailVerified: true,
+    });
+
+    expect(userModel.findOne).toHaveBeenCalledTimes(1);
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userDocument._id },
+      expect.any(Object),
+      expect.objectContaining({ upsert: true }),
     );
   });
 
@@ -86,6 +151,8 @@ describe("UsersService", () => {
       lastName: userDocument.lastName,
       nickname: userDocument.nickname,
       avatarUrl: userDocument.avatarUrl,
+      authProviders: userDocument.authProviders,
+      twoFactorEnabled: false,
       language: userDocument.language,
       theme: userDocument.theme,
       watchlistViewMode: userDocument.watchlistViewMode,
