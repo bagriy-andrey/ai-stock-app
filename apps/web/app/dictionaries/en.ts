@@ -38,6 +38,10 @@ export const en = {
   add: "Add",
   yourWatchlist: "Your watchlist",
   sortOptions: "Sort options",
+  watchlistViewOptions: "Watchlist view options",
+  gridView: "Grid view",
+  listView: "List view",
+  watchlistViewSaveError: "Could not save your watchlist view. Try again.",
   dailyChangePercent: "Daily change %",
   livePricesUnavailable:
     "Live prices are temporarily unavailable. Your saved watchlist is still shown.",
@@ -50,6 +54,9 @@ export const en = {
   remove: "Remove",
   addToWatchlist: "Add to watchlist",
   removeFromWatchlist: "Remove from watchlist",
+  removeFromWatchlistTitle: "Remove from watchlist?",
+  removeFromWatchlistConfirmation:
+    "Are you sure you want to remove {ticker} from your watchlist?",
   chooseStockError: "Search for a stock and select it from the results.",
   addStockError: "Could not add this stock. Try again.",
   removeStockError: "Could not remove this stock. Try again.",

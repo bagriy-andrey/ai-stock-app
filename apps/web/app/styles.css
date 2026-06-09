@@ -944,10 +944,10 @@ p {
   }
 }
 
-.watchlist-list {
+.watchlist-grid {
   display: grid;
   gap: 16px;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 360px), 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .watchlist-heading {
@@ -967,6 +967,55 @@ p {
   flex-wrap: wrap;
   gap: 8px;
   justify-content: flex-end;
+}
+
+.watchlist-view-switcher {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel), #020617 10%);
+  padding: 3px;
+}
+
+.watchlist-view-switcher[aria-busy="true"] {
+  opacity: 0.78;
+}
+
+.watchlist-view-switcher button {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--subtle-foreground);
+  font-size: 0.8rem;
+  font-weight: 800;
+  padding: 0 11px;
+}
+
+.watchlist-view-switcher button:hover,
+.watchlist-view-switcher button:focus-visible {
+  background: var(--panel-hover);
+  color: var(--foreground);
+}
+
+.watchlist-view-switcher button[aria-pressed="true"] {
+  background: var(--input-background);
+  color: var(--foreground);
+  box-shadow: inset 0 0 0 1px var(--control-border);
+}
+
+.watchlist-view-switcher svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.9;
 }
 
 .watchlist-sort-button {
@@ -992,6 +1041,91 @@ p {
 
 .watchlist-sort-button[aria-pressed="true"] .sort-indicator-icon {
   color: var(--foreground);
+}
+
+.watchlist-table-wrap {
+  margin-top: 0;
+}
+
+.watchlist-table {
+  min-width: 760px;
+  table-layout: fixed;
+}
+
+.watchlist-table th,
+.watchlist-table td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.watchlist-table th:nth-child(1) {
+  width: 20%;
+}
+
+.watchlist-table th:nth-child(2) {
+  width: 34%;
+}
+
+.watchlist-table th:nth-child(3) {
+  width: 18%;
+}
+
+.watchlist-table th:nth-child(4) {
+  width: 18%;
+}
+
+.watchlist-table th:nth-child(5) {
+  width: 10%;
+}
+
+.watchlist-table-row {
+  transition: background-color 160ms ease;
+}
+
+.watchlist-table-company,
+.watchlist-table-status {
+  overflow: hidden;
+  color: var(--subtle-foreground);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.watchlist-actions-heading,
+.watchlist-actions-cell {
+  text-align: right;
+}
+
+.watchlist-table-remove {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  min-height: 36px;
+  place-items: center;
+  border-color: transparent;
+  background: transparent;
+  color: var(--subtle-foreground);
+  padding: 0;
+}
+
+.watchlist-table-remove:hover,
+.watchlist-table-remove:focus-visible {
+  background: var(--negative-background);
+  color: var(--negative);
+}
+
+.watchlist-table-remove svg {
+  width: 19px;
+  height: 19px;
+  fill: none;
+  stroke: currentColor;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 1.8;
+}
+
+.watchlist-delete-error {
+  margin: 0;
+  padding: 0 24px 16px;
 }
 
 .stock-card {
@@ -2907,6 +3041,10 @@ p {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
+  .watchlist-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .portfolio-insights-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -2974,6 +3112,19 @@ p {
 
   .watchlist-sort-controls {
     justify-content: flex-start;
+  }
+
+  .watchlist-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .watchlist-view-switcher {
+    width: 100%;
+  }
+
+  .watchlist-view-switcher button {
+    flex: 1 1 0;
+    justify-content: center;
   }
 
   .watchlist-form button {

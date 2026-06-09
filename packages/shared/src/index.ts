@@ -147,6 +147,7 @@ export interface UserDto {
   avatarUrl?: string;
   language: ProfileLanguage;
   theme?: ProfileTheme;
+  watchlistViewMode?: WatchlistViewMode;
   telegramChatId?: string;
   createdAt: string;
   updatedAt: string;
@@ -156,12 +157,15 @@ export type ProfileLanguage = "en" | "ru" | "uk";
 
 export type ProfileTheme = "light" | "dark" | "system";
 
+export type WatchlistViewMode = "grid" | "list";
+
 export interface UpdateProfileRequest {
   firstName?: string | null;
   lastName?: string | null;
   nickname?: string | null;
   language?: ProfileLanguage;
   theme?: ProfileTheme;
+  watchlistViewMode?: WatchlistViewMode;
 }
 
 export interface GoogleLoginRequest {

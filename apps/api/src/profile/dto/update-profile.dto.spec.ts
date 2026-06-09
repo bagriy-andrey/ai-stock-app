@@ -10,6 +10,7 @@ describe("UpdateProfileDto", () => {
       nickname: " analyst ",
       language: "uk",
       theme: "system",
+      watchlistViewMode: "list",
     });
 
     await expect(validate(dto)).resolves.toHaveLength(0);
@@ -19,17 +20,19 @@ describe("UpdateProfileDto", () => {
       nickname: "analyst",
       language: "uk",
       theme: "system",
+      watchlistViewMode: "list",
     });
   });
 
-  it("rejects unsupported language and theme values", async () => {
+  it("rejects unsupported language, theme, and watchlist view values", async () => {
     const errors = await validate(
       plainToInstance(UpdateProfileDto, {
         language: "de",
         theme: "sepia",
+        watchlistViewMode: "cards",
       }),
     );
 
-    expect(errors).toHaveLength(2);
+    expect(errors).toHaveLength(3);
   });
 });

@@ -221,6 +221,7 @@ User documents are stored in the `users` collection with these fields:
 | `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
 | `language` | `"en" \| "ru" \| "uk"` | Yes | Preferred language. Defaults to English. |
 | `theme` | `"light" \| "dark" \| "system"` | No | Preferred application theme. |
+| `watchlistViewMode` | `"grid" \| "list"` | Yes | Preferred Watchlist display mode. Defaults to grid. |
 | `telegramChatId` | `string` | No | Sparse indexed field reserved for Telegram account linking. |
 | `createdAt` | `Date` | Yes | Managed by Mongoose timestamps. |
 | `updatedAt` | `Date` | Yes | Managed by Mongoose timestamps. |
@@ -291,13 +292,21 @@ Watchlist items are stored with `userId`, uppercase `ticker`, optional
 user, and deletes only match items owned by the authenticated user. Ticker
 input is trimmed, converted to uppercase, and validated before persistence.
 
-The watchlist renders tracked companies as responsive fintech-style cards.
+The watchlist renders tracked companies in a user-selectable Grid or List
+view. The selected `watchlistViewMode` is saved on the user profile through
+`PATCH /profile` and restored when the page is reopened. Grid view uses
+responsive fixed columns: three cards per row on desktop, two on tablet, and
+one on mobile, so a single card keeps one desktop column width instead of
+stretching across the full row. List view renders the same filtered and sorted
+items in a compact table without charts.
+
+Grid cards use the existing responsive fintech-style card design.
 Each card shows a circular Finnhub company logo when available, or circular
 fallback initials when a logo is missing. Cards display the ticker, company
 name, current price, absolute price change, and percentage change with
 positive, negative, and neutral color states. Cards also show a small
-non-interactive sparkline from recent `1M` historical candles, with loading,
-empty, and provider-error fallbacks when chart data is unavailable. Selecting
+non-interactive sparkline from `1Y` historical candles, with loading, empty,
+and provider-error fallbacks when chart data is unavailable. Selecting
 the main card area opens a tabbed stock details modal. The modal keeps the
 company logo, name, ticker, exchange, currency, icon-only watchlist, purchase,
 transactions, and close actions visible in a sticky header. Details are split
@@ -306,8 +315,8 @@ independently inside the modal. The chart supports `1D`, `1W`, `1M`, `3M`,
 `6M`, `1Y`, `5Y`, and `ALL` ranges backed by Yahoo Finance, with loading,
 empty, and safe provider-error states. Selecting the purchase action closes the
 stock details modal and opens the add-purchase modal as a separate top-level
-dialog instead of nesting one modal inside another. The remove action is kept
-separate so deleting a ticker does not open the modal.
+dialog instead of nesting one modal inside another. Removing a ticker from
+either Grid or List view opens a confirmation dialog before deletion.
 
 The authenticated home page includes a compact Market Movers section backed by
 the existing `GET /market/movers` API. Top Gainers and Top Losers are shown in

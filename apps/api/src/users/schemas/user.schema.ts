@@ -1,5 +1,9 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import type { ProfileLanguage, ProfileTheme } from "@ai-stock-advisor/shared";
+import type {
+  ProfileLanguage,
+  ProfileTheme,
+  WatchlistViewMode,
+} from "@ai-stock-advisor/shared";
 import { HydratedDocument } from "mongoose";
 
 @Schema({
@@ -30,6 +34,9 @@ export class User {
 
   @Prop({ enum: ["light", "dark", "system"] })
   theme?: ProfileTheme;
+
+  @Prop({ enum: ["grid", "list"], required: true, default: "grid" })
+  watchlistViewMode!: WatchlistViewMode;
 
   @Prop({ index: true, sparse: true, trim: true })
   telegramChatId?: string;

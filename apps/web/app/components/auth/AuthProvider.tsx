@@ -11,6 +11,7 @@ import {
 } from "react";
 import { apiRequest } from "../../lib/api";
 import { normalizeProfileLanguage } from "../../lib/profile-language";
+import { normalizeWatchlistViewMode } from "../../lib/watchlist-view-mode";
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated";
 
@@ -106,5 +107,6 @@ function normalizeUser(user: UserDto): UserDto {
   return {
     ...user,
     language: normalizeProfileLanguage(user.language),
+    watchlistViewMode: normalizeWatchlistViewMode(user.watchlistViewMode),
   };
 }

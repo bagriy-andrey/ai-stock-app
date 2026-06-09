@@ -1,6 +1,7 @@
 import type {
   ProfileLanguage,
   ProfileTheme,
+  WatchlistViewMode,
 } from "@ai-stock-advisor/shared";
 import { Transform } from "class-transformer";
 import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
@@ -40,4 +41,8 @@ export class UpdateProfileDto {
   @IsOptional()
   @IsIn(["light", "dark", "system"])
   theme?: ProfileTheme;
+
+  @IsOptional()
+  @IsIn(["grid", "list"])
+  watchlistViewMode?: WatchlistViewMode;
 }

@@ -100,7 +100,7 @@ export class UsersService {
       }
     }
 
-    for (const field of ["language", "theme"] as const) {
+    for (const field of ["language", "theme", "watchlistViewMode"] as const) {
       const value = input[field];
 
       if (value !== undefined) {
@@ -125,6 +125,8 @@ export class UsersService {
       avatarUrl: user.avatarUrl,
       language: normalizeProfileLanguage(user.language),
       theme: user.theme,
+      watchlistViewMode:
+        user.watchlistViewMode === "list" ? "list" : "grid",
       telegramChatId: user.telegramChatId,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),

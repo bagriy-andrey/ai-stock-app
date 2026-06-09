@@ -4,11 +4,13 @@ import type {
   CompanyProfile,
   StockQuote,
   StockSearchResult,
+  UserDto,
   WatchlistItemDto,
+  WatchlistViewMode,
 } from "@ai-stock-advisor/shared";
 import type { Dictionary } from "../dictionaries";
 import type { FormEvent } from "react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import {
   useMutation,
   useQueries,
@@ -19,11 +21,13 @@ import { useAuth } from "../components/auth/AuthProvider";
 import { AppHeader } from "../components/layout/AppHeader";
 import { useI18n } from "../components/i18n/I18nProvider";
 import { EmptyState } from "../components/ui/EmptyState";
+import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
 import { SortIndicator } from "../components/ui/SortIndicator";
-import { StockCard } from "../components/watchlist/StockCard";
+import { CompanyLogo } from "../components/stocks/CompanyLogo";
+import { StockCard, TrashIcon } from "../components/watchlist/StockCard";
 import { StockDetailsModal } from "../components/stocks/StockDetailsModal";
 import {
   watchlistSortFields,
@@ -46,6 +50,12 @@ import {
 } from "../lib/pagination-state";
 import type { SortState } from "../lib/table-sorting";
 import { sortItems, toggleSortState } from "../lib/table-sorting";
+import { updateProfile } from "../lib/profile-api";
+import {
+  formatCurrency,
+  formatPercent,
+  getChangeVariant,
+} from "../lib/stock-format";
 import {
   parsePageParam,
   parseSortParams,
@@ -58,6 +68,7 @@ import {
   fetchWatchlist,
   removeWatchlistItem,
 } from "../lib/watchlist-api";
+import { normalizeWatchlistViewMode } from "../lib/watchlist-view-mode";
 
 const watchlistQueryKey = ["watchlist"] as const;
 const tablePageSize = 10;
@@ -113,7 +124,7 @@ interface WatchlistDisplayItem {
 
 export function WatchlistPage() {
   const queryClient = useQueryClient();
-  const { accessToken } = useAuth();
+  const { accessToken, updateUser, user } = useAuth();
   const { language, t } = useI18n();
   const [searchInput, setSearchInput] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
@@ -121,6 +132,11 @@ export function WatchlistPage() {
   );
   const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [pendingRemovalItem, setPendingRemovalItem] =
+    useState<WatchlistItemDto | null>(null);
+  const watchlistViewMode = normalizeWatchlistViewMode(
+    user?.watchlistViewMode,
+  );
   const debouncedSearchInput = useDebouncedValue(searchInput.trim(), 350);
   const { setState: setUrlState, state: urlState } = useUrlState({
     defaults: { page: 1 },
@@ -175,7 +191,47 @@ export function WatchlistPage() {
   const removeMutation = useMutation({
     mutationFn: (id: string) => removeWatchlistItem(accessToken ?? "", id),
     onSuccess: async () => {
+      setPendingRemovalItem(null);
       await queryClient.invalidateQueries({ queryKey: watchlistQueryKey });
+    },
+  });
+
+  const updateViewModeMutation = useMutation({
+    mutationFn: (viewMode: WatchlistViewMode) =>
+      updateProfile(accessToken ?? "", { watchlistViewMode: viewMode }),
+    onMutate: async (viewMode) => {
+      await queryClient.cancelQueries({ queryKey: ["profile"] });
+      const previousProfile = queryClient.getQueryData<UserDto>(["profile"]);
+      const previousUser = user;
+
+      if (previousProfile) {
+        queryClient.setQueryData<UserDto>(["profile"], {
+          ...previousProfile,
+          watchlistViewMode: viewMode,
+        });
+      }
+
+      if (previousUser) {
+        updateUser({
+          ...previousUser,
+          watchlistViewMode: viewMode,
+        });
+      }
+
+      return { previousProfile, previousUser };
+    },
+    onError: (_error, _viewMode, context) => {
+      if (context?.previousProfile) {
+        queryClient.setQueryData<UserDto>(["profile"], context.previousProfile);
+      }
+
+      if (context?.previousUser) {
+        updateUser(context.previousUser);
+      }
+    },
+    onSuccess: (profile) => {
+      queryClient.setQueryData<UserDto>(["profile"], profile);
+      updateUser(profile);
     },
   });
 
@@ -228,10 +284,9 @@ export function WatchlistPage() {
   );
   const sparklineQueries = useQueries({
     queries: items.map((item) => ({
-      queryKey: ["market", "stocks", item.ticker, "candles", "1m"],
-      queryFn: () => fetchStockCandles(accessToken ?? "", item.ticker, "1m"),
-      select: getRecentSparklineCandles,
-      enabled: Boolean(accessToken),
+      queryKey: ["market", "stocks", item.ticker, "candles", "1y"],
+      queryFn: () => fetchStockCandles(accessToken ?? "", item.ticker, "1y"),
+      enabled: Boolean(accessToken) && watchlistViewMode === "grid",
       staleTime: 5 * 60 * 1_000,
       refetchOnWindowFocus: false,
       retry: false,
@@ -304,10 +359,21 @@ export function WatchlistPage() {
     addMutation.mutate(selectedStock);
   };
 
-  const errorMessage =
+  const formErrorMessage =
     formError ??
-    (addMutation.error instanceof Error ? t.addStockError : null) ??
-    (removeMutation.error instanceof Error ? t.removeStockError : null);
+    (addMutation.error instanceof Error ? t.addStockError : null);
+  const viewModeError =
+    updateViewModeMutation.error instanceof Error
+      ? t.watchlistViewSaveError
+      : null;
+
+  const confirmRemoval = () => {
+    if (!pendingRemovalItem) {
+      return;
+    }
+
+    removeMutation.mutate(pendingRemovalItem.id);
+  };
 
   return (
     <main>
@@ -355,7 +421,9 @@ export function WatchlistPage() {
             {addMutation.isPending ? t.adding : t.add}
           </button>
         </form>
-        {errorMessage ? <p className="error-text" role="alert">{errorMessage}</p> : null}
+        {formErrorMessage ? (
+          <p className="error-text" role="alert">{formErrorMessage}</p>
+        ) : null}
       </section>
 
       <section aria-labelledby="watchlist-heading" className="page-section">
@@ -402,10 +470,23 @@ export function WatchlistPage() {
                 sortState={sortState}
               />
             </div>
+            <WatchlistViewSwitcher
+              isSaving={updateViewModeMutation.isPending}
+              onChange={(viewMode) => {
+                if (viewMode !== watchlistViewMode) {
+                  updateViewModeMutation.mutate(viewMode);
+                }
+              }}
+              t={t}
+              value={watchlistViewMode}
+            />
           </div>
         </div>
         {quotesQuery.error instanceof Error ? (
           <p className="error-text" role="alert">{t.livePricesUnavailable}</p>
+        ) : null}
+        {viewModeError ? (
+          <p className="error-text" role="alert">{viewModeError}</p>
         ) : null}
 
         {watchlistQuery.isLoading ? (
@@ -421,28 +502,41 @@ export function WatchlistPage() {
           />
         ) : (
           <>
-            <div className="watchlist-list">
-              {paginatedDisplayItems.map((displayItem) => (
-                <StockCard
-                  candles={displayItem.candles}
-                  isChartLoading={displayItem.isChartLoading}
-                  isChartUnavailable={displayItem.isChartUnavailable}
-                  isPriceLoading={quotesQuery.isLoading}
-                  isRemoving={
-                    removeMutation.isPending &&
-                    removeMutation.variables === displayItem.item.id
-                  }
-                  item={displayItem.item}
-                  key={displayItem.item.id}
-                  language={language}
-                  onOpen={() => setDetailsTicker(displayItem.item.ticker)}
-                  onRemove={() => removeMutation.mutate(displayItem.item.id)}
-                  profile={displayItem.profile}
-                  quote={displayItem.quote}
-                  t={t}
-                />
-              ))}
-            </div>
+            {watchlistViewMode === "grid" ? (
+              <div className="watchlist-grid">
+                {paginatedDisplayItems.map((displayItem) => (
+                  <StockCard
+                    candles={displayItem.candles}
+                    isChartLoading={displayItem.isChartLoading}
+                    isChartUnavailable={displayItem.isChartUnavailable}
+                    isPriceLoading={quotesQuery.isLoading}
+                    isRemoving={
+                      removeMutation.isPending &&
+                      removeMutation.variables === displayItem.item.id
+                    }
+                    item={displayItem.item}
+                    key={displayItem.item.id}
+                    language={language}
+                    onOpen={() => setDetailsTicker(displayItem.item.ticker)}
+                    onRemove={() => setPendingRemovalItem(displayItem.item)}
+                    profile={displayItem.profile}
+                    quote={displayItem.quote}
+                    t={t}
+                  />
+                ))}
+              </div>
+            ) : (
+              <WatchlistTable
+                displayItems={paginatedDisplayItems}
+                isPriceLoading={quotesQuery.isLoading}
+                isRemoving={removeMutation.isPending}
+                language={language}
+                onOpen={(ticker) => setDetailsTicker(ticker)}
+                onRemove={setPendingRemovalItem}
+                removingItemId={removeMutation.variables}
+                t={t}
+              />
+            )}
             {showPagination ? (
               <PaginationControls
                 ariaLabel={t.paginationNavigation}
@@ -464,6 +558,20 @@ export function WatchlistPage() {
           onClose={() => setDetailsTicker(null)}
           open={Boolean(detailsTicker)}
           ticker={detailsTicker}
+        />
+      ) : null}
+      {pendingRemovalItem ? (
+        <RemoveWatchlistItemModal
+          error={removeMutation.error}
+          isPending={removeMutation.isPending}
+          item={pendingRemovalItem}
+          onClose={() => {
+            if (!removeMutation.isPending) {
+              setPendingRemovalItem(null);
+            }
+          }}
+          onConfirm={confirmRemoval}
+          t={t}
         />
       ) : null}
     </main>
@@ -496,10 +604,335 @@ function WatchlistSortButton({
   );
 }
 
-function getRecentSparklineCandles(
-  candles: StockChartCandle[],
-): StockChartCandle[] {
-  return candles.slice(-40);
+function WatchlistViewSwitcher({
+  isSaving,
+  onChange,
+  t,
+  value,
+}: {
+  isSaving: boolean;
+  onChange: (viewMode: WatchlistViewMode) => void;
+  t: Dictionary;
+  value: WatchlistViewMode;
+}) {
+  return (
+    <div
+      aria-busy={isSaving}
+      aria-label={t.watchlistViewOptions}
+      className="watchlist-view-switcher"
+      role="group"
+    >
+      <button
+        aria-label={t.gridView}
+        aria-pressed={value === "grid"}
+        onClick={() => onChange("grid")}
+        type="button"
+      >
+        <GridViewIcon />
+        <span>{t.gridView}</span>
+      </button>
+      <button
+        aria-label={t.listView}
+        aria-pressed={value === "list"}
+        onClick={() => onChange("list")}
+        type="button"
+      >
+        <ListViewIcon />
+        <span>{t.listView}</span>
+      </button>
+    </div>
+  );
+}
+
+function WatchlistTable({
+  displayItems,
+  isPriceLoading,
+  isRemoving,
+  language,
+  onOpen,
+  onRemove,
+  removingItemId,
+  t,
+}: {
+  displayItems: WatchlistDisplayItem[];
+  isPriceLoading: boolean;
+  isRemoving: boolean;
+  language: UserDto["language"];
+  onOpen: (ticker: string) => void;
+  onRemove: (item: WatchlistItemDto) => void;
+  removingItemId?: string;
+  t: Dictionary;
+}) {
+  return (
+    <div className="portfolio-table-wrap watchlist-table-wrap">
+      <table className="portfolio-table watchlist-table">
+        <thead>
+          <tr>
+            <th>{t.ticker}</th>
+            <th>{t.companyName}</th>
+            <th>{t.currentPrice}</th>
+            <th>{t.dailyChangePercent}</th>
+            <th className="watchlist-actions-heading">
+              <span className="visually-hidden">{t.actions}</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {displayItems.map((displayItem) => {
+            const { item, profile, quote } = displayItem;
+            const companyName =
+              profile?.name ?? item.companyName ?? t.companyNameNotSet;
+            const changeVariant = quote
+              ? getChangeVariant(quote.changePercent)
+              : "neutral";
+
+            return (
+              <tr
+                className="portfolio-table-row-open watchlist-table-row"
+                key={item.id}
+                onClick={() => onOpen(item.ticker)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    onOpen(item.ticker);
+                  }
+                }}
+                tabIndex={0}
+              >
+                <td>
+                  <div className="stock-table-identity">
+                    <CompanyLogo
+                      className="company-logo--table"
+                      companyName={companyName}
+                      logoUrl={profile?.logo}
+                      ticker={item.ticker}
+                    />
+                    <strong>{item.ticker}</strong>
+                  </div>
+                </td>
+                <td>
+                  <span className="watchlist-table-company" title={companyName}>
+                    {companyName}
+                  </span>
+                </td>
+                <td>
+                  {isPriceLoading ? (
+                    <span className="watchlist-table-status">
+                      {t.loadingPrice}
+                    </span>
+                  ) : quote ? (
+                    formatCurrency(
+                      quote.currentPrice,
+                      profile?.currency || quote.currency || "USD",
+                      language,
+                    )
+                  ) : (
+                    <span className="watchlist-table-status">
+                      {t.priceUnavailable}
+                    </span>
+                  )}
+                </td>
+                <td>
+                  {isPriceLoading ? (
+                    <span className="watchlist-table-status">
+                      {t.loadingPrice}
+                    </span>
+                  ) : quote ? (
+                    <span className={`stock-change stock-change-${changeVariant}`}>
+                      {formatPercent(quote.changePercent, language)}
+                    </span>
+                  ) : (
+                    <span className="watchlist-table-status">
+                      {t.priceUnavailable}
+                    </span>
+                  )}
+                </td>
+                <td className="watchlist-actions-cell">
+                  <button
+                    aria-label={`${isRemoving ? t.removing : t.remove} ${item.ticker}`}
+                    className="watchlist-table-remove"
+                    disabled={isRemoving && removingItemId === item.id}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      onRemove(item);
+                    }}
+                    type="button"
+                  >
+                    <TrashIcon />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function RemoveWatchlistItemModal({
+  error,
+  isPending,
+  item,
+  onClose,
+  onConfirm,
+  t,
+}: {
+  error: Error | null;
+  isPending: boolean;
+  item: WatchlistItemDto;
+  onClose: () => void;
+  onConfirm: () => void;
+  t: Dictionary;
+}) {
+  const headingId = useId();
+  const descriptionId = useId();
+  const dialogRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const dialog = dialogRef.current;
+    const previouslyFocusedElement =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
+    const previousOverflow = document.body.style.overflow;
+    const onKeyDown = (event: globalThis.KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+
+      if (event.key !== "Tab" || !dialog) {
+        return;
+      }
+
+      const focusableElements = getFocusableElements(dialog);
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+
+      if (!firstElement || !lastElement) {
+        event.preventDefault();
+        dialog.focus();
+        return;
+      }
+
+      if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+      } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
+      }
+    };
+
+    document.body.style.overflow = "hidden";
+    document.addEventListener("keydown", onKeyDown);
+    if (dialog) {
+      (getFocusableElements(dialog)[0] ?? dialog).focus();
+    }
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocusedElement?.focus();
+    };
+  }, [onClose]);
+
+  return (
+    <div
+      className="stock-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <section
+        aria-busy={isPending}
+        aria-describedby={descriptionId}
+        aria-labelledby={headingId}
+        aria-modal="true"
+        className="stock-modal portfolio-modal portfolio-delete-modal watchlist-delete-modal"
+        onMouseDown={(event) => event.stopPropagation()}
+        ref={dialogRef}
+        role="dialog"
+        tabIndex={-1}
+      >
+        <button
+          aria-label={t.close}
+          className="stock-modal-close"
+          disabled={isPending}
+          onClick={onClose}
+          type="button"
+        >
+          X
+        </button>
+        <div className="stock-modal-header">
+          <h2 id={headingId}>{t.removeFromWatchlistTitle}</h2>
+        </div>
+        <p className="portfolio-delete-modal-message" id={descriptionId}>
+          {t.removeFromWatchlistConfirmation.replace("{ticker}", item.ticker)}
+        </p>
+        <div className="portfolio-modal-actions">
+          <Button disabled={isPending} onClick={onClose} variant="outline">
+            {t.cancel}
+          </Button>
+          <Button disabled={isPending} onClick={onConfirm} variant="danger">
+            {isPending ? t.removing : t.remove}
+          </Button>
+        </div>
+        {error instanceof Error ? (
+          <p className="error-text watchlist-delete-error" role="alert">
+            {t.removeStockError}
+          </p>
+        ) : null}
+      </section>
+    </div>
+  );
+}
+
+function getFocusableElements(container: HTMLElement): HTMLElement[] {
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      [
+        "a[href]",
+        "button:not([disabled])",
+        "input:not([disabled])",
+        "select:not([disabled])",
+        "textarea:not([disabled])",
+        "[tabindex]:not([tabindex='-1'])",
+      ].join(","),
+    ),
+  ).filter((element) => element.offsetParent !== null);
+}
+
+function GridViewIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <rect x="4" y="4" width="6" height="6" rx="1" />
+      <rect x="14" y="4" width="6" height="6" rx="1" />
+      <rect x="4" y="14" width="6" height="6" rx="1" />
+      <rect x="14" y="14" width="6" height="6" rx="1" />
+    </svg>
+  );
+}
+
+function ListViewIcon() {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 24 24">
+      <path d="M8 6h12" />
+      <path d="M8 12h12" />
+      <path d="M8 18h12" />
+      <path d="M4 6h.01" />
+      <path d="M4 12h.01" />
+      <path d="M4 18h.01" />
+    </svg>
+  );
 }
 
 interface SearchResultsProps {

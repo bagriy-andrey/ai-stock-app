@@ -40,6 +40,11 @@ export const ru = {
   add: "Добавить",
   yourWatchlist: "Ваш список наблюдения",
   sortOptions: "Параметры сортировки",
+  watchlistViewOptions: "Параметры отображения списка наблюдения",
+  gridView: "Плитка",
+  listView: "Список",
+  watchlistViewSaveError:
+    "Не удалось сохранить вид списка наблюдения. Попробуйте снова.",
   dailyChangePercent: "Изменение за день %",
   livePricesUnavailable:
     "Актуальные цены временно недоступны. Сохраненный список наблюдения по-прежнему показан.",
@@ -52,6 +57,9 @@ export const ru = {
   remove: "Удалить",
   addToWatchlist: "Добавить в список наблюдения",
   removeFromWatchlist: "Удалить из списка наблюдения",
+  removeFromWatchlistTitle: "Удалить из списка наблюдения?",
+  removeFromWatchlistConfirmation:
+    "Вы уверены, что хотите удалить {ticker} из списка наблюдения?",
   chooseStockError: "Найдите акцию и выберите ее из результатов.",
   addStockError: "Не удалось добавить акцию. Попробуйте снова.",
   removeStockError: "Не удалось удалить акцию. Попробуйте снова.",

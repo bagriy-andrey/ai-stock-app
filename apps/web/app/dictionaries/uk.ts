@@ -40,6 +40,11 @@ export const uk = {
   add: "Додати",
   yourWatchlist: "Ваш список спостереження",
   sortOptions: "Параметри сортування",
+  watchlistViewOptions: "Параметри відображення списку спостереження",
+  gridView: "Плитка",
+  listView: "Список",
+  watchlistViewSaveError:
+    "Не вдалося зберегти вигляд списку спостереження. Спробуйте ще раз.",
   dailyChangePercent: "Зміна за день %",
   livePricesUnavailable:
     "Актуальні ціни тимчасово недоступні. Збережений список спостереження все одно показано.",
@@ -53,6 +58,9 @@ export const uk = {
   remove: "Видалити",
   addToWatchlist: "Додати до списку спостереження",
   removeFromWatchlist: "Видалити зі списку спостереження",
+  removeFromWatchlistTitle: "Видалити зі списку спостереження?",
+  removeFromWatchlistConfirmation:
+    "Ви впевнені, що хочете видалити {ticker} зі списку спостереження?",
   chooseStockError: "Знайдіть акцію та виберіть її з результатів.",
   addStockError: "Не вдалося додати акцію. Спробуйте ще раз.",
   removeStockError: "Не вдалося видалити акцію. Спробуйте ще раз.",

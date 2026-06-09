@@ -200,7 +200,7 @@ function StockCardPrice({
   );
 }
 
-function TrashIcon() {
+export function TrashIcon() {
   return (
     <svg aria-hidden="true" viewBox="0 0 24 24">
       <path d="M4 7h16" />
