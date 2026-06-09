@@ -27,6 +27,9 @@ export const uk = {
   loadingMarketMovers: "Завантаження даних про лідерів ринку...",
   topGainers: "Лідери зростання",
   topLosers: "Лідери падіння",
+  popularStocks: "Популярні акції",
+  popularStocksSubtitle: "Швидкий доступ до компаній, які часто відстежують.",
+  companyUnavailable: "Компанія недоступна",
   trackedStocks: "Акції, що відстежуються",
   watchlistSubtitle:
     "Шукайте акції за назвою компанії або тикером і відстежуйте їхню актуальну ціну.",

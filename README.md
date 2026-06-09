@@ -2,11 +2,11 @@
 
 AI Stock Advisor is an MVP monorepo for a stock-analysis web app, NestJS API,
 Telegram integration, scheduled jobs, and an isolated TradingAgents service.
-The protected home page shows Financial Modeling Prep market movers and links into a
-personal watchlist that uses Finnhub for live company data and Yahoo Finance
-for historical chart candles. Authenticated users can also manually maintain a
-portfolio, review live position values, profit/loss calculations, and allocation
-by ticker, and audit recorded portfolio transactions. Google
+The protected home page shows Financial Modeling Prep market movers, popular
+stock shortcuts, and links into a personal watchlist that uses Finnhub for live
+company data and Yahoo Finance for historical chart candles. Authenticated users
+can also manually maintain a portfolio, review live position values, profit/loss
+calculations, allocation by ticker, and recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB.
 

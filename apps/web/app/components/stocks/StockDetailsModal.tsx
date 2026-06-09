@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  CompanyProfile,
   CreatePortfolioPositionRequest,
   MarketMoversResponse,
   PortfolioDto,
@@ -43,9 +44,11 @@ import { StockInfoTab } from "./StockInfoTab";
 import type { StockDetailsTabValue } from "./stock-details-types";
 
 interface StockDetailsModalProps {
-  ticker: string;
-  open: boolean;
+  initialCompanyName?: string;
+  initialLogoUrl?: string;
   onClose: () => void;
+  open: boolean;
+  ticker: string;
 }
 
 const portfolioQueryKey = ["portfolio"] as const;
@@ -65,6 +68,8 @@ async function invalidatePortfolioAndTransactions(
 }
 
 export function StockDetailsModal({
+  initialCompanyName,
+  initialLogoUrl,
   ticker,
   open,
   onClose,
@@ -106,6 +111,7 @@ export function StockDetailsModal({
   const candles = candlesQuery.data ?? [];
   const companyName =
     details?.name ??
+    initialCompanyName ??
     getCachedCompanyName(queryClient, normalizedTicker) ??
     t.companyNameNotSet;
   const watchlistItem = watchlistQuery.data?.find(
@@ -290,7 +296,7 @@ export function StockDetailsModal({
           headingId={headingId}
           isWatchlisted={Boolean(watchlistItem)}
           isWatchlistPending={isWatchlistMutationPending || watchlistQuery.isLoading}
-          logoUrl={details?.logoUrl}
+          logoUrl={details?.logoUrl ?? initialLogoUrl}
           onAddPurchase={() => {
             setPurchasePrefill({
               ticker: normalizedTicker,
@@ -423,6 +429,16 @@ function getCachedCompanyName(
   queryClient: QueryClient,
   ticker: string,
 ): string | undefined {
+  const companyProfile = queryClient.getQueryData<CompanyProfile>([
+    "market-data",
+    "company",
+    ticker,
+  ]);
+
+  if (companyProfile?.name) {
+    return companyProfile.name;
+  }
+
   const watchlistItem = queryClient
     .getQueryData<WatchlistItemDto[]>(["watchlist"])
     ?.find((item) => item.ticker.toUpperCase() === ticker);

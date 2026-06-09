@@ -27,6 +27,9 @@ export const ru = {
   loadingMarketMovers: "Загрузка данных о лидерах рынка...",
   topGainers: "Лидеры роста",
   topLosers: "Лидеры падения",
+  popularStocks: "Популярные акции",
+  popularStocksSubtitle: "Быстрый доступ к часто отслеживаемым компаниям.",
+  companyUnavailable: "Компания недоступна",
   trackedStocks: "Отслеживаемые акции",
   watchlistSubtitle:
     "Ищите акции по названию компании или тикеру и отслеживайте их актуальную цену.",

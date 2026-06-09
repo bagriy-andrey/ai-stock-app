@@ -25,6 +25,9 @@ export const en = {
   loadingMarketMovers: "Loading market movers...",
   topGainers: "Top Gainers",
   topLosers: "Top Losers",
+  popularStocks: "Popular Stocks",
+  popularStocksSubtitle: "Quick access to commonly tracked companies.",
+  companyUnavailable: "Company unavailable",
   trackedStocks: "Tracked Stocks",
   watchlistSubtitle:
     "Search stocks by company name or ticker and track their latest market price.",

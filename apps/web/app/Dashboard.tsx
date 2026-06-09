@@ -6,14 +6,23 @@ import { useAuth } from "./components/auth/AuthProvider";
 import { MarketMoversList } from "./components/market-movers/MarketMoversList";
 import { AppHeader } from "./components/layout/AppHeader";
 import { useI18n } from "./components/i18n/I18nProvider";
+import { PopularStocks } from "./components/popular-stocks/PopularStocks";
 import { StockDetailsModal } from "./components/stocks/StockDetailsModal";
 import { EmptyState } from "./components/ui/EmptyState";
 import { fetchMarketMovers } from "./lib/market-data-api";
 
+interface SelectedStockDetails {
+  companyName?: string;
+  logoUrl?: string;
+  ticker: string;
+}
+
 export function Dashboard() {
   const { accessToken } = useAuth();
   const { language, t } = useI18n();
-  const [detailsTicker, setDetailsTicker] = useState<string | null>(null);
+  const [detailsStock, setDetailsStock] = useState<SelectedStockDetails | null>(
+    null,
+  );
   const marketMoversQuery = useQuery({
     queryKey: ["market", "movers"],
     queryFn: () => fetchMarketMovers(accessToken ?? ""),
@@ -58,7 +67,7 @@ export function Dashboard() {
               isLoading={marketMoversQuery.isLoading}
               language={language}
               movers={marketMovers?.gainers ?? []}
-              onOpenStock={setDetailsTicker}
+              onOpenStock={(ticker) => setDetailsStock({ ticker })}
               t={t}
               title={t.topGainers}
               variant="gainers"
@@ -67,13 +76,27 @@ export function Dashboard() {
               isLoading={marketMoversQuery.isLoading}
               language={language}
               movers={marketMovers?.losers ?? []}
-              onOpenStock={setDetailsTicker}
+              onOpenStock={(ticker) => setDetailsStock({ ticker })}
               t={t}
               title={t.topLosers}
               variant="losers"
             />
           </div>
         )}
+      </section>
+
+      <section aria-labelledby="popular-stocks-heading" className="page-section">
+        <div className="section-heading">
+          <div>
+            <h2 id="popular-stocks-heading">{t.popularStocks}</h2>
+            <p>{t.popularStocksSubtitle}</p>
+          </div>
+        </div>
+        <PopularStocks
+          accessToken={accessToken ?? undefined}
+          onOpenStock={setDetailsStock}
+          t={t}
+        />
       </section>
 
       <section aria-labelledby="watchlist-heading" className="page-section">
@@ -85,11 +108,13 @@ export function Dashboard() {
           title={t.dashboardEmptyTitle}
         />
       </section>
-      {detailsTicker ? (
+      {detailsStock ? (
         <StockDetailsModal
-          onClose={() => setDetailsTicker(null)}
-          open={Boolean(detailsTicker)}
-          ticker={detailsTicker}
+          initialCompanyName={detailsStock.companyName}
+          initialLogoUrl={detailsStock.logoUrl}
+          onClose={() => setDetailsStock(null)}
+          open={Boolean(detailsStock)}
+          ticker={detailsStock.ticker}
         />
       ) : null}
     </main>

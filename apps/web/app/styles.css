@@ -345,6 +345,83 @@ p {
   animation: market-movers-pulse 1.2s ease-in-out infinite alternate;
 }
 
+.popular-stocks-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+}
+
+.popular-stock-card {
+  display: grid;
+  min-height: 92px;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, rgb(125 211 252 / 8%), transparent 45%),
+    var(--panel);
+  color: var(--foreground);
+  padding: 16px;
+  text-align: left;
+  transition:
+    background-color 160ms ease,
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.popular-stock-card:hover,
+.popular-stock-card:focus-visible {
+  border-color: var(--control-border);
+  background:
+    linear-gradient(135deg, rgb(125 211 252 / 12%), transparent 48%),
+    var(--panel-hover);
+  box-shadow: 0 16px 32px rgb(0 0 0 / 16%);
+  transform: translateY(-2px);
+}
+
+.popular-stock-card:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 3px;
+}
+
+.popular-stock-logo {
+  width: 46px;
+  height: 46px;
+  font-size: 0.76rem;
+}
+
+.popular-stock-identity {
+  display: grid;
+  min-width: 0;
+  gap: 5px;
+}
+
+.popular-stock-identity strong {
+  color: var(--foreground);
+  font-size: 0.98rem;
+  letter-spacing: 0.04em;
+}
+
+.popular-stock-identity span {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 0.86rem;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.popular-stock-name-skeleton {
+  width: min(100%, 116px);
+  height: 14px;
+  border-radius: 999px;
+  background: var(--panel-hover);
+  animation: market-movers-pulse 1.2s ease-in-out infinite alternate;
+}
+
 @keyframes market-movers-pulse {
   from {
     opacity: 0.5;
