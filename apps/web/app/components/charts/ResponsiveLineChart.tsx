@@ -1,8 +1,9 @@
 "use client";
 
 import type { ProfileLanguage } from "@ai-stock-advisor/shared";
-import { useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import type { CSSProperties, MouseEvent as ReactMouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { formatCurrency } from "../../lib/stock-format";
 
 export interface LineChartPoint {
@@ -35,6 +36,7 @@ interface ResponsiveLineChartProps {
   points?: LineChartPoint[];
   series?: LineChartSeries[];
   tooltipItems?: (point: LineChartTooltipPoint) => LineChartTooltipItem[];
+  xAxisLabelMode?: "monthDay" | "monthYear";
 }
 
 interface RenderedPoint extends LineChartPoint {
@@ -55,14 +57,22 @@ interface ActiveDatePoint {
   x: number;
 }
 
+interface XAxisTick {
+  date: string;
+  label: string;
+  x: number;
+}
+
 const width = 720;
 const height = 300;
 const padding = {
   top: 18,
   right: 20,
   bottom: 38,
-  left: 72,
+  left: 90,
 };
+const tooltipGap = 10;
+const tooltipViewportMargin = 12;
 
 export function ResponsiveLineChart({
   ariaLabel,
@@ -71,10 +81,16 @@ export function ResponsiveLineChart({
   points = [],
   series,
   tooltipItems,
+  xAxisLabelMode = "monthDay",
 }: ResponsiveLineChartProps) {
   const tooltipId = useId();
   const svgRef = useRef<SVGSVGElement>(null);
+  const tooltipRef = useRef<HTMLDivElement>(null);
   const [activeIndex, setActiveIndex] = useState<number | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
   const chartSeries = useMemo(
     () =>
       series ?? [
@@ -106,6 +122,62 @@ export function ResponsiveLineChart({
     rendered.series[0]?.points ?? [],
     rendered.chartBottom,
   );
+  const xAxisTicks = useMemo(
+    () => toXAxisTicks(rendered.xTicks, language, xAxisLabelMode),
+    [language, rendered.xTicks, xAxisLabelMode],
+  );
+
+  const updateTooltipPosition = useCallback(() => {
+    const svg = svgRef.current;
+
+    if (!svg || !activeDate) {
+      setTooltipPosition(null);
+      return;
+    }
+
+    const bounds = svg.getBoundingClientRect();
+    const tooltip = tooltipRef.current;
+    const tooltipWidth = tooltip?.offsetWidth ?? 240;
+    const tooltipHeight = tooltip?.offsetHeight ?? 124;
+    const anchorX = bounds.left + (activeDate.x / width) * bounds.width;
+    const anchorY =
+      bounds.top +
+      (((activePrimaryPoint?.y ?? padding.top) / height) * bounds.height);
+    const maxLeft = window.innerWidth - tooltipViewportMargin - tooltipWidth;
+    const left = clamp(
+      anchorX - tooltipWidth / 2,
+      tooltipViewportMargin,
+      Math.max(tooltipViewportMargin, maxLeft),
+    );
+    const topAbove = anchorY - tooltipGap - tooltipHeight;
+    const topBelow = anchorY + tooltipGap;
+    const preferredTop =
+      topAbove >= tooltipViewportMargin ? topAbove : topBelow;
+    const maxTop = window.innerHeight - tooltipViewportMargin - tooltipHeight;
+    const top = clamp(
+      preferredTop,
+      tooltipViewportMargin,
+      Math.max(tooltipViewportMargin, maxTop),
+    );
+
+    setTooltipPosition({ left, top });
+  }, [activeDate, activePrimaryPoint?.y]);
+
+  useEffect(() => {
+    if (!activeDate) {
+      setTooltipPosition(null);
+      return undefined;
+    }
+
+    updateTooltipPosition();
+    window.addEventListener("resize", updateTooltipPosition);
+    window.addEventListener("scroll", updateTooltipPosition, true);
+
+    return () => {
+      window.removeEventListener("resize", updateTooltipPosition);
+      window.removeEventListener("scroll", updateTooltipPosition, true);
+    };
+  }, [activeDate, updateTooltipPosition]);
 
   const updateActivePoint = (event: ReactMouseEvent<SVGSVGElement>) => {
     const bounds = svgRef.current?.getBoundingClientRect();
@@ -150,19 +222,23 @@ export function ResponsiveLineChart({
               y1={tick.y}
               y2={tick.y}
             />
-            <text x={padding.left - 12} y={tick.y + 4}>
+            <text
+              className="responsive-line-chart-y-label"
+              x={padding.left - 14}
+              y={tick.y + 4}
+            >
               {formatCompactCurrency(tick.value, currency, language)}
             </text>
           </g>
         ))}
-        {rendered.xTicks.map((tick) => (
+        {xAxisTicks.map((tick) => (
           <text
             className="responsive-line-chart-x-label"
             key={tick.date}
             x={tick.x}
             y={height - 12}
           >
-            {formatDate(tick.date, language)}
+            {tick.label}
           </text>
         ))}
         <path className="responsive-line-chart-area" d={primaryAreaPath} />
@@ -211,34 +287,43 @@ export function ResponsiveLineChart({
           ))}
         </div>
       ) : null}
-      {activeDate ? (
-        <div
-          className="responsive-line-chart-tooltip"
-          id={tooltipId}
-          style={
-            {
-              "--tooltip-x": `${(activeDate.x / width) * 100}%`,
-              "--tooltip-y": `${((activePrimaryPoint?.y ?? padding.top) / height) * 100}%`,
-            } as CSSProperties
-          }
-        >
-          <strong>{formatLongDate(activeDate.date, language)}</strong>
-          {activeTooltipItems.map((item) => (
-            <span className="responsive-line-chart-tooltip-row" key={item.label}>
-              <span>{item.label}</span>
-              <b
-                className={
-                  item.variant
-                    ? `responsive-line-chart-tooltip-value-${item.variant}`
-                    : undefined
-                }
-              >
-                {item.value}
-              </b>
-            </span>
-          ))}
-        </div>
-      ) : null}
+      {activeDate && typeof document !== "undefined"
+        ? createPortal(
+            <div
+              className="responsive-line-chart-tooltip"
+              id={tooltipId}
+              ref={tooltipRef}
+              role="tooltip"
+              style={
+                {
+                  left: tooltipPosition?.left ?? 0,
+                  top: tooltipPosition?.top ?? 0,
+                  visibility: tooltipPosition ? "visible" : "hidden",
+                } as CSSProperties
+              }
+            >
+              <strong>{formatLongDate(activeDate.date, language)}</strong>
+              {activeTooltipItems.map((item) => (
+                <span
+                  className="responsive-line-chart-tooltip-row"
+                  key={item.label}
+                >
+                  <span>{item.label}</span>
+                  <b
+                    className={
+                      item.variant
+                        ? `responsive-line-chart-tooltip-value-${item.variant}`
+                        : undefined
+                    }
+                  >
+                    {item.value}
+                  </b>
+                </span>
+              ))}
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
@@ -402,10 +487,38 @@ function formatCompactCurrency(
   }).format(value);
 }
 
-function formatDate(date: string, language: ProfileLanguage): string {
+function clamp(value: number, minimum: number, maximum: number): number {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function toXAxisTicks(
+  ticks: Array<{ date: string; x: number }>,
+  language: ProfileLanguage,
+  labelMode: "monthDay" | "monthYear",
+): XAxisTick[] {
+  const labels = new Set<string>();
+
+  return ticks.flatMap((tick) => {
+    const label = formatDate(tick.date, language, labelMode);
+
+    if (labels.has(label)) {
+      return [];
+    }
+
+    labels.add(label);
+
+    return [{ ...tick, label }];
+  });
+}
+
+function formatDate(
+  date: string,
+  language: ProfileLanguage,
+  labelMode: "monthDay" | "monthYear",
+): string {
   return new Intl.DateTimeFormat(language, {
     month: "short",
-    day: "numeric",
+    ...(labelMode === "monthYear" ? { year: "numeric" } : { day: "numeric" }),
   }).format(new Date(`${date}T00:00:00.000Z`));
 }
 

@@ -2138,6 +2138,10 @@ p {
   font-weight: 800;
 }
 
+.responsive-line-chart-y-label {
+  text-anchor: end;
+}
+
 .responsive-line-chart-x-label {
   text-anchor: middle;
 }
@@ -2214,12 +2218,11 @@ p {
 }
 
 .responsive-line-chart-tooltip {
-  position: absolute;
-  left: var(--tooltip-x);
-  top: var(--tooltip-y);
-  z-index: var(--z-dropdown);
+  position: fixed;
+  z-index: var(--z-overlay-stacked);
   display: grid;
   min-width: 220px;
+  max-width: min(280px, calc(100vw - 24px));
   gap: 8px;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2228,7 +2231,6 @@ p {
   color: var(--foreground);
   padding: 10px 12px;
   pointer-events: none;
-  transform: translate(-50%, calc(-100% - 10px));
 }
 
 .responsive-line-chart-tooltip strong {

@@ -119,6 +119,7 @@ export function PortfolioPerformanceCard({
             tooltipItems={(point) =>
               buildTooltipItems(point, currency, language, t)
             }
+            xAxisLabelMode={getXAxisLabelMode(range)}
           />
           <div className="portfolio-performance-summary">
             <PerformanceMetric
@@ -210,6 +211,14 @@ function calculatePerformanceSummary(points: PortfolioPerformancePointDto[]): {
       lastPoint.totalReturnPercent ??
       (depositedCapital <= 0 ? 0 : (investmentGain / depositedCapital) * 100),
   };
+}
+
+function getXAxisLabelMode(
+  range: PortfolioPerformanceRange,
+): "monthDay" | "monthYear" {
+  return range === "1Y" || range === "5Y" || range === "ALL"
+    ? "monthYear"
+    : "monthDay";
 }
 
 function buildChartSeries(
