@@ -20,7 +20,7 @@ export const uk = {
     "Додайте акції до списку спостереження, щоб сформувати персональний огляд ринку.",
   openWatchlist: "Відкрити список спостереження",
   marketMovers: "Лідери ринку",
-  marketMoversSubtitle: "Акції з найбільшими змінами ціни за сьогодні.",
+  marketMoversSubtitle: "Найпомітніші рухи акцій сьогодні.",
   marketMoversUpdated: "Оновлено",
   marketMoversUnavailable: "Дані про лідерів ринку тимчасово недоступні.",
   marketMoversEmpty: "Наразі немає доступних даних про лідерів ринку.",

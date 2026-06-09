@@ -20,7 +20,7 @@ export const ru = {
     "Добавьте акции в список наблюдения, чтобы сформировать персональный обзор рынка.",
   openWatchlist: "Открыть список наблюдения",
   marketMovers: "Лидеры рынка",
-  marketMoversSubtitle: "Акции с наибольшими изменениями цены за сегодня.",
+  marketMoversSubtitle: "Самые заметные движения акций сегодня.",
   marketMoversUpdated: "Обновлено",
   marketMoversUnavailable: "Данные о лидерах рынка временно недоступны.",
   marketMoversEmpty: "Сейчас нет доступных данных о лидерах рынка.",

@@ -3,7 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useAuth } from "./components/auth/AuthProvider";
-import { MarketMoversList } from "./components/market-movers/MarketMoversList";
+import { MarketMovers } from "./components/market-movers/MarketMovers";
 import { AppHeader } from "./components/layout/AppHeader";
 import { useI18n } from "./components/i18n/I18nProvider";
 import { PopularStocks } from "./components/popular-stocks/PopularStocks";
@@ -59,30 +59,15 @@ export function Dashboard() {
             </small>
           ) : null}
         </div>
-        {marketMoversQuery.error instanceof Error ? (
-          <p className="error-text" role="alert">{t.marketMoversUnavailable}</p>
-        ) : (
-          <div className="market-movers-grid">
-            <MarketMoversList
-              isLoading={marketMoversQuery.isLoading}
-              language={language}
-              movers={marketMovers?.gainers ?? []}
-              onOpenStock={(ticker) => setDetailsStock({ ticker })}
-              t={t}
-              title={t.topGainers}
-              variant="gainers"
-            />
-            <MarketMoversList
-              isLoading={marketMoversQuery.isLoading}
-              language={language}
-              movers={marketMovers?.losers ?? []}
-              onOpenStock={(ticker) => setDetailsStock({ ticker })}
-              t={t}
-              title={t.topLosers}
-              variant="losers"
-            />
-          </div>
-        )}
+        <MarketMovers
+          accessToken={accessToken ?? undefined}
+          hasError={marketMoversQuery.error instanceof Error}
+          isLoading={marketMoversQuery.isLoading}
+          language={language}
+          marketMovers={marketMovers}
+          onOpenStock={setDetailsStock}
+          t={t}
+        />
       </section>
 
       <section aria-labelledby="popular-stocks-heading" className="page-section">

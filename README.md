@@ -309,6 +309,16 @@ stock details modal and opens the add-purchase modal as a separate top-level
 dialog instead of nesting one modal inside another. The remove action is kept
 separate so deleting a ticker does not open the modal.
 
+The authenticated home page includes a compact Market Movers section backed by
+the existing `GET /market/movers` API. Top Gainers and Top Losers are shown in
+keyboard-accessible tabs, with 10 rounded stock cards per tab. Each card
+focuses on the ticker and percentage move, uses green/up styling for gainers
+and red/down styling for losers, and opens the existing stock details modal.
+Mover cards reuse the company logo component and enrich visible logos through
+the existing company profile endpoint when available. Loading uses stable
+skeleton cards, and API errors or empty results stay contained inside the
+Market Movers section.
+
 Watchlist filtering, sorting, and pagination are client-side. The page supports
 searching the saved watchlist by ticker or company name, sorting by ticker,
 current price, daily change percentage, and company name, and paginating the
