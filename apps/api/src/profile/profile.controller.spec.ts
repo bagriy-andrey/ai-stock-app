@@ -7,7 +7,9 @@ describe("ProfileController", () => {
   const user: UserDto = {
     id: "user-id",
     email: "test@example.com",
+    emailVerified: true,
     name: "Test User",
+    phoneVerified: false,
     avatarUrl: "/uploads/avatars/old.png",
     authProviders: {
       google: true,
@@ -17,6 +19,7 @@ describe("ProfileController", () => {
       phone: false,
     },
     twoFactorEnabled: false,
+    twoFactorMethod: null,
     language: "en",
     createdAt: "2026-06-02T09:00:00.000Z",
     updatedAt: "2026-06-02T09:00:00.000Z",

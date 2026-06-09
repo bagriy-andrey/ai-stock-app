@@ -25,10 +25,12 @@ describe("AuthService", () => {
     const user = {
       id: "user-id",
       email: "test@example.com",
+      emailVerified: true,
       name: "Test User",
       firstName: "Test",
       lastName: "User",
       nickname: "Tester",
+      phoneVerified: false,
       avatarUrl: "https://example.com/avatar.png",
       authProviders: {
         google: true,
@@ -38,6 +40,7 @@ describe("AuthService", () => {
         phone: false,
       },
       twoFactorEnabled: false,
+      twoFactorMethod: null,
       language: "en" as const,
       createdAt: "2026-06-02T09:00:00.000Z",
       updatedAt: "2026-06-02T09:00:00.000Z",
@@ -109,7 +112,9 @@ describe("AuthService", () => {
     const user = {
       id: "user-id",
       email: "test@example.com",
+      emailVerified: true,
       name: "Test User",
+      phoneVerified: false,
       authProviders: {
         google: true,
         email: false,
@@ -118,6 +123,7 @@ describe("AuthService", () => {
         phone: false,
       },
       twoFactorEnabled: true,
+      twoFactorMethod: "totp" as const,
       language: "en" as const,
       createdAt: "2026-06-02T09:00:00.000Z",
       updatedAt: "2026-06-02T09:00:00.000Z",

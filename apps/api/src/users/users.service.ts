@@ -155,19 +155,23 @@ export class UsersService {
   }
 
   private toDto(user: UserDocument): UserDto {
-    const email = user.email ?? "";
-    const name = user.name ?? buildFallbackName(user, email);
+    const email = user.email;
+    const name = user.name ?? buildFallbackName(user, email ?? "");
 
     return {
       id: user._id.toString(),
       email,
+      emailVerified: user.emailVerified === true,
       name,
       firstName: user.firstName,
       lastName: user.lastName,
       nickname: user.nickname,
+      phoneNumber: user.phoneNumber,
+      phoneVerified: user.phoneVerified === true,
       avatarUrl: user.avatarUrl,
       authProviders: normalizeAuthProviderFlags(user.authProviders),
       twoFactorEnabled: user.twoFactorEnabled === true,
+      twoFactorMethod: user.twoFactorMethod === "totp" ? "totp" : null,
       language: normalizeProfileLanguage(user.language),
       theme: user.theme,
       watchlistViewMode:

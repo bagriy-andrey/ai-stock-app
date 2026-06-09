@@ -139,12 +139,16 @@ export interface TradingAgentAnalysisResponse {
 
 export interface UserDto extends AuthUser {
   id: string;
-  email: string;
+  email?: string;
+  emailVerified: boolean;
   name: string;
   firstName?: string;
   lastName?: string;
   nickname?: string;
+  phoneNumber?: string;
+  phoneVerified: boolean;
   avatarUrl?: string;
+  twoFactorMethod: TwoFactorMethod;
   language: ProfileLanguage;
   theme?: ProfileTheme;
   watchlistViewMode?: WatchlistViewMode;
@@ -168,6 +172,14 @@ export interface AuthProviderFlags {
   facebook: boolean;
   phone: boolean;
 }
+
+export interface AuthProviderIds {
+  google?: string;
+  apple?: string;
+  facebook?: string;
+}
+
+export type TwoFactorMethod = "totp" | null;
 
 export interface AuthUser {
   id: string;

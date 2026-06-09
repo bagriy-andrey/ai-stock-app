@@ -17,7 +17,9 @@ describe("UsersController", () => {
     const user: UserDto = {
       id: "user-id",
       email: "test@example.com",
+      emailVerified: true,
       name: "Test User",
+      phoneVerified: false,
       avatarUrl: "https://example.com/avatar.png",
       authProviders: {
         google: true,
@@ -27,6 +29,7 @@ describe("UsersController", () => {
         phone: false,
       },
       twoFactorEnabled: false,
+      twoFactorMethod: null,
       language: "en",
       telegramChatId: "123456789",
       createdAt: "2026-06-02T09:00:00.000Z",

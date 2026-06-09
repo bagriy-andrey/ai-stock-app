@@ -4,7 +4,13 @@ import type {
   WatchlistViewMode,
 } from "@ai-stock-advisor/shared";
 import { Transform } from "class-transformer";
-import { IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import {
+  IsIn,
+  IsOptional,
+  IsString,
+  MaxLength,
+  MinLength,
+} from "class-validator";
 
 function trimOptionalText({ value }: { value: unknown }): unknown {
   if (typeof value !== "string") {
@@ -31,7 +37,8 @@ export class UpdateProfileDto {
   @Transform(trimOptionalText)
   @IsOptional()
   @IsString()
-  @MaxLength(50)
+  @MinLength(3)
+  @MaxLength(30)
   nickname?: string | null;
 
   @IsOptional()

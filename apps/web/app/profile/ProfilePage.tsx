@@ -217,7 +217,7 @@ export function ProfilePage() {
               <form className="profile-form" onSubmit={onSubmit}>
                 <div className="profile-field profile-field-full">
                   <Label htmlFor="email">{t.email}</Label>
-                  <Input id="email" value={profile.email} disabled readOnly />
+                  <Input id="email" value={profile.email ?? ""} disabled readOnly />
                 </div>
                 <div className="profile-field">
                   <Label htmlFor="first-name">{t.firstName}</Label>

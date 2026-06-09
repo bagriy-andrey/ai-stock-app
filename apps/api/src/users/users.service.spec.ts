@@ -68,13 +68,17 @@ describe("UsersService", () => {
     ).resolves.toEqual({
       id: userId.toString(),
       email: userDocument.email,
+      emailVerified: true,
       name: userDocument.name,
       firstName: userDocument.firstName,
       lastName: userDocument.lastName,
       nickname: userDocument.nickname,
+      phoneNumber: undefined,
+      phoneVerified: false,
       avatarUrl: userDocument.avatarUrl,
       authProviders: userDocument.authProviders,
       twoFactorEnabled: false,
+      twoFactorMethod: null,
       language: userDocument.language,
       theme: userDocument.theme,
       watchlistViewMode: userDocument.watchlistViewMode,
@@ -146,13 +150,17 @@ describe("UsersService", () => {
     await expect(service.findById(userId.toString())).resolves.toEqual({
       id: userId.toString(),
       email: userDocument.email,
+      emailVerified: true,
       name: userDocument.name,
       firstName: userDocument.firstName,
       lastName: userDocument.lastName,
       nickname: userDocument.nickname,
+      phoneNumber: undefined,
+      phoneVerified: false,
       avatarUrl: userDocument.avatarUrl,
       authProviders: userDocument.authProviders,
       twoFactorEnabled: false,
+      twoFactorMethod: null,
       language: userDocument.language,
       theme: userDocument.theme,
       watchlistViewMode: userDocument.watchlistViewMode,
@@ -171,6 +179,48 @@ describe("UsersService", () => {
 
     await expect(service.findById(userId.toString())).resolves.toMatchObject({
       language: "en",
+    });
+  });
+
+  it("keeps legacy Google documents valid when new auth fields are missing", async () => {
+    const legacyUser = {
+      _id: userId,
+      email: "legacy@example.com",
+      name: "Legacy User",
+      firstName: "Legacy",
+      lastName: "User",
+      createdAt: now,
+      updatedAt: now,
+    } as unknown as UserDocument;
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(legacyUser);
+    userModel.findById.mockReturnValue({ exec });
+
+    await expect(service.findById(userId.toString())).resolves.toEqual({
+      id: userId.toString(),
+      email: "legacy@example.com",
+      emailVerified: false,
+      name: "Legacy User",
+      firstName: "Legacy",
+      lastName: "User",
+      nickname: undefined,
+      phoneNumber: undefined,
+      phoneVerified: false,
+      avatarUrl: undefined,
+      authProviders: {
+        google: false,
+        email: false,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      theme: undefined,
+      watchlistViewMode: "grid",
+      telegramChatId: undefined,
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString(),
     });
   });
 

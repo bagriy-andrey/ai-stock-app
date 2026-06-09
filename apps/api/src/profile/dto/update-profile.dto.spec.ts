@@ -35,4 +35,16 @@ describe("UpdateProfileDto", () => {
 
     expect(errors).toHaveLength(3);
   });
+
+  it("rejects nicknames outside the model length limits", async () => {
+    const tooShort = await validate(
+      plainToInstance(UpdateProfileDto, { nickname: "ab" }),
+    );
+    const tooLong = await validate(
+      plainToInstance(UpdateProfileDto, { nickname: "a".repeat(31) }),
+    );
+
+    expect(tooShort).toHaveLength(1);
+    expect(tooLong).toHaveLength(1);
+  });
 });

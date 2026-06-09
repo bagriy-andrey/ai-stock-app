@@ -1,8 +1,10 @@
 import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
 import type {
   AuthProviderFlags,
+  AuthProviderIds,
   ProfileLanguage,
   ProfileTheme,
+  TwoFactorMethod,
   WatchlistViewMode,
 } from "@ai-stock-advisor/shared";
 import { HydratedDocument } from "mongoose";
@@ -12,7 +14,11 @@ import { HydratedDocument } from "mongoose";
   versionKey: false,
 })
 export class User {
-  @Prop({ unique: true, index: true, sparse: true, lowercase: true, trim: true })
+  @Prop({
+    lowercase: true,
+    trim: true,
+    match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, "Invalid email format"],
+  })
   email?: string;
 
   @Prop({ trim: true })
@@ -24,7 +30,7 @@ export class User {
   @Prop({ trim: true })
   lastName?: string;
 
-  @Prop({ trim: true })
+  @Prop({ trim: true, minlength: 3, maxlength: 30 })
   nickname?: string;
 
   @Prop()
@@ -51,30 +57,30 @@ export class User {
     },
     default: () => ({}),
     _id: false,
+    select: false,
   })
-  providerIds?: {
-    google?: string;
-    apple?: string;
-    facebook?: string;
-  };
+  providerIds?: AuthProviderIds;
 
-  @Prop({ required: true, default: false })
+  @Prop({ default: false })
   emailVerified!: boolean;
 
-  @Prop({ index: true, sparse: true, trim: true })
+  @Prop({ trim: true })
   phoneNumber?: string;
 
-  @Prop({ required: true, default: false })
+  @Prop({ default: false })
   phoneVerified!: boolean;
 
-  @Prop()
+  @Prop({ select: false })
   passwordHash?: string;
 
-  @Prop({ required: true, default: false })
+  @Prop({ default: false })
   twoFactorEnabled!: boolean;
 
   @Prop({ type: String, enum: ["totp", null], default: null })
-  twoFactorMethod!: "totp" | null;
+  twoFactorMethod!: TwoFactorMethod;
+
+  @Prop({ select: false })
+  totpSecret?: string;
 
   @Prop({ enum: ["en", "ru", "uk"], required: true, default: "en" })
   language!: ProfileLanguage;
@@ -94,3 +100,16 @@ export class User {
 
 export type UserDocument = HydratedDocument<User>;
 export const UserSchema = SchemaFactory.createForClass(User);
+
+UserSchema.index(
+  { email: 1 },
+  { unique: true, sparse: true, name: "users_unique_email" },
+);
+UserSchema.index(
+  { nickname: 1 },
+  { unique: true, sparse: true, name: "users_unique_nickname" },
+);
+UserSchema.index(
+  { phoneNumber: 1 },
+  { unique: true, sparse: true, name: "users_unique_phone_number" },
+);
