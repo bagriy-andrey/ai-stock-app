@@ -9,12 +9,13 @@ describe("LoginPage", () => {
     expect(source).toContain("Forgot password?");
   });
 
-  it("uses the enabled Apple sign-in button and keeps Facebook coming soon", () => {
+  it("uses enabled Apple and Facebook sign-in buttons", () => {
     const source = readFileSync(join(__dirname, "page.tsx"), "utf8");
 
     expect(source).toContain("<AppleSignInButton />");
+    expect(source).toContain("<FacebookSignInButton />");
     expect(source).not.toContain("Apple login is coming soon");
-    expect(source).toContain("Facebook login is coming soon");
-    expect(source).toContain('statusLabel="Coming soon"');
+    expect(source).not.toContain("Facebook login is coming soon");
+    expect(source).not.toContain('statusLabel="Coming soon"');
   });
 });

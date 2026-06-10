@@ -31,6 +31,15 @@ export interface AppleUserProfile {
   emailVerified: boolean;
 }
 
+export interface FacebookUserProfile {
+  providerId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  avatarUrl?: string;
+  emailVerified: boolean;
+}
+
 export interface EmailUserInput {
   email: string;
   nickname: string;
@@ -145,6 +154,82 @@ export class UsersService {
           },
           providerIds: {
             apple: providerId,
+          },
+          phoneVerified: false,
+          twoFactorEnabled: false,
+          twoFactorMethod: null,
+          language: "en",
+          watchlistViewMode: "grid",
+        }),
+      );
+
+      return this.toDto(user);
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
+  }
+
+  async findOrCreateFromFacebook(profile: FacebookUserProfile): Promise<UserDto> {
+    const providerId = profile.providerId.trim();
+    const email = normalizeOptionalEmail(profile.email);
+    const userByProviderId = await this.findUserByFacebookProviderId(providerId);
+
+    if (userByProviderId) {
+      return this.toDto(
+        await this.updateUserFromFacebook(userByProviderId, {
+          ...profile,
+          providerId,
+          email,
+        }),
+      );
+    }
+
+    const userByEmail = email
+      ? await this.findUserByEmailWithProviderIds(email)
+      : null;
+
+    if (userByEmail) {
+      if (
+        userByEmail.providerIds?.facebook &&
+        userByEmail.providerIds.facebook !== providerId
+      ) {
+        throw new ConflictException("Facebook account is already linked");
+      }
+
+      return this.toDto(
+        await this.updateUserFromFacebook(userByEmail, {
+          ...profile,
+          providerId,
+          email,
+        }),
+      );
+    }
+
+    try {
+      const firstName = normalizeOptionalString(profile.firstName);
+      const lastName = normalizeOptionalString(profile.lastName);
+      const displayName = buildFacebookDisplayName(
+        { firstName, lastName },
+        email,
+      );
+      const user = await this.userModel.create(
+        removeUndefinedValues({
+          email,
+          name: displayName,
+          firstName,
+          lastName,
+          avatarUrl: normalizeOptionalString(profile.avatarUrl),
+          emailVerified: profile.emailVerified === true,
+          authProviders: {
+            google: false,
+            email: false,
+            apple: false,
+            facebook: true,
+            phone: false,
+          },
+          providerIds: {
+            facebook: providerId,
           },
           phoneVerified: false,
           twoFactorEnabled: false,
@@ -406,6 +491,15 @@ export class UsersService {
       .exec();
   }
 
+  private async findUserByFacebookProviderId(
+    providerId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ "providerIds.facebook": providerId })
+      .select("+providerIds")
+      .exec();
+  }
+
   private async findUserByEmailWithProviderIds(
     email: string,
   ): Promise<UserDocument | null> {
@@ -450,6 +544,53 @@ export class UsersService {
     }
 
     return updatedUser;
+  }
+
+  private async updateUserFromFacebook(
+    user: UserDocument,
+    profile: FacebookUserProfile,
+  ): Promise<UserDocument> {
+    const email = normalizeOptionalEmail(profile.email);
+    const emailMatchesExistingUser = Boolean(email && user.email === email);
+    const shouldSetEmail = Boolean(email && !user.email);
+    const firstName = normalizeOptionalString(profile.firstName);
+    const lastName = normalizeOptionalString(profile.lastName);
+    const avatarUrl = normalizeOptionalString(profile.avatarUrl);
+    const displayName = buildFacebookDisplayName({ firstName, lastName }, email);
+    const $set = removeUndefinedValues({
+      ...(shouldSetEmail ? { email } : {}),
+      ...(displayName && !user.name ? { name: displayName } : {}),
+      ...(firstName && !user.firstName ? { firstName } : {}),
+      ...(lastName && !user.lastName ? { lastName } : {}),
+      ...(avatarUrl && !user.avatarUrl ? { avatarUrl } : {}),
+      ...((shouldSetEmail || emailMatchesExistingUser) && profile.emailVerified
+        ? { emailVerified: true }
+        : {}),
+      "authProviders.facebook": true,
+      "providerIds.facebook": profile.providerId,
+    });
+
+    try {
+      const updatedUser = await this.userModel
+        .findOneAndUpdate(
+          { _id: user._id },
+          { $set },
+          {
+            new: true,
+            runValidators: true,
+          },
+        )
+        .exec();
+
+      if (!updatedUser) {
+        throw new NotFoundException("User not found");
+      }
+
+      return updatedUser;
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
   }
 
   private async assertEmailNicknameAndPhoneAvailable(
@@ -559,6 +700,18 @@ function buildAppleDisplayName(
   return fullName || email;
 }
 
+function buildFacebookDisplayName(
+  profile: Pick<FacebookUserProfile, "firstName" | "lastName">,
+  email: string | undefined,
+): string | undefined {
+  const fullName = [profile.firstName, profile.lastName]
+    .map(normalizeOptionalString)
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || email;
+}
+
 function buildFallbackName(user: UserDocument, email: string): string {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
   return user.nickname ?? (fullName || email || "User");
@@ -605,6 +758,13 @@ function throwDuplicateKeyConflict(error: unknown): void {
 
   if ("providerIds.apple" in keyPattern || "providerIds.apple" in keyValue) {
     throw new ConflictException("Apple account is already linked");
+  }
+
+  if (
+    "providerIds.facebook" in keyPattern ||
+    "providerIds.facebook" in keyValue
+  ) {
+    throw new ConflictException("Facebook account is already linked");
   }
 
   throw new ConflictException("User already exists");

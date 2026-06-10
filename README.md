@@ -60,6 +60,7 @@ NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
 NEXT_PUBLIC_APPLE_CLIENT_ID=your_apple_services_id
 NEXT_PUBLIC_APPLE_REDIRECT_URI=http://localhost:3000/login
+NEXT_PUBLIC_FACEBOOK_APP_ID=your_facebook_app_id
 ```
 
 `apps/api/.env`:
@@ -79,6 +80,9 @@ APPLE_TEAM_ID=your_apple_team_id
 APPLE_KEY_ID=your_apple_key_id
 APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nyour_apple_private_key\\n-----END PRIVATE KEY-----"
 APPLE_REDIRECT_URI=http://localhost:3000/login
+FACEBOOK_APP_ID=your_facebook_app_id
+FACEBOOK_APP_SECRET=your_facebook_app_secret
+FACEBOOK_REDIRECT_URI=http://localhost:3000/login
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
 # PROFILE_UPLOAD_DIR=uploads/avatars
@@ -98,6 +102,13 @@ The current web flow uses Apple JS popup mode and sends the returned identity
 token to `POST /auth/apple`; the API verifies that token against Apple's public
 keys. Keep Apple private keys in `.env` only. If the key is stored on one line,
 escape line breaks as `\\n`.
+
+For Facebook Login, create a Facebook app and use the app id as both
+`NEXT_PUBLIC_FACEBOOK_APP_ID` and `FACEBOOK_APP_ID`. Store the app secret only
+in `FACEBOOK_APP_SECRET` on the API. The web app uses the Facebook JS SDK popup
+flow and posts the returned access token to `POST /auth/facebook`; the API
+validates the token with Graph `debug_token`, checks that it belongs to
+`FACEBOOK_APP_ID`, then fetches the profile from Graph `/me`.
 
 Start MongoDB and Redis:
 
@@ -201,12 +212,18 @@ curl -X POST http://localhost:8000/analysis/mock \
 
 ## Authentication
 
-The login page uses Google Identity Services to obtain a Google ID token and
-Apple JS to obtain an Apple identity token. The web app posts those tokens to
-the API, the API verifies them against `GOOGLE_CLIENT_ID` or `APPLE_CLIENT_ID`,
-creates or updates the MongoDB user record, and returns an application JWT.
+The login page uses Google Identity Services to obtain a Google ID token,
+Apple JS to obtain an Apple identity token, and the Facebook JS SDK to obtain a
+Facebook access token. The web app posts those tokens to the API, the API
+verifies them against `GOOGLE_CLIENT_ID`, `APPLE_CLIENT_ID`, or
+`FACEBOOK_APP_ID`, creates or updates the MongoDB user record, and returns an
+application JWT.
 Apple users are found first by `providerIds.apple`, then by verified email, and
 can be created without an email when Apple only returns a stable subject ID.
+Facebook users are found first by `providerIds.facebook`, then by email when
+Facebook returns one, and can be created without an email when Facebook only
+returns a stable user id. Existing profile fields are not overwritten by empty
+Facebook profile values.
 The sign-up mode also supports email/password registration through
 `POST /auth/register` with `email`, `nickname`, optional `phoneNumber`, and
 `password`; the API normalizes email, nickname, and phone number, stores a
@@ -217,8 +234,8 @@ example `+48500111222`, and are unique when present.
 Registered email users can log in through `POST /auth/login` with
 `identifier` and `password`; `identifier` may be the normalized email,
 nickname, or phone number. Phone login is password-based only. SMS providers,
-OTP codes, phone verification, 2FA, Facebook login, and email verification are
-not implemented yet.
+OTP codes, phone verification, 2FA, and email verification are not implemented
+yet.
 
 Forgot password uses `POST /auth/forgot-password` with an email address. The API
 returns the same generic success response whether or not an account exists,
@@ -824,7 +841,9 @@ return `503`.
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
 Apple login additionally requires `APPLE_CLIENT_ID` in the API and
-`NEXT_PUBLIC_APPLE_CLIENT_ID` in the web app. Set `FMP_API_KEY` to load home
+`NEXT_PUBLIC_APPLE_CLIENT_ID` in the web app. Facebook login requires
+`FACEBOOK_APP_ID` and `FACEBOOK_APP_SECRET` in the API plus
+`NEXT_PUBLIC_FACEBOOK_APP_ID` in the web app. Set `FMP_API_KEY` to load home
 page market movers. `JWT_EXPIRES_IN` defaults to `7d` when omitted.
 `APP_WEB_URL` controls password reset links and defaults to
 `http://localhost:3000` for local development. `PROFILE_UPLOAD_DIR` optionally
@@ -864,6 +883,17 @@ Make sure `APPLE_CLIENT_ID` in `apps/api/.env` exactly matches
 `NEXT_PUBLIC_APPLE_CLIENT_ID` in `apps/web/.env.local`, verify that
 `NEXT_PUBLIC_APPLE_REDIRECT_URI` is registered as an Apple return URL, then
 restart the API and web dev server.
+
+`Facebook login is not configured.`
+
+Set `NEXT_PUBLIC_FACEBOOK_APP_ID` in `apps/web/.env.local`, then restart the
+web dev server.
+
+`Invalid Facebook access token`
+
+Make sure `FACEBOOK_APP_ID` in `apps/api/.env` exactly matches
+`NEXT_PUBLIC_FACEBOOK_APP_ID` in `apps/web/.env.local`, verify that
+`FACEBOOK_APP_SECRET` is correct, then restart the API and web dev server.
 
 `MongooseServerSelectionError: connect ECONNREFUSED localhost:27017`
 

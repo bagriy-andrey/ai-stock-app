@@ -11,7 +11,10 @@ type AppEnvKey =
   | "APPLE_TEAM_ID"
   | "APPLE_KEY_ID"
   | "APPLE_PRIVATE_KEY"
-  | "APPLE_REDIRECT_URI";
+  | "APPLE_REDIRECT_URI"
+  | "FACEBOOK_APP_ID"
+  | "FACEBOOK_APP_SECRET"
+  | "FACEBOOK_REDIRECT_URI";
 
 const requiredKeys = [
   "MONGODB_URI",

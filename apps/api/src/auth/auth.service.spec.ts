@@ -4,6 +4,10 @@ import { createHash } from "node:crypto";
 import type { AppleAuthProfile, AppleAuthService } from "./apple-auth.service";
 import { AuthService, forgotPasswordSuccessMessage } from "./auth.service";
 import type { EmailService } from "./email.service";
+import type {
+  FacebookAuthProfile,
+  FacebookAuthService,
+} from "./facebook-auth.service";
 import type { GoogleAuthService, GoogleAuthProfile } from "./google-auth.service";
 import type { UsersService } from "../users/users.service";
 import type { PasswordHashingService } from "./password-hashing.service";
@@ -12,6 +16,7 @@ describe("AuthService", () => {
   const usersService = {
     findOrCreateFromGoogle: jest.fn(),
     findOrCreateFromApple: jest.fn(),
+    findOrCreateFromFacebook: jest.fn(),
     createWithEmail: jest.fn(),
     findByEmailOrNicknameForLogin: jest.fn(),
     findByEmailForPasswordReset: jest.fn(),
@@ -23,6 +28,7 @@ describe("AuthService", () => {
       UsersService,
       | "findOrCreateFromGoogle"
       | "findOrCreateFromApple"
+      | "findOrCreateFromFacebook"
       | "createWithEmail"
       | "findByEmailOrNicknameForLogin"
       | "findByEmailForPasswordReset"
@@ -40,6 +46,9 @@ describe("AuthService", () => {
   const appleAuthService = {
     verifyIdentityToken: jest.fn(),
   } as unknown as jest.Mocked<Pick<AppleAuthService, "verifyIdentityToken">>;
+  const facebookAuthService = {
+    verifyAccessToken: jest.fn(),
+  } as unknown as jest.Mocked<Pick<FacebookAuthService, "verifyAccessToken">>;
   const passwordHashingService = {
     hashPassword: jest.fn(),
     verifyPassword: jest.fn(),
@@ -230,6 +239,77 @@ describe("AuthService", () => {
       emailVerified: true,
       firstName: user.firstName,
       lastName: user.lastName,
+    });
+  });
+
+  it("logs in with Facebook and returns the common AuthResponse", async () => {
+    const user = {
+      id: "user-id",
+      email: "facebook@example.com",
+      emailVerified: false,
+      name: "Facebook User",
+      firstName: "Facebook",
+      lastName: "User",
+      phoneVerified: false,
+      avatarUrl: "https://example.com/facebook.jpg",
+      authProviders: {
+        google: false,
+        email: false,
+        apple: false,
+        facebook: true,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    facebookAuthService.verifyAccessToken.mockResolvedValue({
+      providerId: "facebook-user-id",
+      email: user.email,
+      emailVerified: false,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
+    } satisfies FacebookAuthProfile);
+    usersService.findOrCreateFromFacebook.mockResolvedValue(user);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+      appleAuthService as unknown as AppleAuthService,
+      facebookAuthService as unknown as FacebookAuthService,
+    );
+
+    await expect(service.loginWithFacebook("facebook-access-token")).resolves.toEqual({
+      accessToken: "app-jwt",
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: undefined,
+        phoneNumber: undefined,
+        phoneVerified: false,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+        authProviders: user.authProviders,
+        twoFactorEnabled: false,
+      },
+    });
+    expect(facebookAuthService.verifyAccessToken).toHaveBeenCalledWith(
+      "facebook-access-token",
+    );
+    expect(usersService.findOrCreateFromFacebook).toHaveBeenCalledWith({
+      providerId: "facebook-user-id",
+      email: user.email,
+      emailVerified: false,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
     });
   });
 

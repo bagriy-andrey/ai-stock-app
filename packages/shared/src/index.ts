@@ -223,6 +223,10 @@ export interface AppleLoginRequest {
   };
 }
 
+export interface FacebookLoginRequest {
+  accessToken: string;
+}
+
 export interface RegisterWithEmailRequest {
   email: string;
   nickname: string;

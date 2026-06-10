@@ -9,11 +9,10 @@ import {
   AuthFeatureIcon,
   AuthLayout,
   AuthModeSwitch,
-  FacebookProviderIcon,
   PasswordInput,
-  SocialAuthButton,
 } from "../components/auth/AuthorizationUI";
 import { AppleSignInButton } from "../components/auth/AppleSignInButton";
+import { FacebookSignInButton } from "../components/auth/FacebookSignInButton";
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { useAuth } from "../components/auth/AuthProvider";
 import { Button } from "../components/ui/button";
@@ -79,10 +78,6 @@ export default function LoginPage() {
     setStatusMessage(null);
     setLoginSubmitError(null);
     setSignupSubmitError(null);
-  };
-
-  const showComingSoon = (message: string) => {
-    setStatusMessage(message);
   };
 
   const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -188,12 +183,7 @@ export default function LoginPage() {
             <GoogleSignInButton text="continue_with" />
           </div>
           <AppleSignInButton />
-          <SocialAuthButton
-            icon={<FacebookProviderIcon />}
-            provider="Continue with Facebook"
-            statusLabel="Coming soon"
-            onClick={() => showComingSoon("Facebook login is coming soon")}
-          />
+          <FacebookSignInButton />
         </div>
 
         <AuthDivider

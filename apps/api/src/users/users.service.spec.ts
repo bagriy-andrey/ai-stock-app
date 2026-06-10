@@ -330,6 +330,203 @@ describe("UsersService", () => {
     expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
   });
 
+  it("logs in an existing Facebook user by provider id without overwriting profile fields", async () => {
+    const selectProvider = jest.fn().mockReturnThis();
+    const providerExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(userDocument);
+    const updateExec = jest
+      .fn<Promise<UserDocument>, []>()
+      .mockResolvedValue({
+        ...userDocument,
+        authProviders: {
+          ...userDocument.authProviders,
+          facebook: true,
+        },
+        providerIds: {
+          ...userDocument.providerIds,
+          facebook: "facebook-user-id",
+        },
+      } as UserDocument);
+    userModel.findOne.mockReturnValueOnce({
+      select: selectProvider,
+      exec: providerExec,
+    });
+    userModel.findOneAndUpdate.mockReturnValue({ exec: updateExec });
+
+    await service.findOrCreateFromFacebook({
+      providerId: "facebook-user-id",
+      email: "test@example.com",
+      firstName: "",
+      lastName: "",
+      avatarUrl: "",
+      emailVerified: false,
+    });
+
+    expect(userModel.findOne).toHaveBeenCalledWith({
+      "providerIds.facebook": "facebook-user-id",
+    });
+    expect(selectProvider).toHaveBeenCalledWith("+providerIds");
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userDocument._id },
+      {
+        $set: {
+          "authProviders.facebook": true,
+          "providerIds.facebook": "facebook-user-id",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("links an existing user by Facebook email", async () => {
+    const providerSelect = jest.fn().mockReturnThis();
+    const emailSelect = jest.fn().mockReturnThis();
+    const updateExec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue({
+      ...userDocument,
+      authProviders: {
+        ...userDocument.authProviders,
+        facebook: true,
+      },
+    } as UserDocument);
+    userModel.findOne
+      .mockReturnValueOnce({
+        select: providerSelect,
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: emailSelect,
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue({
+          ...userDocument,
+          providerIds: {},
+        } as UserDocument),
+      });
+    userModel.findOneAndUpdate.mockReturnValue({ exec: updateExec });
+
+    await service.findOrCreateFromFacebook({
+      providerId: "facebook-user-id",
+      email: "TEST@example.com",
+      firstName: "Facebook",
+      lastName: "User",
+      avatarUrl: "https://example.com/facebook.jpg",
+      emailVerified: false,
+    });
+
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      "providerIds.facebook": "facebook-user-id",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      email: "test@example.com",
+    });
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userDocument._id },
+      {
+        $set: {
+          "authProviders.facebook": true,
+          "providerIds.facebook": "facebook-user-id",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("creates a new Facebook user without requiring an email", async () => {
+    const providerSelect = jest.fn().mockReturnThis();
+    const facebookUserDocument = {
+      ...userDocument,
+      email: undefined,
+      name: "Facebook User",
+      firstName: "Facebook",
+      lastName: "User",
+      nickname: undefined,
+      avatarUrl: "https://example.com/facebook.jpg",
+      authProviders: {
+        google: false,
+        email: false,
+        apple: false,
+        facebook: true,
+        phone: false,
+      },
+      providerIds: {
+        facebook: "facebook-user-id",
+      },
+      emailVerified: false,
+    } as unknown as UserDocument;
+    userModel.findOne.mockReturnValueOnce({
+      select: providerSelect,
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    userModel.create.mockResolvedValue(facebookUserDocument);
+
+    await expect(
+      service.findOrCreateFromFacebook({
+        providerId: "facebook-user-id",
+        firstName: "Facebook",
+        lastName: "User",
+        avatarUrl: "https://example.com/facebook.jpg",
+        emailVerified: false,
+      }),
+    ).resolves.toMatchObject({
+      id: userId.toString(),
+      email: undefined,
+      authProviders: expect.objectContaining({ facebook: true }),
+    });
+    expect(userModel.create).toHaveBeenCalledWith({
+      name: "Facebook User",
+      firstName: "Facebook",
+      lastName: "User",
+      avatarUrl: "https://example.com/facebook.jpg",
+      emailVerified: false,
+      authProviders: {
+        google: false,
+        email: false,
+        apple: false,
+        facebook: true,
+        phone: false,
+      },
+      providerIds: {
+        facebook: "facebook-user-id",
+      },
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      watchlistViewMode: "grid",
+    });
+  });
+
+  it("rejects linking an email user already linked to another Facebook provider id", async () => {
+    userModel.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue({
+          ...userDocument,
+          providerIds: {
+            facebook: "other-facebook-user-id",
+          },
+        } as UserDocument),
+      });
+
+    await expect(
+      service.findOrCreateFromFacebook({
+        providerId: "facebook-user-id",
+        email: "test@example.com",
+        emailVerified: false,
+      }),
+    ).rejects.toThrow("Facebook account is already linked");
+    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("finds a user by id", async () => {
     const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
     userModel.findById.mockReturnValue({ exec });

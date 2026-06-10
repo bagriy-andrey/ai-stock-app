@@ -2,6 +2,7 @@ import type {
   AuthProvider,
   AppleLoginRequest,
   AuthResponse,
+  FacebookLoginRequest,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
   GoogleLoginRequest,
@@ -23,6 +24,15 @@ export function loginWithGoogle(credential: string): Promise<AuthResponse> {
 
 export function loginWithApple(payload: AppleLoginRequest): Promise<AuthResponse> {
   return apiRequest<AuthResponse>("/auth/apple", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function loginWithFacebook(
+  payload: FacebookLoginRequest,
+): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/facebook", {
     method: "POST",
     body: JSON.stringify(payload),
   });
@@ -76,6 +86,10 @@ export function loginWithProvider(
     return loginWithApple(payload);
   }
 
+  if (provider === "facebook" && isFacebookLoginPayload(payload)) {
+    return loginWithFacebook(payload);
+  }
+
   if (provider === "email" && isEmailLoginPayload(payload)) {
     return loginWithEmail(payload);
   }
@@ -84,11 +98,7 @@ export function loginWithProvider(
     return loginWithEmail(payload);
   }
 
-  return Promise.reject(new Error(`${provider} login is not implemented yet`));
-}
-
-export function loginWithFacebook(payload: unknown): Promise<AuthResponse> {
-  return loginWithUnimplementedProvider("facebook", payload);
+  return Promise.reject(new Error(`${provider} login payload is invalid`));
 }
 
 export function loginWithPhone(payload: unknown): Promise<AuthResponse> {
@@ -97,14 +107,6 @@ export function loginWithPhone(payload: unknown): Promise<AuthResponse> {
   }
 
   return Promise.reject(new Error("phone login requires identifier and password"));
-}
-
-function loginWithUnimplementedProvider(
-  provider: Exclude<AuthProvider, "google" | "phone">,
-  payload: unknown,
-): Promise<AuthResponse> {
-  void payload;
-  return Promise.reject(new Error(`${provider} login is not implemented yet`));
 }
 
 function isGoogleLoginPayload(payload: unknown): payload is GoogleLoginRequest {
@@ -122,6 +124,17 @@ function isAppleLoginPayload(payload: unknown): payload is AppleLoginRequest {
     payload !== null &&
     "identityToken" in payload &&
     typeof payload.identityToken === "string"
+  );
+}
+
+function isFacebookLoginPayload(
+  payload: unknown,
+): payload is FacebookLoginRequest {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "accessToken" in payload &&
+    typeof payload.accessToken === "string"
   );
 }
 

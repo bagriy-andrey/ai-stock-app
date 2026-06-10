@@ -9,6 +9,7 @@ import type { AuthenticatedRequest } from "./authenticated-request";
 import { AuthService } from "./auth.service";
 import { AppleLoginDto } from "./dto/apple-login.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
+import { FacebookLoginDto } from "./dto/facebook-login.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
@@ -27,6 +28,11 @@ export class AuthController {
   @Post("apple")
   loginWithApple(@Body() body: AppleLoginDto): Promise<AuthResponse> {
     return this.authService.loginWithApple(body);
+  }
+
+  @Post("facebook")
+  loginWithFacebook(@Body() body: FacebookLoginDto): Promise<AuthResponse> {
+    return this.authService.loginWithFacebook(body.accessToken);
   }
 
   @Post("register")

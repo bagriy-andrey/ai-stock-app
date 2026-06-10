@@ -73,6 +73,24 @@ describe("UserSchema", () => {
     });
   });
 
+  it("defines sparse unique indexes for social provider ids", () => {
+    expect(getIndexOptions({ "providerIds.apple": 1 })).toMatchObject({
+      unique: true,
+      sparse: true,
+      name: "users_unique_apple_provider_id",
+    });
+    expect(getIndexOptions({ "providerIds.google": 1 })).toMatchObject({
+      unique: true,
+      sparse: true,
+      name: "users_unique_google_provider_id",
+    });
+    expect(getIndexOptions({ "providerIds.facebook": 1 })).toMatchObject({
+      unique: true,
+      sparse: true,
+      name: "users_unique_facebook_provider_id",
+    });
+  });
+
   it("validates email format and nickname length without making either field required", () => {
     expect(new UserModel({ email: "not-an-email" }).validateSync()).toBeDefined();
     expect(new UserModel({ nickname: "ab" }).validateSync()).toBeDefined();

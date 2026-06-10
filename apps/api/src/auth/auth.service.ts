@@ -21,6 +21,7 @@ import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
 import { EmailService } from "./email.service";
 import { AppleAuthService } from "./apple-auth.service";
+import { FacebookAuthService } from "./facebook-auth.service";
 import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
 import { PasswordHashingService } from "./password-hashing.service";
@@ -42,6 +43,7 @@ export class AuthService {
     private readonly passwordHashingService: PasswordHashingService,
     private readonly emailService: EmailService = new EmailService(),
     private readonly appleAuthService: AppleAuthService = new AppleAuthService(),
+    private readonly facebookAuthService: FacebookAuthService = new FacebookAuthService(),
   ) {}
 
   async loginWithGoogle(credential: string): Promise<AuthResponse> {
@@ -76,6 +78,20 @@ export class AuthService {
       emailVerified: profile.emailVerified,
       firstName: profile.firstName,
       lastName: profile.lastName,
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
+  async loginWithFacebook(accessToken: string): Promise<AuthResponse> {
+    const profile = await this.facebookAuthService.verifyAccessToken(accessToken);
+    const user = await this.usersService.findOrCreateFromFacebook({
+      providerId: profile.providerId,
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
     });
 
     return this.buildAuthResponse(user);

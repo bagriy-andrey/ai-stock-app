@@ -6,6 +6,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { AppleAuthService } from "./apple-auth.service";
 import { EmailService } from "./email.service";
+import { FacebookAuthService } from "./facebook-auth.service";
 import { GoogleAuthService } from "./google-auth.service";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 import { PasswordHashingService } from "./password-hashing.service";
@@ -28,6 +29,7 @@ const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
     AuthService,
     AppleAuthService,
     EmailService,
+    FacebookAuthService,
     GoogleAuthService,
     JwtAuthGuard,
     PasswordHashingService,

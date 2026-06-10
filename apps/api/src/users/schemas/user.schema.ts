@@ -130,3 +130,7 @@ UserSchema.index(
   { "providerIds.google": 1 },
   { unique: true, sparse: true, name: "users_unique_google_provider_id" },
 );
+UserSchema.index(
+  { "providerIds.facebook": 1 },
+  { unique: true, sparse: true, name: "users_unique_facebook_provider_id" },
+);
