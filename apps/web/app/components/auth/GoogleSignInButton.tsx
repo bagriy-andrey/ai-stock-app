@@ -2,7 +2,7 @@
 
 import Script from "next/script";
 import { useRouter } from "next/navigation";
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useAuth } from "./AuthProvider";
 import { useI18n } from "../i18n/I18nProvider";
 
@@ -36,7 +36,13 @@ declare global {
   }
 }
 
-export function GoogleSignInButton() {
+interface GoogleSignInButtonProps {
+  text?: "signin_with" | "signup_with" | "continue_with" | "signin";
+}
+
+export function GoogleSignInButton({
+  text = "continue_with",
+}: GoogleSignInButtonProps) {
   const buttonRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
   const { loginWithGoogle } = useAuth();
@@ -45,12 +51,17 @@ export function GoogleSignInButton() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
-  const initializeGoogleButton = () => {
-    if (!clientId || !window.google || !buttonRef.current) {
+  const initializeGoogleButton = useCallback(() => {
+    if (!clientId) {
       setError(t.googleNotConfigured);
       return;
     }
 
+    if (!window.google || !buttonRef.current) {
+      return;
+    }
+
+    buttonRef.current.innerHTML = "";
     window.google.accounts.id.initialize({
       client_id: clientId,
       callback: (response) => {
@@ -77,10 +88,14 @@ export function GoogleSignInButton() {
     window.google.accounts.id.renderButton(buttonRef.current, {
       theme: "outline",
       size: "large",
-      width: 320,
-      text: "signin_with",
+      width: Math.min(buttonRef.current.clientWidth || 400, 400),
+      text,
     });
-  };
+  }, [clientId, loginWithGoogle, router, t, text]);
+
+  useEffect(() => {
+    initializeGoogleButton();
+  }, [initializeGoogleButton]);
 
   return (
     <div className="google-sign-in">
