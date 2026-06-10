@@ -6,6 +6,8 @@ import type {
   GoogleLoginRequest,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
+  ResetPasswordRequest,
+  ResetPasswordResponse,
 } from "@ai-stock-advisor/shared";
 import { apiRequest } from "./api";
 
@@ -42,6 +44,15 @@ export function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
   return apiRequest<ForgotPasswordResponse>("/auth/forgot-password", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function resetPassword(
+  payload: ResetPasswordRequest,
+): Promise<ResetPasswordResponse> {
+  return apiRequest<ResetPasswordResponse>("/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

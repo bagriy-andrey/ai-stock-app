@@ -13,6 +13,7 @@ import type {
   ForgotPasswordResponse,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
+  ResetPasswordResponse,
   UserDto,
 } from "@ai-stock-advisor/shared";
 import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
@@ -141,6 +142,29 @@ export class AuthService {
     return {
       success: true,
       message: forgotPasswordSuccessMessage,
+    };
+  }
+
+  async resetPassword(
+    token: string,
+    password: string,
+  ): Promise<ResetPasswordResponse> {
+    const tokenHash = hashPasswordResetToken(token);
+    const passwordHash = await this.passwordHashingService.hashPassword(password);
+    const wasReset = await this.usersService.resetPasswordByTokenHash(
+      tokenHash,
+      passwordHash,
+      new Date(),
+    );
+
+    if (!wasReset) {
+      throw new BadRequestException("Invalid or expired reset token");
+    }
+
+    // TODO: Invalidate persisted refresh tokens/sessions here if the app adds them.
+    return {
+      success: true,
+      message: "Password has been reset successfully.",
     };
   }
 

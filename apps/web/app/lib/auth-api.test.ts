@@ -3,6 +3,7 @@ import {
   loginWithEmail,
   loginWithPhone,
   loginWithProvider,
+  resetPassword,
 } from "./auth-api";
 
 describe("auth-api", () => {
@@ -220,5 +221,59 @@ describe("auth-api", () => {
         }),
       }),
     );
+  });
+
+  it("calls the reset password endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          message: "Password has been reset successfully.",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(
+      resetPassword({
+        token: "raw-reset-token",
+        password: "NewStrongPassword123",
+      }),
+    ).resolves.toEqual({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/reset-password",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          token: "raw-reset-token",
+          password: "NewStrongPassword123",
+        }),
+      }),
+    );
+  });
+
+  it("surfaces invalid or expired reset token responses", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({ message: "Invalid or expired reset token" }),
+        {
+          status: 400,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(
+      resetPassword({
+        token: "expired-token",
+        password: "NewStrongPassword123",
+      }),
+    ).rejects.toThrow("Invalid or expired reset token");
   });
 });

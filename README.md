@@ -10,8 +10,9 @@ calculations, allocation by ticker, and recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB. Users can also create an email/password account from the sign-up form
 with an optional phone number and log in with email, nickname, or phone number
-plus password; the API stores only a password hash and returns the same app JWT
-session shape used by Google login.
+plus password; the API stores only a password hash, supports email-based
+password reset links, and returns the same app JWT session shape used by Google
+login.
 
 ## Repository Layout
 
@@ -130,6 +131,8 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user with an optional phone number, hash the password, and return the common auth response |
 | API | `POST` | `http://localhost:3001/auth/login` | Log in with email, nickname, or phone number plus password and return the common auth response |
+| API | `POST` | `http://localhost:3001/auth/forgot-password` | Generate a single-use password reset link for eligible email users without revealing account existence |
+| API | `POST` | `http://localhost:3001/auth/reset-password` | Reset a password with a valid reset token, clear the token fields, and require login with the new password |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
@@ -195,8 +198,17 @@ example `+48500111222`, and are unique when present.
 Registered email users can log in through `POST /auth/login` with
 `identifier` and `password`; `identifier` may be the normalized email,
 nickname, or phone number. Phone login is password-based only. SMS providers,
-OTP codes, phone verification, 2FA, password reset, and email verification are
-not implemented yet.
+OTP codes, phone verification, 2FA, Apple login, Facebook login, and email
+verification are not implemented yet.
+
+Forgot password uses `POST /auth/forgot-password` with an email address. The API
+returns the same generic success response whether or not an account exists,
+stores only a SHA-256 reset token hash plus expiration, and sends a reset URL in
+the form `/auth/reset-password?token=<rawToken>`. The reset page posts the raw
+URL token and new password to `POST /auth/reset-password`; the API hashes the
+incoming token, matches only non-expired token hashes, stores a new password
+hash, sets `authProviders.email = true`, clears reset token fields, and does not
+log the user in automatically.
 
 The browser stores the JWT in local storage and validates it with
 `GET /users/me` after page refreshes. Protected app routes redirect to `/login`
@@ -230,7 +242,9 @@ The API keeps user data in MongoDB through the NestJS `UsersModule`.
 Google authentication creates or updates users through `POST /auth/google`.
 Email/password registration creates users through `POST /auth/register`; those
 users log in through `POST /auth/login` with email, nickname, or phone number
-plus password.
+plus password. Password reset stores `passwordResetTokenHash` and
+`passwordResetExpiresAt` only until a reset succeeds or the token expires; raw
+reset tokens are never stored.
 
 User documents are stored in the `users` collection with these fields:
 
@@ -245,6 +259,8 @@ User documents are stored in the `users` collection with these fields:
 | `phoneVerified` | `boolean` | Yes | Defaults to `false`; phone verification is not implemented yet. |
 | `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
 | `passwordHash` | `string` | No | Stored only for email users and excluded from API responses. |
+| `passwordResetTokenHash` | `string` | No | SHA-256 hash of the latest reset token, selected only for reset operations and cleared after a successful reset. |
+| `passwordResetExpiresAt` | `Date` | No | Expiration timestamp for the latest reset token, selected only for reset operations and cleared after a successful reset. |
 | `authProviders` | `object` | Yes | Provider flags for Google, email, Apple, Facebook, and phone. |
 | `language` | `"en" \| "ru" \| "uk"` | Yes | Preferred language. Defaults to English. |
 | `theme` | `"light" \| "dark" \| "system"` | No | Preferred application theme. |

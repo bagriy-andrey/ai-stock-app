@@ -1,4 +1,4 @@
-import { UnauthorizedException } from "@nestjs/common";
+import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash } from "node:crypto";
 import { AuthService, forgotPasswordSuccessMessage } from "./auth.service";
@@ -15,6 +15,7 @@ describe("AuthService", () => {
     findByEmailForPasswordReset: jest.fn(),
     findById: jest.fn(),
     storePasswordResetTokenHash: jest.fn(),
+    resetPasswordByTokenHash: jest.fn(),
   } as unknown as jest.Mocked<
     Pick<
       UsersService,
@@ -24,6 +25,7 @@ describe("AuthService", () => {
       | "findByEmailForPasswordReset"
       | "findById"
       | "storePasswordResetTokenHash"
+      | "resetPasswordByTokenHash"
     >
   >;
   const jwtService = {
@@ -816,5 +818,164 @@ describe("AuthService", () => {
 
     expect(response.user).not.toHaveProperty("passwordResetTokenHash");
     expect(response.user).not.toHaveProperty("passwordResetExpiresAt");
+  });
+
+  it("resets a password with a valid reset token", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-06-02T09:10:00.000Z"));
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:new-salt:new-hash");
+    usersService.resetPasswordByTokenHash.mockResolvedValue(true);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.resetPassword("raw-reset-token", "NewStrongPassword123"),
+    ).resolves.toEqual({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+    expect(passwordHashingService.hashPassword).toHaveBeenCalledWith(
+      "NewStrongPassword123",
+    );
+    expect(usersService.resetPasswordByTokenHash).toHaveBeenCalledWith(
+      createHash("sha256").update("raw-reset-token").digest("hex"),
+      "scrypt:new-salt:new-hash",
+      new Date("2026-06-02T09:10:00.000Z"),
+    );
+
+    jest.useRealTimers();
+  });
+
+  it("rejects invalid or expired reset tokens with a generic bad request", async () => {
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:new-salt:new-hash");
+    usersService.resetPasswordByTokenHash.mockResolvedValue(false);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.resetPassword("invalid-token", "NewStrongPassword123"),
+    ).rejects.toThrow(
+      new BadRequestException("Invalid or expired reset token"),
+    );
+  });
+
+  it("rejects reuse of the same reset token", async () => {
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:new-salt:new-hash");
+    usersService.resetPasswordByTokenHash
+      .mockResolvedValueOnce(true)
+      .mockResolvedValueOnce(false);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.resetPassword("raw-reset-token", "NewStrongPassword123"),
+    ).resolves.toEqual({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+    await expect(
+      service.resetPassword("raw-reset-token", "AnotherStrongPassword123"),
+    ).rejects.toThrow(
+      new BadRequestException("Invalid or expired reset token"),
+    );
+  });
+
+  it("allows login with the new password after reset and rejects the old password", async () => {
+    let currentPasswordHash = "scrypt:old-salt:old-hash";
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "test",
+      nickname: "andrey",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:new-salt:new-hash");
+    passwordHashingService.verifyPassword.mockImplementation(
+      async (password, hash) =>
+        password === "NewStrongPassword123" &&
+        hash === "scrypt:new-salt:new-hash",
+    );
+    usersService.resetPasswordByTokenHash.mockImplementation(
+      async (_tokenHash, passwordHash) => {
+        currentPasswordHash = passwordHash;
+        return true;
+      },
+    );
+    usersService.findByEmailOrNicknameForLogin.mockImplementation(async () => ({
+      ...user,
+      passwordHash: currentPasswordHash,
+    }));
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await service.resetPassword("raw-reset-token", "NewStrongPassword123");
+
+    await expect(
+      service.loginWithEmail({
+        identifier: "test@example.com",
+        password: "NewStrongPassword123",
+      }),
+    ).resolves.toHaveProperty("accessToken", "app-jwt");
+    await expect(
+      service.loginWithEmail({
+        identifier: "test@example.com",
+        password: "OldStrongPassword123",
+      }),
+    ).rejects.toThrow(new UnauthorizedException("Invalid credentials"));
+  });
+
+  it("does not expose sensitive fields in reset password responses", async () => {
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:new-salt:new-hash");
+    usersService.resetPasswordByTokenHash.mockResolvedValue(true);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    const response = await service.resetPassword(
+      "raw-reset-token",
+      "NewStrongPassword123",
+    );
+
+    expect(response).toEqual({
+      success: true,
+      message: "Password has been reset successfully.",
+    });
+    expect(response).not.toHaveProperty("passwordHash");
+    expect(response).not.toHaveProperty("passwordResetTokenHash");
+    expect(response).not.toHaveProperty("passwordResetExpiresAt");
+    expect(response).not.toHaveProperty("providerIds");
+    expect(response).not.toHaveProperty("totpSecret");
   });
 });

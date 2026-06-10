@@ -177,6 +177,34 @@ export class UsersService {
       .exec();
   }
 
+  async resetPasswordByTokenHash(
+    tokenHash: string,
+    passwordHash: string,
+    now: Date,
+  ): Promise<boolean> {
+    const user = await this.userModel
+      .findOneAndUpdate(
+        {
+          passwordResetTokenHash: tokenHash,
+          passwordResetExpiresAt: { $gt: now },
+        },
+        {
+          $set: {
+            passwordHash,
+            "authProviders.email": true,
+          },
+          $unset: {
+            passwordResetTokenHash: 1,
+            passwordResetExpiresAt: 1,
+          },
+        },
+        { new: true },
+      )
+      .exec();
+
+    return Boolean(user);
+  }
+
   async findById(id: string): Promise<UserDto> {
     if (!Types.ObjectId.isValid(id)) {
       throw new NotFoundException("User not found");

@@ -3,6 +3,7 @@ import type {
   AuthResponse,
   AuthUser,
   ForgotPasswordResponse,
+  ResetPasswordResponse,
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "./authenticated-request";
 import { AuthService } from "./auth.service";
@@ -10,6 +11,7 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
+import { ResetPasswordDto } from "./dto/reset-password.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 
 @Controller("auth")
@@ -36,6 +38,13 @@ export class AuthController {
     @Body() body: ForgotPasswordDto,
   ): Promise<ForgotPasswordResponse> {
     return this.authService.forgotPassword(body.email);
+  }
+
+  @Post("reset-password")
+  resetPassword(
+    @Body() body: ResetPasswordDto,
+  ): Promise<ResetPasswordResponse> {
+    return this.authService.resetPassword(body.token, body.password);
   }
 
   @Get("me")

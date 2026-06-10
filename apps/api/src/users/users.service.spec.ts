@@ -222,6 +222,59 @@ describe("UsersService", () => {
     });
   });
 
+  it("resets password by a non-expired token hash and clears reset fields", async () => {
+    const exec = jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue({
+      ...userDocument,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+    } as unknown as UserDocument);
+    userModel.findOneAndUpdate.mockReturnValue({ exec });
+
+    await expect(
+      service.resetPasswordByTokenHash(
+        "hashed-token",
+        "scrypt:new-salt:new-hash",
+        now,
+      ),
+    ).resolves.toBe(true);
+
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      {
+        passwordResetTokenHash: "hashed-token",
+        passwordResetExpiresAt: { $gt: now },
+      },
+      {
+        $set: {
+          passwordHash: "scrypt:new-salt:new-hash",
+          "authProviders.email": true,
+        },
+        $unset: {
+          passwordResetTokenHash: 1,
+          passwordResetExpiresAt: 1,
+        },
+      },
+      { new: true },
+    );
+  });
+
+  it("returns false when resetting with an expired, invalid, or reused token", async () => {
+    const exec = jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null);
+    userModel.findOneAndUpdate.mockReturnValue({ exec });
+
+    await expect(
+      service.resetPasswordByTokenHash(
+        "missing-hashed-token",
+        "scrypt:new-salt:new-hash",
+        now,
+      ),
+    ).resolves.toBe(false);
+  });
+
   it("creates an email user with email auth enabled", async () => {
     const emailUserDocument = {
       ...userDocument,
