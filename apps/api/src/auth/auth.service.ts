@@ -1,4 +1,8 @@
-import { Injectable, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  Injectable,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import type {
   AuthProviderFlags,
@@ -8,6 +12,7 @@ import type {
   RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
+import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
 import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
@@ -48,12 +53,21 @@ export class AuthService {
   ): Promise<AuthResponse> {
     const email = input.email.trim().toLowerCase();
     const nickname = input.nickname.trim().toLowerCase();
+    const phoneNumber = input.phoneNumber
+      ? normalizePhoneNumber(input.phoneNumber) ?? undefined
+      : undefined;
+
+    if (input.phoneNumber && !phoneNumber) {
+      throw new BadRequestException("Invalid phone number");
+    }
+
     const passwordHash = await this.passwordHashingService.hashPassword(
       input.password,
     );
     const user = await this.usersService.createWithEmail({
       email,
       nickname,
+      phoneNumber,
       passwordHash,
     });
 
@@ -106,6 +120,8 @@ export class AuthService {
       id: user.id,
       email: user.email,
       nickname: user.nickname,
+      phoneNumber: user.phoneNumber,
+      phoneVerified: user.phoneVerified === true,
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,

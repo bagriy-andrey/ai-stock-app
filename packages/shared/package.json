@@ -2,12 +2,16 @@
   "name": "@ai-stock-advisor/shared",
   "version": "0.1.0",
   "private": true,
+  "main": "./dist/index.js",
   "types": "./src/index.ts",
   "scripts": {
+    "build": "tsc -p tsconfig.build.json",
     "type-check": "tsc --noEmit"
   },
   "devDependencies": {
     "typescript": "^5.7.0"
+  },
+  "dependencies": {
+    "libphonenumber-js": "^1.13.6"
   }
 }
-

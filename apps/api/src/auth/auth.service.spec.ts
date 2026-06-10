@@ -86,6 +86,8 @@ describe("AuthService", () => {
         id: user.id,
         email: user.email,
         nickname: user.nickname,
+        phoneNumber: undefined,
+        phoneVerified: false,
         firstName: user.firstName,
         lastName: user.lastName,
         avatarUrl: user.avatarUrl,
@@ -170,6 +172,8 @@ describe("AuthService", () => {
       id: user.id,
       email: user.email,
       nickname: undefined,
+      phoneNumber: undefined,
+      phoneVerified: false,
       firstName: undefined,
       lastName: undefined,
       avatarUrl: undefined,
@@ -223,6 +227,8 @@ describe("AuthService", () => {
         id: user.id,
         email: user.email,
         nickname: user.nickname,
+        phoneNumber: undefined,
+        phoneVerified: false,
         firstName: undefined,
         lastName: undefined,
         avatarUrl: undefined,
@@ -236,6 +242,7 @@ describe("AuthService", () => {
     expect(usersService.createWithEmail).toHaveBeenCalledWith({
       email: "test@example.com",
       nickname: "test",
+      phoneNumber: undefined,
       passwordHash: "scrypt:salt:hash",
     });
     expect(usersService.createWithEmail).not.toHaveBeenCalledWith(
@@ -244,6 +251,61 @@ describe("AuthService", () => {
     expect(jwtService.signAsync).toHaveBeenCalledWith({
       sub: user.id,
       email: user.email,
+    });
+  });
+
+  it("registers an email user with a normalized phone number", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "test",
+      nickname: "test",
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: true,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:salt:hash");
+    usersService.createWithEmail.mockResolvedValue(user);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.registerWithEmail({
+        email: "test@example.com",
+        nickname: "test",
+        phoneNumber: "+48 500 111 222",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toMatchObject({
+      accessToken: "app-jwt",
+      user: {
+        phoneNumber: "+48500111222",
+        phoneVerified: false,
+        authProviders: expect.objectContaining({ phone: true }),
+      },
+    });
+    expect(usersService.createWithEmail).toHaveBeenCalledWith({
+      email: "test@example.com",
+      nickname: "test",
+      phoneNumber: "+48500111222",
+      passwordHash: "scrypt:salt:hash",
     });
   });
 
@@ -290,6 +352,8 @@ describe("AuthService", () => {
         id: user.id,
         email: user.email,
         nickname: user.nickname,
+        phoneNumber: undefined,
+        phoneVerified: false,
         firstName: undefined,
         lastName: undefined,
         avatarUrl: undefined,
@@ -349,12 +413,66 @@ describe("AuthService", () => {
         id: user.id,
         email: user.email,
         nickname: user.nickname,
+        phoneVerified: false,
         authProviders: user.authProviders,
         twoFactorEnabled: false,
       },
     });
     expect(usersService.findByEmailOrNicknameForLogin).toHaveBeenCalledWith(
       "andrey",
+    );
+  });
+
+  it("logs in with phone number", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "andrey",
+      nickname: "andrey",
+      phoneNumber: "+380671234567",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: true,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+      passwordHash: "$2b$12$password-hash",
+    };
+    usersService.findByEmailOrNicknameForLogin.mockResolvedValue(user);
+    passwordHashingService.verifyPassword.mockResolvedValue(true);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.loginWithEmail({
+        identifier: "+380 67 123 45 67",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toMatchObject({
+      user: {
+        phoneNumber: "+380671234567",
+        phoneVerified: false,
+      },
+    });
+    expect(usersService.findByEmailOrNicknameForLogin).toHaveBeenCalledWith(
+      "+380 67 123 45 67",
+    );
+    expect(passwordHashingService.verifyPassword).toHaveBeenCalledWith(
+      "StrongPassword123",
+      user.passwordHash,
     );
   });
 
@@ -396,6 +514,45 @@ describe("AuthService", () => {
     ).rejects.toThrow(new UnauthorizedException("Invalid credentials"));
   });
 
+  it("rejects phone login with a wrong password", async () => {
+    usersService.findByEmailOrNicknameForLogin.mockResolvedValue({
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "test",
+      nickname: "andrey",
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: true,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+      passwordHash: "$2b$12$password-hash",
+    });
+    passwordHashingService.verifyPassword.mockResolvedValue(false);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.loginWithEmail({
+        identifier: "+48 500 111 222",
+        password: "wrong-password",
+      }),
+    ).rejects.toThrow(new UnauthorizedException("Invalid credentials"));
+  });
+
   it("rejects unknown email or nickname with a generic authentication error", async () => {
     usersService.findByEmailOrNicknameForLogin.mockResolvedValue(null);
     const service = new AuthService(
@@ -414,6 +571,12 @@ describe("AuthService", () => {
     await expect(
       service.loginWithEmail({
         identifier: "missing-nickname",
+        password: "StrongPassword123",
+      }),
+    ).rejects.toThrow(new UnauthorizedException("Invalid credentials"));
+    await expect(
+      service.loginWithEmail({
+        identifier: "+48 500 111 222",
         password: "StrongPassword123",
       }),
     ).rejects.toThrow(new UnauthorizedException("Invalid credentials"));

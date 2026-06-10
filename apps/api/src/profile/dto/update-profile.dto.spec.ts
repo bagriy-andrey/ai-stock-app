@@ -8,6 +8,7 @@ describe("UpdateProfileDto", () => {
       firstName: "  Ada ",
       lastName: "  ",
       nickname: " analyst ",
+      phoneNumber: "+380 67 123 45 67",
       language: "uk",
       theme: "system",
       watchlistViewMode: "list",
@@ -18,10 +19,20 @@ describe("UpdateProfileDto", () => {
       firstName: "Ada",
       lastName: null,
       nickname: "analyst",
+      phoneNumber: "+380671234567",
       language: "uk",
       theme: "system",
       watchlistViewMode: "list",
     });
+  });
+
+  it("allows clearing a phone number", async () => {
+    const dto = plainToInstance(UpdateProfileDto, {
+      phoneNumber: "  ",
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.phoneNumber).toBeNull();
   });
 
   it("rejects unsupported language, theme, and watchlist view values", async () => {
@@ -46,5 +57,13 @@ describe("UpdateProfileDto", () => {
 
     expect(tooShort).toHaveLength(1);
     expect(tooLong).toHaveLength(1);
+  });
+
+  it("rejects invalid phone numbers", async () => {
+    const errors = await validate(
+      plainToInstance(UpdateProfileDto, { phoneNumber: "+123" }),
+    );
+
+    expect(errors.map((error) => error.property)).toContain("phoneNumber");
   });
 });

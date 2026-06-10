@@ -24,6 +24,10 @@ import {
   updateProfile,
   uploadProfileAvatar,
 } from "../lib/profile-api";
+import {
+  normalizeOptionalProfilePhoneNumber,
+  validateOptionalProfilePhoneNumber,
+} from "../lib/profile-phone-validation";
 import { getUserInitials } from "../lib/profile-display";
 
 const profileQueryKey = ["profile"] as const;
@@ -32,6 +36,7 @@ interface ProfileFormState {
   firstName: string;
   lastName: string;
   nickname: string;
+  phoneNumber: string;
   theme: ProfileTheme;
 }
 
@@ -39,6 +44,7 @@ const initialFormState: ProfileFormState = {
   firstName: "",
   lastName: "",
   nickname: "",
+  phoneNumber: "",
   theme: "system",
 };
 
@@ -67,6 +73,7 @@ export function ProfilePage() {
       firstName: profileQuery.data.firstName ?? "",
       lastName: profileQuery.data.lastName ?? "",
       nickname: profileQuery.data.nickname ?? "",
+      phoneNumber: profileQuery.data.phoneNumber ?? "",
       theme: profileQuery.data.theme ?? "system",
     });
   }, [profileQuery.data]);
@@ -122,10 +129,23 @@ export function ProfilePage() {
 
   const onSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    const phoneError = validateOptionalProfilePhoneNumber(
+      form.phoneNumber,
+      t.invalidPhoneNumber,
+    );
+
+    if (phoneError) {
+      setClientError(phoneError);
+      setServerError(null);
+      setSuccessMessage(null);
+      return;
+    }
+
     updateMutation.mutate({
       firstName: textOrNull(form.firstName),
       lastName: textOrNull(form.lastName),
       nickname: textOrNull(form.nickname),
+      phoneNumber: normalizeOptionalProfilePhoneNumber(form.phoneNumber),
       theme: form.theme,
     });
   };
@@ -263,6 +283,29 @@ export function ProfilePage() {
                     maxLength={50}
                     disabled={isSaving}
                   />
+                </div>
+                <div className="profile-field profile-field-full">
+                  <Label htmlFor="phone-number">{t.phoneNumber}</Label>
+                  <Input
+                    id="phone-number"
+                    type="tel"
+                    value={form.phoneNumber}
+                    onChange={(event) =>
+                      setForm((current) => ({
+                        ...current,
+                        phoneNumber: event.target.value,
+                      }))
+                    }
+                    placeholder="+48 500 111 222"
+                    disabled={isSaving}
+                  />
+                  <p className="profile-field-help">
+                    {profile.phoneNumber
+                      ? `${t.phone}: ${profile.phoneNumber}. ${t.status}: ${
+                          profile.phoneVerified ? t.verified : t.notVerified
+                        }`
+                      : t.phoneNotSet}
+                  </p>
                 </div>
                 <div className="profile-field">
                   <LanguageSelector id="profile-language" showLabel disabled={isSaving} />

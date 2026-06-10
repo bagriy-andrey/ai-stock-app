@@ -9,8 +9,9 @@ can also manually maintain a portfolio, review live position values, profit/loss
 calculations, allocation by ticker, and recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
 MongoDB. Users can also create an email/password account from the sign-up form
-and log in with either email or nickname plus password; the API stores only a
-password hash and returns the same app JWT session shape used by Google login.
+with an optional phone number and log in with email, nickname, or phone number
+plus password; the API stores only a password hash and returns the same app JWT
+session shape used by Google login.
 
 ## Repository Layout
 
@@ -19,7 +20,7 @@ apps/
   web/                    # Next.js app
   api/                    # NestJS API, profiles, watchlist, portfolio, transactions, and market data providers
 packages/
-  shared/                 # Shared TypeScript request and response types
+  shared/                 # Shared TypeScript request/response types and phone normalization utilities
 services/
   trading-agent/          # Placeholder Python FastAPI service
 docker-compose.yml        # Local MongoDB and Redis
@@ -99,8 +100,9 @@ Run the NestJS API at `http://localhost:3001`:
 npm run dev:api
 ```
 
-Run the API and web app in separate terminals. If either `.env` file changes,
-restart the corresponding dev server.
+The root dev scripts build the shared TypeScript package before starting the
+selected app. Run the API and web app in separate terminals. If either `.env`
+file changes, restart the corresponding dev server.
 
 Run the placeholder TradingAgents service at `http://localhost:8000`:
 
@@ -125,8 +127,8 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | --- | --- | --- | --- |
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
-| API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user, hash the password, and return the common auth response |
-| API | `POST` | `http://localhost:3001/auth/login` | Log in with email or nickname plus password and return the common auth response |
+| API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user with an optional phone number, hash the password, and return the common auth response |
+| API | `POST` | `http://localhost:3001/auth/login` | Log in with email, nickname, or phone number plus password and return the common auth response |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
@@ -183,13 +185,17 @@ The login page uses Google Identity Services to obtain a Google ID token. The
 web app posts that token to the API, the API verifies it against
 `GOOGLE_CLIENT_ID`, creates or updates the MongoDB user record, and returns an
 application JWT. The sign-up mode also supports email/password registration
-through `POST /auth/register` with `email`, `nickname`, and `password`; the API
-normalizes email and nickname, stores a secure password hash, sets
-`authProviders.email = true`, and returns the same common auth response.
+through `POST /auth/register` with `email`, `nickname`, optional `phoneNumber`,
+and `password`; the API normalizes email, nickname, and phone number, stores a
+secure password hash, sets `authProviders.email = true`, sets
+`authProviders.phone = true` only when a phone number is provided, and returns
+the same common auth response. Phone numbers are stored in E.164 format, for
+example `+48500111222`, and are unique when present.
 Registered email users can log in through `POST /auth/login` with
-`identifier` and `password`; `identifier` may be either the normalized email or
-nickname. Phone login, password reset, and email verification are not
-implemented yet.
+`identifier` and `password`; `identifier` may be the normalized email,
+nickname, or phone number. Phone login is password-based only. SMS providers,
+OTP codes, phone verification, 2FA, password reset, and email verification are
+not implemented yet.
 
 The browser stores the JWT in local storage and validates it with
 `GET /users/me` after page refreshes. Protected app routes redirect to `/login`
@@ -201,8 +207,9 @@ Local browser check:
 2. Start the API with `npm run dev:api`.
 3. Start the web app with `npm run dev:web`.
 4. Open `http://localhost:3000/login`.
-5. Sign in with Google, log in with email or nickname plus password, or switch
-   to Sign up and create an email/password account.
+5. Sign in with Google, log in with email, nickname, or phone number plus
+   password, or switch to Sign up and create an email/password account with an
+   optional phone number.
 6. After authentication, the app redirects to the protected home page at
    `http://localhost:3000`.
 7. Refresh the page. The session should remain active.
@@ -213,7 +220,7 @@ Verify that a user was created:
 
 ```bash
 docker compose exec mongodb mongosh ai-stock-advisor \
-  --eval 'db.users.find({}, {email: 1, name: 1, firstName: 1, lastName: 1, nickname: 1, avatarUrl: 1, language: 1, theme: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
+  --eval 'db.users.find({}, {email: 1, name: 1, firstName: 1, lastName: 1, nickname: 1, phoneNumber: 1, phoneVerified: 1, avatarUrl: 1, language: 1, theme: 1, telegramChatId: 1, createdAt: 1, updatedAt: 1}).pretty()'
 ```
 
 ## User Domain
@@ -221,7 +228,8 @@ docker compose exec mongodb mongosh ai-stock-advisor \
 The API keeps user data in MongoDB through the NestJS `UsersModule`.
 Google authentication creates or updates users through `POST /auth/google`.
 Email/password registration creates users through `POST /auth/register`; those
-users log in through `POST /auth/login` with email or nickname plus password.
+users log in through `POST /auth/login` with email, nickname, or phone number
+plus password.
 
 User documents are stored in the `users` collection with these fields:
 
@@ -232,6 +240,8 @@ User documents are stored in the `users` collection with these fields:
 | `firstName` | `string` | No | User-managed first name. |
 | `lastName` | `string` | No | User-managed last name. |
 | `nickname` | `string` | No | User-managed nickname. |
+| `phoneNumber` | `string` | No | Unique sparse field stored in E.164 format when present. |
+| `phoneVerified` | `boolean` | Yes | Defaults to `false`; phone verification is not implemented yet. |
 | `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
 | `passwordHash` | `string` | No | Stored only for email users and excluded from API responses. |
 | `authProviders` | `object` | Yes | Provider flags for Google, email, Apple, Facebook, and phone. |
@@ -254,6 +264,8 @@ user. It requires an `Authorization: Bearer <jwt>` header and returns the shared
   "firstName": "Example",
   "lastName": "User",
   "nickname": "example-investor",
+  "phoneNumber": "+48500111222",
+  "phoneVerified": false,
   "avatarUrl": "/uploads/avatars/2f4354c7-d838-46d1-984c-c066677e54d8.png",
   "language": "en",
   "theme": "system",
@@ -269,15 +281,18 @@ Optional fields are omitted when they are not set.
 
 Authenticated users can manage their profile at `http://localhost:3000/profile`.
 The page uses TanStack Query for loading and mutations, and updates the active
-theme immediately after a saved preference changes. Users can switch the
-interface between English, Russian, and Ukrainian from the header or profile
-page. Language changes are saved immediately through `PATCH /profile`, applied
-after the API confirms the update, and restored from the saved user profile
-after login. The compact authenticated header exposes flag-based language
-selection, icon-based theme selection, the profile avatar, and a burger menu
-with application navigation. Header theme changes are also persisted
-immediately through `PATCH /profile`. The burger menu contains Home page,
-Portfolio, Transactions, Watchlist, and Sign out. The MVP redirects
+theme immediately after a saved preference changes. Users can add, edit, or
+clear a phone number from the profile page; saved phone numbers are normalized
+to E.164 and displayed with `Not verified` status because phone verification is
+not part of the MVP yet. Users can switch the interface between English,
+Russian, and Ukrainian from the header or profile page. Language changes are
+saved immediately through `PATCH /profile`, applied after the API confirms the
+update, and restored from the saved user profile after login. The compact
+authenticated header exposes flag-based language selection, icon-based theme
+selection, the profile avatar, and a burger menu with application navigation.
+Header theme changes are also persisted immediately through `PATCH /profile`.
+The burger menu contains Home page, Portfolio, Transactions, Watchlist, and Sign
+out. The MVP redirects
 `/dashboard` to the authenticated home page at `/`.
 
 For the MVP, uploaded profile photos are written to the API filesystem under

@@ -3,6 +3,7 @@ import type {
   ProfileTheme,
   WatchlistViewMode,
 } from "@ai-stock-advisor/shared";
+import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
 import { Transform } from "class-transformer";
 import {
   IsIn,
@@ -10,6 +11,7 @@ import {
   IsString,
   MaxLength,
   MinLength,
+  ValidateBy,
 } from "class-validator";
 
 function trimOptionalText({ value }: { value: unknown }): unknown {
@@ -19,6 +21,36 @@ function trimOptionalText({ value }: { value: unknown }): unknown {
 
   const trimmed = value.trim();
   return trimmed.length > 0 ? trimmed : null;
+}
+
+function normalizeOptionalPhoneNumber({ value }: { value: unknown }): unknown {
+  if (value === null || value === undefined) {
+    return value;
+  }
+
+  if (typeof value !== "string") {
+    return value;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return normalizePhoneNumber(trimmed) ?? trimmed;
+}
+
+function IsNormalizedPhoneNumber() {
+  return ValidateBy({
+    name: "isNormalizedPhoneNumber",
+    validator: {
+      validate: (value: unknown): boolean =>
+        typeof value === "string" && normalizePhoneNumber(value) === value,
+      defaultMessage: () =>
+        "phoneNumber must be a valid phone number with country code",
+    },
+  });
 }
 
 export class UpdateProfileDto {
@@ -40,6 +72,12 @@ export class UpdateProfileDto {
   @MinLength(3)
   @MaxLength(30)
   nickname?: string | null;
+
+  @Transform(normalizeOptionalPhoneNumber)
+  @IsOptional()
+  @IsString()
+  @IsNormalizedPhoneNumber()
+  phoneNumber?: string | null;
 
   @IsOptional()
   @IsIn(["en", "ru", "uk"])

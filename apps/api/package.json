@@ -51,6 +51,9 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "moduleNameMapper": {
+      "^@ai-stock-advisor/shared$": "<rootDir>/../../../packages/shared/src"
+    }
   }
 }

@@ -5,6 +5,10 @@ import type {
   UpdateProfileRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
+import {
+  isPhoneNumberLikeIdentifier,
+  normalizePhoneNumber,
+} from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
 import { User, UserDocument } from "./schemas/user.schema";
 import { normalizeProfileLanguage } from "./profile-language";
@@ -22,6 +26,7 @@ export interface GoogleUserProfile {
 export interface EmailUserInput {
   email: string;
   nickname: string;
+  phoneNumber?: string;
   passwordHash: string;
 }
 
@@ -74,13 +79,17 @@ export class UsersService {
   async createWithEmail(input: EmailUserInput): Promise<UserDto> {
     const email = input.email.trim().toLowerCase();
     const nickname = input.nickname.trim().toLowerCase();
+    const phoneNumber = input.phoneNumber
+      ? normalizePhoneNumber(input.phoneNumber) ?? undefined
+      : undefined;
 
-    await this.assertEmailAndNicknameAvailable(email, nickname);
+    await this.assertEmailNicknameAndPhoneAvailable(email, nickname, phoneNumber);
 
     try {
       const user = await this.userModel.create({
         email,
         nickname,
+        ...(phoneNumber ? { phoneNumber } : {}),
         passwordHash: input.passwordHash,
         emailVerified: false,
         authProviders: {
@@ -88,7 +97,7 @@ export class UsersService {
           email: true,
           apple: false,
           facebook: false,
-          phone: false,
+          phone: Boolean(phoneNumber),
         },
         phoneVerified: false,
         twoFactorEnabled: false,
@@ -108,6 +117,19 @@ export class UsersService {
     identifier: string,
   ): Promise<UserCredentialsDto | null> {
     const normalizedIdentifier = identifier.trim().toLowerCase();
+
+    if (isPhoneNumberLikeIdentifier(identifier)) {
+      const phoneNumber = normalizePhoneNumber(identifier);
+
+      if (phoneNumber) {
+        const userByPhone = await this.findOneWithPasswordHash({ phoneNumber });
+
+        if (userByPhone) {
+          return this.toCredentialsDto(userByPhone);
+        }
+      }
+    }
+
     const userByEmail = await this.findOneWithPasswordHash({
       email: normalizedIdentifier,
     });
@@ -144,9 +166,16 @@ export class UsersService {
       return this.findById(id);
     }
 
-    const user = await this.userModel
-      .findByIdAndUpdate(id, update, { new: true, runValidators: true })
-      .exec();
+    let user: UserDocument | null;
+
+    try {
+      user = await this.userModel
+        .findByIdAndUpdate(id, update, { new: true, runValidators: true })
+        .exec();
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
 
     if (!user) {
       throw new NotFoundException("User not found");
@@ -173,6 +202,7 @@ export class UsersService {
 
   private buildProfileUpdate(input: UpdateProfileRequest): Record<string, unknown> {
     const $set: Record<string, string> = {};
+    const $setBooleans: Record<string, boolean> = {};
     const $unset: Record<string, 1> = {};
 
     for (const field of ["firstName", "lastName", "nickname"] as const) {
@@ -193,8 +223,20 @@ export class UsersService {
       }
     }
 
+    if (input.phoneNumber === null) {
+      $unset.phoneNumber = 1;
+      $setBooleans.phoneVerified = false;
+      $setBooleans["authProviders.phone"] = false;
+    } else if (input.phoneNumber !== undefined) {
+      $set.phoneNumber = input.phoneNumber;
+      $setBooleans.phoneVerified = false;
+      $setBooleans["authProviders.phone"] = true;
+    }
+
     return {
-      ...(Object.keys($set).length > 0 ? { $set } : {}),
+      ...(Object.keys($set).length > 0 || Object.keys($setBooleans).length > 0
+        ? { $set: { ...$set, ...$setBooleans } }
+        : {}),
       ...(Object.keys($unset).length > 0 ? { $unset } : {}),
     };
   }
@@ -216,9 +258,10 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
-  private async assertEmailAndNicknameAvailable(
+  private async assertEmailNicknameAndPhoneAvailable(
     email: string,
     nickname: string,
+    phoneNumber: string | undefined,
   ): Promise<void> {
     const userByEmail = await this.userModel.findOne({ email }).exec();
 
@@ -230,6 +273,16 @@ export class UsersService {
 
     if (userByNickname) {
       throw new ConflictException("Nickname already exists");
+    }
+
+    if (!phoneNumber) {
+      return;
+    }
+
+    const userByPhone = await this.userModel.findOne({ phoneNumber }).exec();
+
+    if (userByPhone) {
+      throw new ConflictException("Phone number already exists");
     }
   }
 
@@ -317,6 +370,10 @@ function throwDuplicateKeyConflict(error: unknown): void {
 
   if ("nickname" in keyPattern || "nickname" in keyValue) {
     throw new ConflictException("Nickname already exists");
+  }
+
+  if ("phoneNumber" in keyPattern || "phoneNumber" in keyValue) {
+    throw new ConflictException("Phone number already exists");
   }
 
   throw new ConflictException("User already exists");

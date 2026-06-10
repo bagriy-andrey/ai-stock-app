@@ -247,6 +247,56 @@ describe("UsersService", () => {
     );
   });
 
+  it("creates an email user with a normalized unique phone number", async () => {
+    const emailUserDocument = {
+      ...userDocument,
+      email: "user@example.com",
+      name: undefined,
+      nickname: "andrey",
+      phoneNumber: "+48500111222",
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: true,
+      },
+      emailVerified: false,
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      watchlistViewMode: "grid",
+    } as unknown as UserDocument;
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(null);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
+    userModel.create.mockResolvedValue(emailUserDocument);
+
+    await expect(
+      service.createWithEmail({
+        email: "user@example.com",
+        nickname: "andrey",
+        phoneNumber: "+48 500 111 222",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).resolves.toMatchObject({
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: expect.objectContaining({ phone: true }),
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(3, {
+      phoneNumber: "+48500111222",
+    });
+    expect(userModel.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        phoneNumber: "+48500111222",
+        authProviders: expect.objectContaining({ phone: true }),
+      }),
+    );
+  });
+
   it("finds login credentials by normalized email", async () => {
     const emailUserDocument = {
       ...userDocument,
@@ -317,6 +367,40 @@ describe("UsersService", () => {
     expect(nicknameSelect).toHaveBeenCalledWith("+passwordHash");
   });
 
+  it("looks up login credentials by normalized phone before email or nickname", async () => {
+    const phoneSelect = jest.fn().mockReturnValue({
+      exec: jest
+        .fn<Promise<UserDocument | null>, []>()
+        .mockResolvedValue({
+          ...userDocument,
+          email: "user@example.com",
+          nickname: "andrey",
+          phoneNumber: "+380671234567",
+          passwordHash: "$2b$12$password-hash",
+          authProviders: {
+            google: false,
+            email: true,
+            apple: false,
+            facebook: false,
+            phone: true,
+          },
+        } as unknown as UserDocument),
+    });
+    userModel.findOne.mockReturnValue({ select: phoneSelect });
+
+    await expect(
+      service.findByEmailOrNicknameForLogin("+380 67 123 45 67"),
+    ).resolves.toMatchObject({
+      phoneNumber: "+380671234567",
+      passwordHash: "$2b$12$password-hash",
+    });
+    expect(userModel.findOne).toHaveBeenCalledTimes(1);
+    expect(userModel.findOne).toHaveBeenCalledWith({
+      phoneNumber: "+380671234567",
+    });
+    expect(phoneSelect).toHaveBeenCalledWith("+passwordHash");
+  });
+
   it("returns null when login email and nickname lookups miss", async () => {
     const select = jest.fn().mockReturnValue({
       exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
@@ -366,6 +450,28 @@ describe("UsersService", () => {
     ).rejects.toThrow("Nickname already exists");
   });
 
+  it("rejects duplicate phone numbers during email registration pre-check", async () => {
+    userModel.findOne
+      .mockReturnValueOnce({
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(userDocument),
+      });
+
+    await expect(
+      service.createWithEmail({
+        email: "user@example.com",
+        nickname: "tester",
+        phoneNumber: "+48500111222",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).rejects.toThrow("Phone number already exists");
+  });
+
   it("maps duplicate key errors from MongoDB to conflict messages", async () => {
     const findOneExec = jest
       .fn<Promise<UserDocument | null>, []>()
@@ -383,6 +489,26 @@ describe("UsersService", () => {
         passwordHash: "scrypt:salt:hash",
       }),
     ).rejects.toThrow("Nickname already exists");
+  });
+
+  it("maps duplicate phone key errors from MongoDB to conflict messages", async () => {
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(null);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
+    userModel.create.mockRejectedValue({
+      code: 11000,
+      keyPattern: { phoneNumber: 1 },
+    });
+
+    await expect(
+      service.createWithEmail({
+        email: "user@example.com",
+        nickname: "tester",
+        phoneNumber: "+48500111222",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).rejects.toThrow("Phone number already exists");
   });
 
   it("falls back to English when a stored language is invalid", async () => {
@@ -473,6 +599,41 @@ describe("UsersService", () => {
         },
         $unset: {
           lastName: 1,
+        },
+      },
+      { new: true, runValidators: true },
+    );
+  });
+
+  it("updates profile phone number and marks it unverified", async () => {
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue({
+      ...userDocument,
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: {
+        ...userDocument.authProviders,
+        phone: true,
+      },
+    } as unknown as UserDocument);
+    userModel.findByIdAndUpdate.mockReturnValue({ exec });
+
+    await expect(
+      service.updateProfile(userId.toString(), {
+        phoneNumber: "+48500111222",
+      }),
+    ).resolves.toMatchObject({
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: expect.objectContaining({ phone: true }),
+    });
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(
+      userId.toString(),
+      {
+        $set: {
+          phoneNumber: "+48500111222",
+          phoneVerified: false,
+          "authProviders.phone": true,
         },
       },
       { new: true, runValidators: true },

@@ -64,7 +64,10 @@ export class User {
   @Prop({ default: false })
   emailVerified!: boolean;
 
-  @Prop({ trim: true })
+  @Prop({
+    trim: true,
+    match: [/^\+[1-9]\d{1,14}$/, "Invalid phone number format"],
+  })
   phoneNumber?: string;
 
   @Prop({ default: false })

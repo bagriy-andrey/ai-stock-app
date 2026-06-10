@@ -1,3 +1,5 @@
+import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
+
 export type AuthMode = "login" | "signup";
 
 export interface LoginFormValues {
@@ -8,6 +10,7 @@ export interface LoginFormValues {
 export interface SignupFormValues {
   email: string;
   nickname: string;
+  phoneNumber: string;
   password: string;
   confirmPassword: string;
 }
@@ -22,7 +25,7 @@ export function validateLoginForm(values: LoginFormValues): LoginFormErrors {
   const errors: LoginFormErrors = {};
 
   if (!values.identifier.trim()) {
-    errors.identifier = "Enter your email or nickname.";
+    errors.identifier = "Enter your email, phone, or nickname.";
   }
 
   if (!values.password) {
@@ -52,6 +55,10 @@ export function validateSignupForm(values: SignupFormValues): SignupFormErrors {
       "Nickname can use letters, numbers, underscore, dot and hyphen.";
   }
 
+  if (values.phoneNumber.trim() && !normalizePhoneNumber(values.phoneNumber)) {
+    errors.phoneNumber = "Enter a valid phone number with country code.";
+  }
+
   if (!values.password) {
     errors.password = "Enter your password.";
   } else if (values.password.length < 8) {
@@ -65,6 +72,18 @@ export function validateSignupForm(values: SignupFormValues): SignupFormErrors {
   }
 
   return errors;
+}
+
+export function normalizeOptionalSignupPhoneNumber(
+  phoneNumber: string,
+): string | undefined {
+  const trimmed = phoneNumber.trim();
+
+  if (!trimmed) {
+    return undefined;
+  }
+
+  return normalizePhoneNumber(trimmed) ?? undefined;
 }
 
 export function hasFormErrors(errors: Record<string, string | undefined>): boolean {

@@ -7,7 +7,7 @@ import {
 describe("auth form validation", () => {
   it("requires login identifier and password", () => {
     expect(validateLoginForm({ identifier: "", password: "" })).toEqual({
-      identifier: "Enter your email or nickname.",
+      identifier: "Enter your email, phone, or nickname.",
       password: "Enter your password.",
     });
   });
@@ -23,6 +23,7 @@ describe("auth form validation", () => {
     expect(validateSignupForm({
       email: "invalid",
       nickname: "ab",
+      phoneNumber: "",
       password: "short",
       confirmPassword: "different",
     })).toEqual({
@@ -37,6 +38,7 @@ describe("auth form validation", () => {
     expect(validateSignupForm({
       email: "",
       nickname: "",
+      phoneNumber: "",
       password: "",
       confirmPassword: "",
     })).toEqual({
@@ -51,6 +53,7 @@ describe("auth form validation", () => {
     expect(validateSignupForm({
       email: "andrii@example.com",
       nickname: "andrii!",
+      phoneNumber: "",
       password: "password123",
       confirmPassword: "password123",
     })).toEqual({
@@ -58,10 +61,35 @@ describe("auth form validation", () => {
     });
   });
 
+  it("rejects invalid optional signup phone numbers", () => {
+    expect(validateSignupForm({
+      email: "andrii@example.com",
+      nickname: "andrii",
+      phoneNumber: "+123",
+      password: "password123",
+      confirmPassword: "password123",
+    })).toEqual({
+      phoneNumber: "Enter a valid phone number with country code.",
+    });
+  });
+
+  it("accepts and normalizes valid signup phone numbers", () => {
+    const values = {
+      email: "andrii@example.com",
+      nickname: "andrii",
+      phoneNumber: "+48 500 111 222",
+      password: "password123",
+      confirmPassword: "password123",
+    };
+
+    expect(validateSignupForm(values)).toEqual({});
+  });
+
   it("accepts a valid signup form", () => {
     const errors = validateSignupForm({
       email: "andrii@example.com",
       nickname: "andrii",
+      phoneNumber: "",
       password: "password123",
       confirmPassword: "password123",
     });

@@ -24,6 +24,7 @@ import {
   type LoginFormErrors,
   type SignupFormErrors,
   hasFormErrors,
+  normalizeOptionalSignupPhoneNumber,
   validateLoginForm,
   validateSignupForm,
 } from "../lib/auth-form-validation";
@@ -39,6 +40,7 @@ export default function LoginPage() {
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
   const [nickname, setNickname] = useState("");
+  const [phoneNumber, setPhoneNumber] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [isPasswordVisible, setIsPasswordVisible] = useState(false);
@@ -121,6 +123,7 @@ export default function LoginPage() {
     const nextErrors = validateSignupForm({
       email,
       nickname,
+      phoneNumber,
       password,
       confirmPassword,
     });
@@ -132,10 +135,13 @@ export default function LoginPage() {
 
     setIsSignupSubmitting(true);
 
+    const normalizedPhoneNumber = normalizeOptionalSignupPhoneNumber(phoneNumber);
+
     try {
       await registerWithEmail({
         email: email.trim().toLowerCase(),
         nickname: nickname.trim().toLowerCase(),
+        ...(normalizedPhoneNumber ? { phoneNumber: normalizedPhoneNumber } : {}),
         password,
       });
       router.replace("/");
@@ -152,6 +158,11 @@ export default function LoginPage() {
         setSignupErrors((currentErrors) => ({
           ...currentErrors,
           nickname: message,
+        }));
+      } else if (message === "Phone number already exists") {
+        setSignupErrors((currentErrors) => ({
+          ...currentErrors,
+          phoneNumber: message,
         }));
       }
     } finally {
@@ -217,6 +228,17 @@ export default function LoginPage() {
               placeholder="Nickname"
               value={nickname}
             />
+            <AuthTextField
+              autoComplete="tel"
+              error={signupErrors.phoneNumber}
+              id="signup-phone"
+              label="Phone Number (optional)"
+              name="phoneNumber"
+              onChange={setPhoneNumber}
+              placeholder="+48 500 111 222"
+              type="tel"
+              value={phoneNumber}
+            />
             <PasswordInput
               autoComplete="new-password"
               error={signupErrors.password}
@@ -260,10 +282,10 @@ export default function LoginPage() {
               autoComplete="username"
               error={loginErrors.identifier}
               id="login-identifier"
-              label="Email or nickname"
+              label="Email, phone, or nickname"
               name="identifier"
               onChange={setIdentifier}
-              placeholder="Email or nickname"
+              placeholder="Email / Phone / Nickname"
               value={identifier}
             />
             <PasswordInput
@@ -331,7 +353,7 @@ interface AuthTextFieldProps {
   name: string;
   onChange: (value: string) => void;
   placeholder: string;
-  type?: "email" | "text";
+  type?: "email" | "tel" | "text";
   value: string;
 }
 
@@ -379,6 +401,10 @@ function getRegistrationErrorMessage(error: unknown): string {
 
     if (error.message.includes("Nickname already exists")) {
       return "Nickname already exists";
+    }
+
+    if (error.message.includes("Phone number already exists")) {
+      return "Phone number already exists";
     }
 
     return error.message;

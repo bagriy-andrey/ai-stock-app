@@ -46,6 +46,10 @@ export function loginWithProvider(
     return loginWithEmail(payload);
   }
 
+  if (provider === "phone" && isEmailLoginPayload(payload)) {
+    return loginWithEmail(payload);
+  }
+
   return Promise.reject(new Error(`${provider} login is not implemented yet`));
 }
 
@@ -58,11 +62,15 @@ export function loginWithFacebook(payload: unknown): Promise<AuthResponse> {
 }
 
 export function loginWithPhone(payload: unknown): Promise<AuthResponse> {
-  return loginWithUnimplementedProvider("phone", payload);
+  if (isEmailLoginPayload(payload)) {
+    return loginWithEmail(payload);
+  }
+
+  return Promise.reject(new Error("phone login requires identifier and password"));
 }
 
 function loginWithUnimplementedProvider(
-  provider: Exclude<AuthProvider, "google">,
+  provider: Exclude<AuthProvider, "google" | "phone">,
   payload: unknown,
 ): Promise<AuthResponse> {
   void payload;

@@ -1,3 +1,8 @@
+export {
+  isPhoneNumberLikeIdentifier,
+  normalizePhoneNumber,
+} from "./phone";
+
 export interface MockStockQuote {
   symbol: string;
   companyName: string;
@@ -185,6 +190,8 @@ export interface AuthUser {
   id: string;
   email?: string;
   nickname?: string;
+  phoneNumber?: string;
+  phoneVerified: boolean;
   firstName?: string;
   lastName?: string;
   avatarUrl?: string;
@@ -196,6 +203,7 @@ export interface UpdateProfileRequest {
   firstName?: string | null;
   lastName?: string | null;
   nickname?: string | null;
+  phoneNumber?: string | null;
   language?: ProfileLanguage;
   theme?: ProfileTheme;
   watchlistViewMode?: WatchlistViewMode;
@@ -208,6 +216,7 @@ export interface GoogleLoginRequest {
 export interface RegisterWithEmailRequest {
   email: string;
   nickname: string;
+  phoneNumber?: string;
   password: string;
 }
 

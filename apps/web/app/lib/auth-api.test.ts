@@ -1,4 +1,4 @@
-import { loginWithEmail, loginWithProvider } from "./auth-api";
+import { loginWithEmail, loginWithPhone, loginWithProvider } from "./auth-api";
 
 describe("auth-api", () => {
   const fetchMock = jest.fn();
@@ -84,6 +84,83 @@ describe("auth-api", () => {
     await expect(
       loginWithProvider("email", {
         identifier: "user@example.com",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toHaveProperty("accessToken", "app-jwt");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/login",
+      expect.any(Object),
+    );
+  });
+
+  it("routes phone password login through the shared login endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: "app-jwt",
+          user: {
+            id: "user-id",
+            email: "user@example.com",
+            phoneNumber: "+48500111222",
+            phoneVerified: false,
+            authProviders: {
+              google: false,
+              email: true,
+              apple: false,
+              facebook: false,
+              phone: true,
+            },
+            twoFactorEnabled: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      loginWithPhone({
+        identifier: "+48 500 111 222",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toHaveProperty("accessToken", "app-jwt");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/login",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          identifier: "+48 500 111 222",
+          password: "StrongPassword123",
+        }),
+      }),
+    );
+  });
+
+  it("routes phone provider login through the shared provider helper", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          accessToken: "app-jwt",
+          user: {
+            id: "user-id",
+            phoneNumber: "+48500111222",
+            phoneVerified: false,
+            authProviders: {
+              google: false,
+              email: true,
+              apple: false,
+              facebook: false,
+              phone: true,
+            },
+            twoFactorEnabled: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      loginWithProvider("phone", {
+        identifier: "+48500111222",
         password: "StrongPassword123",
       }),
     ).resolves.toHaveProperty("accessToken", "app-jwt");
