@@ -213,6 +213,16 @@ export interface GoogleLoginRequest {
   credential: string;
 }
 
+export interface AppleLoginRequest {
+  identityToken: string;
+  authorizationCode?: string;
+  user?: {
+    email?: string;
+    firstName?: string;
+    lastName?: string;
+  };
+}
+
 export interface RegisterWithEmailRequest {
   email: string;
   nickname: string;

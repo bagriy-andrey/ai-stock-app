@@ -23,6 +23,14 @@ export interface GoogleUserProfile {
   emailVerified: boolean;
 }
 
+export interface AppleUserProfile {
+  providerId: string;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  emailVerified: boolean;
+}
+
 export interface EmailUserInput {
   email: string;
   nickname: string;
@@ -80,6 +88,77 @@ export class UsersService {
       .exec();
 
     return this.toDto(user);
+  }
+
+  async findOrCreateFromApple(profile: AppleUserProfile): Promise<UserDto> {
+    const providerId = profile.providerId.trim();
+    const email = normalizeOptionalEmail(profile.email);
+    const userByProviderId = await this.findUserByAppleProviderId(providerId);
+
+    if (userByProviderId) {
+      return this.toDto(
+        await this.updateUserFromApple(userByProviderId, {
+          ...profile,
+          providerId,
+          email,
+        }),
+      );
+    }
+
+    const userByEmail =
+      email && profile.emailVerified
+        ? await this.findUserByEmailWithProviderIds(email)
+        : null;
+
+    if (userByEmail) {
+      if (
+        userByEmail.providerIds?.apple &&
+        userByEmail.providerIds.apple !== providerId
+      ) {
+        throw new ConflictException("Apple account is already linked");
+      }
+
+      return this.toDto(
+        await this.updateUserFromApple(userByEmail, {
+          ...profile,
+          providerId,
+          email,
+        }),
+      );
+    }
+
+    try {
+      const displayName = buildAppleDisplayName(profile, email);
+      const user = await this.userModel.create(
+        removeUndefinedValues({
+          email,
+          name: displayName,
+          firstName: normalizeOptionalString(profile.firstName),
+          lastName: normalizeOptionalString(profile.lastName),
+          emailVerified: profile.emailVerified === true,
+          authProviders: {
+            google: false,
+            email: false,
+            apple: true,
+            facebook: false,
+            phone: false,
+          },
+          providerIds: {
+            apple: providerId,
+          },
+          phoneVerified: false,
+          twoFactorEnabled: false,
+          twoFactorMethod: null,
+          language: "en",
+          watchlistViewMode: "grid",
+        }),
+      );
+
+      return this.toDto(user);
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
   }
 
   async createWithEmail(input: EmailUserInput): Promise<UserDto> {
@@ -318,6 +397,61 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  private async findUserByAppleProviderId(
+    providerId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ "providerIds.apple": providerId })
+      .select("+providerIds")
+      .exec();
+  }
+
+  private async findUserByEmailWithProviderIds(
+    email: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel.findOne({ email }).select("+providerIds").exec();
+  }
+
+  private async updateUserFromApple(
+    user: UserDocument,
+    profile: AppleUserProfile,
+  ): Promise<UserDocument> {
+    const email = normalizeOptionalEmail(profile.email);
+    const emailMatchesExistingUser = Boolean(email && user.email === email);
+    const shouldSetEmail = Boolean(email && !user.email);
+    const firstName = normalizeOptionalString(profile.firstName);
+    const lastName = normalizeOptionalString(profile.lastName);
+    const displayName = buildAppleDisplayName(profile, email);
+    const $set = removeUndefinedValues({
+      ...(shouldSetEmail ? { email } : {}),
+      ...(displayName && !user.name ? { name: displayName } : {}),
+      ...(firstName && !user.firstName ? { firstName } : {}),
+      ...(lastName && !user.lastName ? { lastName } : {}),
+      ...((shouldSetEmail || emailMatchesExistingUser) && profile.emailVerified
+        ? { emailVerified: true }
+        : {}),
+      "authProviders.apple": true,
+      "providerIds.apple": profile.providerId,
+    });
+
+    const updatedUser = await this.userModel
+      .findOneAndUpdate(
+        { _id: user._id },
+        { $set },
+        {
+          new: true,
+          runValidators: true,
+        },
+      )
+      .exec();
+
+    if (!updatedUser) {
+      throw new NotFoundException("User not found");
+    }
+
+    return updatedUser;
+  }
+
   private async assertEmailNicknameAndPhoneAvailable(
     email: string,
     nickname: string,
@@ -413,9 +547,34 @@ function buildDisplayName(profile: GoogleUserProfile, email: string): string {
   return profile.name ?? (fullName || email);
 }
 
+function buildAppleDisplayName(
+  profile: Pick<AppleUserProfile, "firstName" | "lastName">,
+  email: string | undefined,
+): string | undefined {
+  const fullName = [profile.firstName, profile.lastName]
+    .map(normalizeOptionalString)
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || email;
+}
+
 function buildFallbackName(user: UserDocument, email: string): string {
   const fullName = [user.firstName, user.lastName].filter(Boolean).join(" ");
   return user.nickname ?? (fullName || email || "User");
+}
+
+function normalizeOptionalEmail(email: string | undefined): string | undefined {
+  return normalizeOptionalString(email)?.toLowerCase();
+}
+
+function normalizeOptionalString(value: string | undefined): string | undefined {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed ? trimmed : undefined;
 }
 
 function removeUndefinedValues<T extends Record<string, unknown>>(input: T): T {
@@ -442,6 +601,10 @@ function throwDuplicateKeyConflict(error: unknown): void {
 
   if ("phoneNumber" in keyPattern || "phoneNumber" in keyValue) {
     throw new ConflictException("Phone number already exists");
+  }
+
+  if ("providerIds.apple" in keyPattern || "providerIds.apple" in keyValue) {
+    throw new ConflictException("Apple account is already linked");
   }
 
   throw new ConflictException("User already exists");

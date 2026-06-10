@@ -10,6 +10,7 @@ import type {
   AuthProviderFlags,
   AuthResponse,
   AuthUser,
+  AppleLoginRequest,
   ForgotPasswordResponse,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
@@ -19,6 +20,7 @@ import type {
 import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
 import { EmailService } from "./email.service";
+import { AppleAuthService } from "./apple-auth.service";
 import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
 import { PasswordHashingService } from "./password-hashing.service";
@@ -39,6 +41,7 @@ export class AuthService {
     private readonly googleAuthService: GoogleAuthService,
     private readonly passwordHashingService: PasswordHashingService,
     private readonly emailService: EmailService = new EmailService(),
+    private readonly appleAuthService: AppleAuthService = new AppleAuthService(),
   ) {}
 
   async loginWithGoogle(credential: string): Promise<AuthResponse> {
@@ -57,6 +60,22 @@ export class AuthService {
       lastName: profile.lastName,
       avatarUrl: profile.avatarUrl,
       emailVerified: profile.emailVerified,
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
+  async loginWithApple(input: AppleLoginRequest): Promise<AuthResponse> {
+    const profile = await this.appleAuthService.verifyIdentityToken({
+      identityToken: input.identityToken,
+      user: input.user,
+    });
+    const user = await this.usersService.findOrCreateFromApple({
+      providerId: profile.providerId,
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
     });
 
     return this.buildAuthResponse(user);

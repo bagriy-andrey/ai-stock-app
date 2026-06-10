@@ -7,6 +7,7 @@ import type {
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "./authenticated-request";
 import { AuthService } from "./auth.service";
+import { AppleLoginDto } from "./dto/apple-login.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -21,6 +22,11 @@ export class AuthController {
   @Post("google")
   loginWithGoogle(@Body() body: GoogleLoginDto): Promise<AuthResponse> {
     return this.authService.loginWithGoogle(body.credential);
+  }
+
+  @Post("apple")
+  loginWithApple(@Body() body: AppleLoginDto): Promise<AuthResponse> {
+    return this.authService.loginWithApple(body);
   }
 
   @Post("register")

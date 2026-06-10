@@ -944,6 +944,15 @@ p {
   place-items: center;
 }
 
+.apple-sign-in {
+  display: grid;
+  gap: 8px;
+}
+
+.apple-sign-in .auth-social-button {
+  width: 100%;
+}
+
 .auth-social-button.ui-button {
   position: relative;
   min-height: 50px;

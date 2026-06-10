@@ -1,6 +1,7 @@
 import { BadRequestException, UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash } from "node:crypto";
+import type { AppleAuthProfile, AppleAuthService } from "./apple-auth.service";
 import { AuthService, forgotPasswordSuccessMessage } from "./auth.service";
 import type { EmailService } from "./email.service";
 import type { GoogleAuthService, GoogleAuthProfile } from "./google-auth.service";
@@ -10,6 +11,7 @@ import type { PasswordHashingService } from "./password-hashing.service";
 describe("AuthService", () => {
   const usersService = {
     findOrCreateFromGoogle: jest.fn(),
+    findOrCreateFromApple: jest.fn(),
     createWithEmail: jest.fn(),
     findByEmailOrNicknameForLogin: jest.fn(),
     findByEmailForPasswordReset: jest.fn(),
@@ -20,6 +22,7 @@ describe("AuthService", () => {
     Pick<
       UsersService,
       | "findOrCreateFromGoogle"
+      | "findOrCreateFromApple"
       | "createWithEmail"
       | "findByEmailOrNicknameForLogin"
       | "findByEmailForPasswordReset"
@@ -34,6 +37,9 @@ describe("AuthService", () => {
   const googleAuthService = {
     verifyCredential: jest.fn(),
   } as unknown as jest.Mocked<Pick<GoogleAuthService, "verifyCredential">>;
+  const appleAuthService = {
+    verifyIdentityToken: jest.fn(),
+  } as unknown as jest.Mocked<Pick<AppleAuthService, "verifyIdentityToken">>;
   const passwordHashingService = {
     hashPassword: jest.fn(),
     verifyPassword: jest.fn(),
@@ -143,6 +149,88 @@ describe("AuthService", () => {
     await expect(service.loginWithGoogle("google-id-token")).rejects.toThrow(
       UnauthorizedException,
     );
+  });
+
+  it("logs in with Apple and returns the common AuthResponse", async () => {
+    const user = {
+      id: "user-id",
+      email: "relay@example.com",
+      emailVerified: true,
+      name: "Test User",
+      firstName: "Test",
+      lastName: "User",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: false,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    appleAuthService.verifyIdentityToken.mockResolvedValue({
+      providerId: "apple-user-id",
+      email: user.email,
+      emailVerified: true,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    } satisfies AppleAuthProfile);
+    usersService.findOrCreateFromApple.mockResolvedValue(user);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+      appleAuthService as unknown as AppleAuthService,
+    );
+
+    await expect(
+      service.loginWithApple({
+        identityToken: "apple-id-token",
+        authorizationCode: "apple-code",
+        user: {
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+        },
+      }),
+    ).resolves.toEqual({
+      accessToken: "app-jwt",
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: undefined,
+        phoneNumber: undefined,
+        phoneVerified: false,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: undefined,
+        authProviders: user.authProviders,
+        twoFactorEnabled: false,
+      },
+    });
+    expect(appleAuthService.verifyIdentityToken).toHaveBeenCalledWith({
+      identityToken: "apple-id-token",
+      user: {
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+    });
+    expect(usersService.findOrCreateFromApple).toHaveBeenCalledWith({
+      providerId: "apple-user-id",
+      email: user.email,
+      emailVerified: true,
+      firstName: user.firstName,
+      lastName: user.lastName,
+    });
   });
 
   it("does not expose sensitive user fields in AuthResponse", async () => {

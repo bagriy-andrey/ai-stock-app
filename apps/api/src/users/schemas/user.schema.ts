@@ -122,3 +122,11 @@ UserSchema.index(
   { phoneNumber: 1 },
   { unique: true, sparse: true, name: "users_unique_phone_number" },
 );
+UserSchema.index(
+  { "providerIds.apple": 1 },
+  { unique: true, sparse: true, name: "users_unique_apple_provider_id" },
+);
+UserSchema.index(
+  { "providerIds.google": 1 },
+  { unique: true, sparse: true, name: "users_unique_google_provider_id" },
+);

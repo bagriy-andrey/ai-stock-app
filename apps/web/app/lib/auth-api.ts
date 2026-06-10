@@ -1,5 +1,6 @@
 import type {
   AuthProvider,
+  AppleLoginRequest,
   AuthResponse,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
@@ -17,6 +18,13 @@ export function loginWithGoogle(credential: string): Promise<AuthResponse> {
   return apiRequest<AuthResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function loginWithApple(payload: AppleLoginRequest): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/apple", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
@@ -64,6 +72,10 @@ export function loginWithProvider(
     return loginWithGoogle(payload.credential);
   }
 
+  if (provider === "apple" && isAppleLoginPayload(payload)) {
+    return loginWithApple(payload);
+  }
+
   if (provider === "email" && isEmailLoginPayload(payload)) {
     return loginWithEmail(payload);
   }
@@ -73,10 +85,6 @@ export function loginWithProvider(
   }
 
   return Promise.reject(new Error(`${provider} login is not implemented yet`));
-}
-
-export function loginWithApple(payload: unknown): Promise<AuthResponse> {
-  return loginWithUnimplementedProvider("apple", payload);
 }
 
 export function loginWithFacebook(payload: unknown): Promise<AuthResponse> {
@@ -105,6 +113,15 @@ function isGoogleLoginPayload(payload: unknown): payload is GoogleLoginRequest {
     payload !== null &&
     "credential" in payload &&
     typeof payload.credential === "string"
+  );
+}
+
+function isAppleLoginPayload(payload: unknown): payload is AppleLoginRequest {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "identityToken" in payload &&
+    typeof payload.identityToken === "string"
   );
 }
 

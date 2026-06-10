@@ -5,6 +5,14 @@ interface RequiredEnv {
   FINNHUB_API_KEY: string;
 }
 
+type AppEnvKey =
+  | keyof RequiredEnv
+  | "APPLE_CLIENT_ID"
+  | "APPLE_TEAM_ID"
+  | "APPLE_KEY_ID"
+  | "APPLE_PRIVATE_KEY"
+  | "APPLE_REDIRECT_URI";
+
 const requiredKeys = [
   "MONGODB_URI",
   "GOOGLE_CLIENT_ID",
@@ -37,11 +45,32 @@ export function validateEnv(env: NodeJS.ProcessEnv): RequiredEnv {
 }
 
 export function getRequiredEnv(key: keyof RequiredEnv): string {
-  const value = process.env[key];
+  const value = getOptionalEnv(key);
 
   if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
 
   return value;
+}
+
+export function getRequiredAuthEnv(key: AppEnvKey): string {
+  const value = getOptionalEnv(key);
+
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+
+  return value;
+}
+
+export function getOptionalEnv(key: AppEnvKey): string | undefined {
+  const value = process.env[key];
+  return value && value.trim() ? value : undefined;
+}
+
+export function getOptionalPrivateKeyEnv(
+  key: Extract<AppEnvKey, "APPLE_PRIVATE_KEY">,
+): string | undefined {
+  return getOptionalEnv(key)?.replace(/\\n/g, "\n");
 }

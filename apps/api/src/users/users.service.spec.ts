@@ -144,6 +144,192 @@ describe("UsersService", () => {
     );
   });
 
+  it("logs in an existing Apple user by provider id without overwriting names with empty values", async () => {
+    const selectProvider = jest.fn().mockReturnThis();
+    const providerExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(userDocument);
+    const updateExec = jest
+      .fn<Promise<UserDocument>, []>()
+      .mockResolvedValue({
+        ...userDocument,
+        authProviders: {
+          ...userDocument.authProviders,
+          apple: true,
+        },
+      } as UserDocument);
+    userModel.findOne.mockReturnValueOnce({
+      select: selectProvider,
+      exec: providerExec,
+    });
+    userModel.findOneAndUpdate.mockReturnValue({ exec: updateExec });
+
+    await service.findOrCreateFromApple({
+      providerId: "apple-user-id",
+      email: "test@example.com",
+      firstName: "",
+      lastName: "",
+      emailVerified: true,
+    });
+
+    expect(userModel.findOne).toHaveBeenCalledWith({
+      "providerIds.apple": "apple-user-id",
+    });
+    expect(selectProvider).toHaveBeenCalledWith("+providerIds");
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userDocument._id },
+      {
+        $set: {
+          emailVerified: true,
+          "authProviders.apple": true,
+          "providerIds.apple": "apple-user-id",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("links an existing user by verified Apple email", async () => {
+    const providerSelect = jest.fn().mockReturnThis();
+    const emailSelect = jest.fn().mockReturnThis();
+    const updateExec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue({
+      ...userDocument,
+      authProviders: {
+        ...userDocument.authProviders,
+        apple: true,
+      },
+    } as UserDocument);
+    userModel.findOne
+      .mockReturnValueOnce({
+        select: providerSelect,
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: emailSelect,
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue({
+          ...userDocument,
+          providerIds: {},
+        } as UserDocument),
+      });
+    userModel.findOneAndUpdate.mockReturnValue({ exec: updateExec });
+
+    await service.findOrCreateFromApple({
+      providerId: "apple-user-id",
+      email: "TEST@example.com",
+      firstName: "Apple",
+      lastName: "User",
+      emailVerified: true,
+    });
+
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      "providerIds.apple": "apple-user-id",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      email: "test@example.com",
+    });
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userDocument._id },
+      {
+        $set: {
+          emailVerified: true,
+          "authProviders.apple": true,
+          "providerIds.apple": "apple-user-id",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("creates a new Apple user without requiring an email", async () => {
+    const providerSelect = jest.fn().mockReturnThis();
+    const appleUserDocument = {
+      ...userDocument,
+      email: undefined,
+      name: undefined,
+      firstName: undefined,
+      lastName: undefined,
+      nickname: undefined,
+      authProviders: {
+        google: false,
+        email: false,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      providerIds: {
+        apple: "apple-user-id",
+      },
+      emailVerified: false,
+    } as unknown as UserDocument;
+    userModel.findOne.mockReturnValueOnce({
+      select: providerSelect,
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    userModel.create.mockResolvedValue(appleUserDocument);
+
+    await expect(
+      service.findOrCreateFromApple({
+        providerId: "apple-user-id",
+        emailVerified: false,
+      }),
+    ).resolves.toMatchObject({
+      id: userId.toString(),
+      email: undefined,
+      name: "User",
+      authProviders: expect.objectContaining({ apple: true }),
+    });
+    expect(userModel.create).toHaveBeenCalledWith({
+      emailVerified: false,
+      authProviders: {
+        google: false,
+        email: false,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      providerIds: {
+        apple: "apple-user-id",
+      },
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      watchlistViewMode: "grid",
+    });
+  });
+
+  it("rejects linking an email user already linked to another Apple provider id", async () => {
+    userModel.findOne
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        select: jest.fn().mockReturnThis(),
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue({
+          ...userDocument,
+          providerIds: {
+            apple: "other-apple-user-id",
+          },
+        } as UserDocument),
+      });
+
+    await expect(
+      service.findOrCreateFromApple({
+        providerId: "apple-user-id",
+        email: "test@example.com",
+        emailVerified: true,
+      }),
+    ).rejects.toThrow("Apple account is already linked");
+    expect(userModel.findOneAndUpdate).not.toHaveBeenCalled();
+  });
+
   it("finds a user by id", async () => {
     const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument);
     userModel.findById.mockReturnValue({ exec });

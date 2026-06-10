@@ -7,12 +7,12 @@ stock shortcuts, and links into a personal watchlist that uses Finnhub for live
 company data and Yahoo Finance for historical chart candles. Authenticated users
 can also manually maintain a portfolio, review live position values, profit/loss
 calculations, allocation by ticker, and recorded portfolio transactions. Google
-authentication is wired for the web app and NestJS API, with users stored in
-MongoDB. Users can also create an email/password account from the sign-up form
-with an optional phone number and log in with email, nickname, or phone number
-plus password; the API stores only a password hash, supports email-based
-password reset links, and returns the same app JWT session shape used by Google
-login.
+and Apple authentication are wired for the web app and NestJS API, with users
+stored in MongoDB. Users can also create an email/password account from the
+sign-up form with an optional phone number and log in with email, nickname, or
+phone number plus password; the API stores only a password hash, supports
+email-based password reset links, and returns the same app JWT session shape
+used by social login.
 
 ## Repository Layout
 
@@ -58,6 +58,8 @@ use the same client id in the web and API environment files.
 ```env
 NEXT_PUBLIC_API_URL=http://localhost:3001
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+NEXT_PUBLIC_APPLE_CLIENT_ID=your_apple_services_id
+NEXT_PUBLIC_APPLE_REDIRECT_URI=http://localhost:3000/login
 ```
 
 `apps/api/.env`:
@@ -72,6 +74,11 @@ TRADING_AGENT_URL=http://localhost:8000
 APP_WEB_URL=http://localhost:3000
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
+APPLE_CLIENT_ID=your_apple_services_id
+APPLE_TEAM_ID=your_apple_team_id
+APPLE_KEY_ID=your_apple_key_id
+APPLE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\\nyour_apple_private_key\\n-----END PRIVATE KEY-----"
+APPLE_REDIRECT_URI=http://localhost:3000/login
 JWT_SECRET=replace_with_a_long_random_secret
 JWT_EXPIRES_IN=7d
 # PROFILE_UPLOAD_DIR=uploads/avatars
@@ -83,6 +90,14 @@ origin:
 ```text
 http://localhost:3000
 ```
+
+For Sign in with Apple, create an Apple Services ID and use it as both
+`NEXT_PUBLIC_APPLE_CLIENT_ID` and `APPLE_CLIENT_ID`. Register
+`http://localhost:3000/login` as an Apple return URL for local development.
+The current web flow uses Apple JS popup mode and sends the returned identity
+token to `POST /auth/apple`; the API verifies that token against Apple's public
+keys. Keep Apple private keys in `.env` only. If the key is stored on one line,
+escape line breaks as `\\n`.
 
 Start MongoDB and Redis:
 
@@ -129,6 +144,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | --- | --- | --- | --- |
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
+| API | `POST` | `http://localhost:3001/auth/apple` | Verify Apple identity token, create or link user, return app JWT |
 | API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user with an optional phone number, hash the password, and return the common auth response |
 | API | `POST` | `http://localhost:3001/auth/login` | Log in with email, nickname, or phone number plus password and return the common auth response |
 | API | `POST` | `http://localhost:3001/auth/forgot-password` | Generate a single-use password reset link for eligible email users without revealing account existence |
@@ -185,12 +201,15 @@ curl -X POST http://localhost:8000/analysis/mock \
 
 ## Authentication
 
-The login page uses Google Identity Services to obtain a Google ID token. The
-web app posts that token to the API, the API verifies it against
-`GOOGLE_CLIENT_ID`, creates or updates the MongoDB user record, and returns an
-application JWT. The sign-up mode also supports email/password registration
-through `POST /auth/register` with `email`, `nickname`, optional `phoneNumber`,
-and `password`; the API normalizes email, nickname, and phone number, stores a
+The login page uses Google Identity Services to obtain a Google ID token and
+Apple JS to obtain an Apple identity token. The web app posts those tokens to
+the API, the API verifies them against `GOOGLE_CLIENT_ID` or `APPLE_CLIENT_ID`,
+creates or updates the MongoDB user record, and returns an application JWT.
+Apple users are found first by `providerIds.apple`, then by verified email, and
+can be created without an email when Apple only returns a stable subject ID.
+The sign-up mode also supports email/password registration through
+`POST /auth/register` with `email`, `nickname`, optional `phoneNumber`, and
+`password`; the API normalizes email, nickname, and phone number, stores a
 secure password hash, sets `authProviders.email = true`, sets
 `authProviders.phone = true` only when a phone number is provided, and returns
 the same common auth response. Phone numbers are stored in E.164 format, for
@@ -198,8 +217,8 @@ example `+48500111222`, and are unique when present.
 Registered email users can log in through `POST /auth/login` with
 `identifier` and `password`; `identifier` may be the normalized email,
 nickname, or phone number. Phone login is password-based only. SMS providers,
-OTP codes, phone verification, 2FA, Apple login, Facebook login, and email
-verification are not implemented yet.
+OTP codes, phone verification, 2FA, Facebook login, and email verification are
+not implemented yet.
 
 Forgot password uses `POST /auth/forgot-password` with an email address. The API
 returns the same generic success response whether or not an account exists,
@@ -220,9 +239,9 @@ Local browser check:
 2. Start the API with `npm run dev:api`.
 3. Start the web app with `npm run dev:web`.
 4. Open `http://localhost:3000/login`.
-5. Sign in with Google, log in with email, nickname, or phone number plus
-   password, or switch to Sign up and create an email/password account with an
-   optional phone number.
+5. Sign in with Google or Apple, log in with email, nickname, or phone number
+   plus password, or switch to Sign up and create an email/password account
+   with an optional phone number.
 6. After authentication, the app redirects to the protected home page at
    `http://localhost:3000`.
 7. Refresh the page. The session should remain active.
@@ -240,6 +259,7 @@ docker compose exec mongodb mongosh ai-stock-advisor \
 
 The API keeps user data in MongoDB through the NestJS `UsersModule`.
 Google authentication creates or updates users through `POST /auth/google`.
+Apple authentication creates or links users through `POST /auth/apple`.
 Email/password registration creates users through `POST /auth/register`; those
 users log in through `POST /auth/login` with email, nickname, or phone number
 plus password. Password reset stores `passwordResetTokenHash` and
@@ -251,13 +271,13 @@ User documents are stored in the `users` collection with these fields:
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `email` | `string` | No | Unique, indexed, lowercased, and trimmed when present. |
-| `name` | `string` | No | Display name from the Google profile; email users fall back to nickname/email for display. |
+| `name` | `string` | No | Display name from a social profile; email users fall back to nickname/email for display. |
 | `firstName` | `string` | No | User-managed first name. |
 | `lastName` | `string` | No | User-managed last name. |
 | `nickname` | `string` | No | User-managed nickname. |
 | `phoneNumber` | `string` | No | Unique sparse field stored in E.164 format when present. |
 | `phoneVerified` | `boolean` | Yes | Defaults to `false`; phone verification is not implemented yet. |
-| `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
+| `avatarUrl` | `string` | No | Social profile image or local profile upload URL. |
 | `passwordHash` | `string` | No | Stored only for email users and excluded from API responses. |
 | `passwordResetTokenHash` | `string` | No | SHA-256 hash of the latest reset token, selected only for reset operations and cleared after a successful reset. |
 | `passwordResetExpiresAt` | `Date` | No | Expiration timestamp for the latest reset token, selected only for reset operations and cleared after a successful reset. |
@@ -803,8 +823,10 @@ return `503`.
 
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
-Set `FMP_API_KEY` to load home page market movers. `JWT_EXPIRES_IN` defaults to
-`7d` when omitted. `APP_WEB_URL` controls password reset links and defaults to
+Apple login additionally requires `APPLE_CLIENT_ID` in the API and
+`NEXT_PUBLIC_APPLE_CLIENT_ID` in the web app. Set `FMP_API_KEY` to load home
+page market movers. `JWT_EXPIRES_IN` defaults to `7d` when omitted.
+`APP_WEB_URL` controls password reset links and defaults to
 `http://localhost:3000` for local development. `PROFILE_UPLOAD_DIR` optionally
 changes the writable local avatar directory. The web app requires
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_API_URL`. Telegram and Redis
@@ -830,6 +852,18 @@ web dev server.
 
 Make sure `GOOGLE_CLIENT_ID` in `apps/api/.env` exactly matches
 `NEXT_PUBLIC_GOOGLE_CLIENT_ID` in `apps/web/.env.local`, then restart the API.
+
+`Apple login is not configured.`
+
+Set `NEXT_PUBLIC_APPLE_CLIENT_ID` in `apps/web/.env.local`, then restart the web
+dev server.
+
+`Invalid Apple identity token`
+
+Make sure `APPLE_CLIENT_ID` in `apps/api/.env` exactly matches
+`NEXT_PUBLIC_APPLE_CLIENT_ID` in `apps/web/.env.local`, verify that
+`NEXT_PUBLIC_APPLE_REDIRECT_URI` is registered as an Apple return URL, then
+restart the API and web dev server.
 
 `MongooseServerSelectionError: connect ECONNREFUSED localhost:27017`
 

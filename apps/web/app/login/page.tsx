@@ -4,7 +4,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useState } from "react";
 import {
-  AppleProviderIcon,
   AuthCard,
   AuthDivider,
   AuthFeatureIcon,
@@ -14,6 +13,7 @@ import {
   PasswordInput,
   SocialAuthButton,
 } from "../components/auth/AuthorizationUI";
+import { AppleSignInButton } from "../components/auth/AppleSignInButton";
 import { GoogleSignInButton } from "../components/auth/GoogleSignInButton";
 import { useAuth } from "../components/auth/AuthProvider";
 import { Button } from "../components/ui/button";
@@ -187,12 +187,7 @@ export default function LoginPage() {
           <div className="auth-google-button-shell">
             <GoogleSignInButton text="continue_with" />
           </div>
-          <SocialAuthButton
-            icon={<AppleProviderIcon />}
-            provider="Continue with Apple"
-            statusLabel="Coming soon"
-            onClick={() => showComingSoon("Apple login is coming soon")}
-          />
+          <AppleSignInButton />
           <SocialAuthButton
             icon={<FacebookProviderIcon />}
             provider="Continue with Facebook"
