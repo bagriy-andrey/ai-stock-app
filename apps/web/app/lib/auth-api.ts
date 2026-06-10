@@ -2,6 +2,7 @@ import type {
   AuthProvider,
   AuthResponse,
   GoogleLoginRequest,
+  LoginWithEmailRequest,
   RegisterWithEmailRequest,
 } from "@ai-stock-advisor/shared";
 import { apiRequest } from "./api";
@@ -24,6 +25,15 @@ export function registerWithEmail(
   });
 }
 
+export function loginWithEmail(
+  payload: LoginWithEmailRequest,
+): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function loginWithProvider(
   provider: AuthProvider,
   payload: unknown,
@@ -32,11 +42,11 @@ export function loginWithProvider(
     return loginWithGoogle(payload.credential);
   }
 
-  return Promise.reject(new Error(`${provider} login is not implemented yet`));
-}
+  if (provider === "email" && isEmailLoginPayload(payload)) {
+    return loginWithEmail(payload);
+  }
 
-export function loginWithEmail(payload: unknown): Promise<AuthResponse> {
-  return loginWithUnimplementedProvider("email", payload);
+  return Promise.reject(new Error(`${provider} login is not implemented yet`));
 }
 
 export function loginWithApple(payload: unknown): Promise<AuthResponse> {
@@ -65,5 +75,16 @@ function isGoogleLoginPayload(payload: unknown): payload is GoogleLoginRequest {
     payload !== null &&
     "credential" in payload &&
     typeof payload.credential === "string"
+  );
+}
+
+function isEmailLoginPayload(payload: unknown): payload is LoginWithEmailRequest {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "identifier" in payload &&
+    typeof payload.identifier === "string" &&
+    "password" in payload &&
+    typeof payload.password === "string"
   );
 }

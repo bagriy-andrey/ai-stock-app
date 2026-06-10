@@ -22,7 +22,7 @@ export function validateLoginForm(values: LoginFormValues): LoginFormErrors {
   const errors: LoginFormErrors = {};
 
   if (!values.identifier.trim()) {
-    errors.identifier = "Enter your email, phone or nickname.";
+    errors.identifier = "Enter your email or nickname.";
   }
 
   if (!values.password) {

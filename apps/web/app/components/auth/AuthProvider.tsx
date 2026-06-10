@@ -4,6 +4,7 @@ import type {
   AuthProvider as AuthProviderName,
   AuthResponse,
   AuthUser,
+  LoginWithEmailRequest,
   RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
@@ -17,6 +18,7 @@ import {
 } from "react";
 import { apiRequest } from "../../lib/api";
 import {
+  loginWithEmail as loginWithEmailRequest,
   loginWithGoogle as loginWithGoogleRequest,
   loginWithProvider as loginWithProviderRequest,
   registerWithEmail as registerWithEmailRequest,
@@ -39,6 +41,7 @@ interface AuthContextValue {
   accessToken: string | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  loginWithEmail: (payload: LoginWithEmailRequest) => Promise<void>;
   loginWithGoogle: (credential: string) => Promise<void>;
   loginWithGoogleCredential: (credential: string) => Promise<void>;
   loginWithProvider: (
@@ -114,6 +117,10 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     applyAuthResponse(await loginWithGoogleRequest(credential));
   }, [applyAuthResponse]);
 
+  const loginWithEmail = useCallback(async (payload: LoginWithEmailRequest) => {
+    applyAuthResponse(await loginWithEmailRequest(payload));
+  }, [applyAuthResponse]);
+
   const loginWithProvider = useCallback(async (
     provider: AuthProviderName,
     payload: unknown,
@@ -145,6 +152,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       accessToken,
       isAuthenticated,
       isLoading,
+      loginWithEmail,
       loginWithGoogle,
       loginWithGoogleCredential,
       loginWithProvider,
@@ -157,6 +165,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       accessToken,
       isAuthenticated,
       isLoading,
+      loginWithEmail,
       loginWithGoogle,
       loginWithGoogleCredential,
       loginWithProvider,

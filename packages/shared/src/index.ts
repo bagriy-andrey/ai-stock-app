@@ -211,6 +211,11 @@ export interface RegisterWithEmailRequest {
   password: string;
 }
 
+export interface LoginWithEmailRequest {
+  identifier: string;
+  password: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken?: string;

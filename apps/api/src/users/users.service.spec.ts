@@ -247,6 +247,93 @@ describe("UsersService", () => {
     );
   });
 
+  it("finds login credentials by normalized email", async () => {
+    const emailUserDocument = {
+      ...userDocument,
+      email: "user@example.com",
+      nickname: "andrey",
+      passwordHash: "$2b$12$password-hash",
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+    } as unknown as UserDocument;
+    const select = jest.fn().mockReturnValue({
+      exec: jest
+        .fn<Promise<UserDocument | null>, []>()
+        .mockResolvedValue(emailUserDocument),
+    });
+    userModel.findOne.mockReturnValue({ select });
+
+    await expect(
+      service.findByEmailOrNicknameForLogin(" USER@example.com "),
+    ).resolves.toMatchObject({
+      email: "user@example.com",
+      nickname: "andrey",
+      passwordHash: "$2b$12$password-hash",
+    });
+    expect(userModel.findOne).toHaveBeenCalledTimes(1);
+    expect(userModel.findOne).toHaveBeenCalledWith({
+      email: "user@example.com",
+    });
+    expect(select).toHaveBeenCalledWith("+passwordHash");
+  });
+
+  it("falls back to normalized nickname when login email lookup misses", async () => {
+    const emailSelect = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    const nicknameSelect = jest.fn().mockReturnValue({
+      exec: jest
+        .fn<Promise<UserDocument | null>, []>()
+        .mockResolvedValue({
+          ...userDocument,
+          email: "user@example.com",
+          nickname: "andrey",
+          passwordHash: "$2b$12$password-hash",
+        } as unknown as UserDocument),
+    });
+    userModel.findOne
+      .mockReturnValueOnce({ select: emailSelect })
+      .mockReturnValueOnce({ select: nicknameSelect });
+
+    await expect(
+      service.findByEmailOrNicknameForLogin(" Andrey "),
+    ).resolves.toMatchObject({
+      email: "user@example.com",
+      nickname: "andrey",
+      passwordHash: "$2b$12$password-hash",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      email: "andrey",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      nickname: "andrey",
+    });
+    expect(emailSelect).toHaveBeenCalledWith("+passwordHash");
+    expect(nicknameSelect).toHaveBeenCalledWith("+passwordHash");
+  });
+
+  it("returns null when login email and nickname lookups miss", async () => {
+    const select = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    userModel.findOne.mockReturnValue({ select });
+
+    await expect(
+      service.findByEmailOrNicknameForLogin("missing"),
+    ).resolves.toBeNull();
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      email: "missing",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      nickname: "missing",
+    });
+  });
+
   it("rejects duplicate email during email registration pre-check", async () => {
     userModel.findOne.mockReturnValueOnce({
       exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(userDocument),

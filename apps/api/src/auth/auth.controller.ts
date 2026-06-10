@@ -3,6 +3,7 @@ import type { AuthResponse, AuthUser } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "./authenticated-request";
 import { AuthService } from "./auth.service";
 import { GoogleLoginDto } from "./dto/google-login.dto";
+import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
 
@@ -18,6 +19,11 @@ export class AuthController {
   @Post("register")
   registerWithEmail(@Body() body: RegisterDto): Promise<AuthResponse> {
     return this.authService.registerWithEmail(body);
+  }
+
+  @Post("login")
+  loginWithEmail(@Body() body: LoginDto): Promise<AuthResponse> {
+    return this.authService.loginWithEmail(body);
   }
 
   @Get("me")

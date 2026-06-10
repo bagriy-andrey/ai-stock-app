@@ -4,6 +4,7 @@ import type {
   AuthProviderFlags,
   AuthResponse,
   AuthUser,
+  LoginWithEmailRequest,
   RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
@@ -55,6 +56,27 @@ export class AuthService {
       nickname,
       passwordHash,
     });
+
+    return this.buildAuthResponse(user);
+  }
+
+  async loginWithEmail(input: LoginWithEmailRequest): Promise<AuthResponse> {
+    const user = await this.usersService.findByEmailOrNicknameForLogin(
+      input.identifier,
+    );
+
+    if (!user?.passwordHash) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
+
+    const isPasswordValid = await this.passwordHashingService.verifyPassword(
+      input.password,
+      user.passwordHash,
+    );
+
+    if (!isPasswordValid) {
+      throw new UnauthorizedException("Invalid credentials");
+    }
 
     return this.buildAuthResponse(user);
   }

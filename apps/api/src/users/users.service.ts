@@ -25,6 +25,10 @@ export interface EmailUserInput {
   passwordHash: string;
 }
 
+export interface UserCredentialsDto extends UserDto {
+  passwordHash?: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -98,6 +102,25 @@ export class UsersService {
       throwDuplicateKeyConflict(error);
       throw error;
     }
+  }
+
+  async findByEmailOrNicknameForLogin(
+    identifier: string,
+  ): Promise<UserCredentialsDto | null> {
+    const normalizedIdentifier = identifier.trim().toLowerCase();
+    const userByEmail = await this.findOneWithPasswordHash({
+      email: normalizedIdentifier,
+    });
+
+    if (userByEmail) {
+      return this.toCredentialsDto(userByEmail);
+    }
+
+    const userByNickname = await this.findOneWithPasswordHash({
+      nickname: normalizedIdentifier,
+    });
+
+    return userByNickname ? this.toCredentialsDto(userByNickname) : null;
   }
 
   async findById(id: string): Promise<UserDto> {
@@ -208,6 +231,19 @@ export class UsersService {
     if (userByNickname) {
       throw new ConflictException("Nickname already exists");
     }
+  }
+
+  private findOneWithPasswordHash(
+    filter: Record<string, string>,
+  ): Promise<UserDocument | null> {
+    return this.userModel.findOne(filter).select("+passwordHash").exec();
+  }
+
+  private toCredentialsDto(user: UserDocument): UserCredentialsDto {
+    return {
+      ...this.toDto(user),
+      passwordHash: user.passwordHash,
+    };
   }
 
   private toDto(user: UserDocument): UserDto {

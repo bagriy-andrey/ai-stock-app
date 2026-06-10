@@ -27,13 +27,14 @@ import {
   validateLoginForm,
   validateSignupForm,
 } from "../lib/auth-form-validation";
+import { getLoginErrorMessage } from "../lib/auth-login-errors";
 
 const initialLoginErrors: LoginFormErrors = {};
 const initialSignupErrors: SignupFormErrors = {};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { registerWithEmail, status } = useAuth();
+  const { loginWithEmail, registerWithEmail, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
@@ -46,7 +47,9 @@ export default function LoginPage() {
   const [signupErrors, setSignupErrors] =
     useState<SignupFormErrors>(initialSignupErrors);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [loginSubmitError, setLoginSubmitError] = useState<string | null>(null);
   const [signupSubmitError, setSignupSubmitError] = useState<string | null>(null);
+  const [isLoginSubmitting, setIsLoginSubmitting] = useState(false);
   const [isSignupSubmitting, setIsSignupSubmitting] = useState(false);
 
   useEffect(() => {
@@ -72,6 +75,7 @@ export default function LoginPage() {
     setLoginErrors(initialLoginErrors);
     setSignupErrors(initialSignupErrors);
     setStatusMessage(null);
+    setLoginSubmitError(null);
     setSignupSubmitError(null);
   };
 
@@ -79,9 +83,14 @@ export default function LoginPage() {
     setStatusMessage(message);
   };
 
-  const handleLoginSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleLoginSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
+    if (isLoginSubmitting) {
+      return;
+    }
+
+    setLoginSubmitError(null);
     const nextErrors = validateLoginForm({ identifier, password });
     setLoginErrors(nextErrors);
 
@@ -89,7 +98,20 @@ export default function LoginPage() {
       return;
     }
 
-    showComingSoon("Email, phone and nickname login is coming soon");
+    setIsLoginSubmitting(true);
+
+    try {
+      await loginWithEmail({
+        identifier: identifier.trim(),
+        password,
+      });
+      setLoginSubmitError(null);
+      router.replace("/");
+    } catch (error) {
+      setLoginSubmitError(getLoginErrorMessage(error));
+    } finally {
+      setIsLoginSubmitting(false);
+    }
   };
 
   const handleSignupSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -238,10 +260,10 @@ export default function LoginPage() {
               autoComplete="username"
               error={loginErrors.identifier}
               id="login-identifier"
-              label="Email, phone or nickname"
+              label="Email or nickname"
               name="identifier"
               onChange={setIdentifier}
-              placeholder="Email, phone or nickname"
+              placeholder="Email or nickname"
               value={identifier}
             />
             <PasswordInput
@@ -259,8 +281,17 @@ export default function LoginPage() {
             <div className="auth-form-row">
               <Link href="/auth/forgot-password">Forgot password?</Link>
             </div>
-            <Button className="auth-primary-button" type="submit">
-              Log In
+            {loginSubmitError ? (
+              <p className="auth-field-error" role="alert">
+                {loginSubmitError}
+              </p>
+            ) : null}
+            <Button
+              className="auth-primary-button"
+              disabled={isLoginSubmitting}
+              type="submit"
+            >
+              {isLoginSubmitting ? "Logging in..." : "Log In"}
             </Button>
           </form>
         )}

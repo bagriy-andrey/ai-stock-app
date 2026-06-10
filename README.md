@@ -8,9 +8,9 @@ company data and Yahoo Finance for historical chart candles. Authenticated users
 can also manually maintain a portfolio, review live position values, profit/loss
 calculations, allocation by ticker, and recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
-MongoDB. Users can also create an email/password account from the sign-up form;
-the API stores only a password hash and immediately returns the same app JWT
-session shape used by Google login.
+MongoDB. Users can also create an email/password account from the sign-up form
+and log in with either email or nickname plus password; the API stores only a
+password hash and returns the same app JWT session shape used by Google login.
 
 ## Repository Layout
 
@@ -126,6 +126,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
 | API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user, hash the password, and return the common auth response |
+| API | `POST` | `http://localhost:3001/auth/login` | Log in with email or nickname plus password and return the common auth response |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
@@ -184,8 +185,11 @@ web app posts that token to the API, the API verifies it against
 application JWT. The sign-up mode also supports email/password registration
 through `POST /auth/register` with `email`, `nickname`, and `password`; the API
 normalizes email and nickname, stores a secure password hash, sets
-`authProviders.email = true`, and returns the same common auth response. Email
-login, password reset, and email verification are not implemented yet.
+`authProviders.email = true`, and returns the same common auth response.
+Registered email users can log in through `POST /auth/login` with
+`identifier` and `password`; `identifier` may be either the normalized email or
+nickname. Phone login, password reset, and email verification are not
+implemented yet.
 
 The browser stores the JWT in local storage and validates it with
 `GET /users/me` after page refreshes. Protected app routes redirect to `/login`
@@ -197,7 +201,8 @@ Local browser check:
 2. Start the API with `npm run dev:api`.
 3. Start the web app with `npm run dev:web`.
 4. Open `http://localhost:3000/login`.
-5. Sign in with Google or switch to Sign up and create an email/password account.
+5. Sign in with Google, log in with email or nickname plus password, or switch
+   to Sign up and create an email/password account.
 6. After authentication, the app redirects to the protected home page at
    `http://localhost:3000`.
 7. Refresh the page. The session should remain active.
@@ -215,8 +220,8 @@ docker compose exec mongodb mongosh ai-stock-advisor \
 
 The API keeps user data in MongoDB through the NestJS `UsersModule`.
 Google authentication creates or updates users through `POST /auth/google`.
-Email/password registration creates users through `POST /auth/register` and
-does not implement email login yet.
+Email/password registration creates users through `POST /auth/register`; those
+users log in through `POST /auth/login` with email or nickname plus password.
 
 User documents are stored in the `users` collection with these fields:
 

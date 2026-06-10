@@ -7,7 +7,7 @@ import {
 describe("auth form validation", () => {
   it("requires login identifier and password", () => {
     expect(validateLoginForm({ identifier: "", password: "" })).toEqual({
-      identifier: "Enter your email, phone or nickname.",
+      identifier: "Enter your email or nickname.",
       password: "Enter your password.",
     });
   });
