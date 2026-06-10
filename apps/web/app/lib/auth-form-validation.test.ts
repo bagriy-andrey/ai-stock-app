@@ -47,6 +47,17 @@ describe("auth form validation", () => {
     });
   });
 
+  it("rejects signup nicknames with unsupported characters", () => {
+    expect(validateSignupForm({
+      email: "andrii@example.com",
+      nickname: "andrii!",
+      password: "password123",
+      confirmPassword: "password123",
+    })).toEqual({
+      nickname: "Nickname can use letters, numbers, underscore, dot and hyphen.",
+    });
+  });
+
   it("accepts a valid signup form", () => {
     const errors = validateSignupForm({
       email: "andrii@example.com",

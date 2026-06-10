@@ -2,7 +2,9 @@
 
 import type {
   AuthProvider as AuthProviderName,
+  AuthResponse,
   AuthUser,
+  RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
 import {
@@ -17,6 +19,7 @@ import { apiRequest } from "../../lib/api";
 import {
   loginWithGoogle as loginWithGoogleRequest,
   loginWithProvider as loginWithProviderRequest,
+  registerWithEmail as registerWithEmailRequest,
 } from "../../lib/auth-api";
 import { normalizeProfileLanguage } from "../../lib/profile-language";
 import { normalizeWatchlistViewMode } from "../../lib/watchlist-view-mode";
@@ -42,6 +45,7 @@ interface AuthContextValue {
     provider: AuthProviderName,
     payload: unknown,
   ) => Promise<void>;
+  registerWithEmail: (payload: RegisterWithEmailRequest) => Promise<void>;
   refreshUser: () => Promise<void>;
   updateUser: (user: SessionUser | UserDto) => void;
   logout: () => void;
@@ -99,7 +103,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       });
   }, [logout, refreshUserWithToken]);
 
-  const applyAuthResponse = useCallback((response: Awaited<ReturnType<typeof loginWithGoogleRequest>>) => {
+  const applyAuthResponse = useCallback((response: AuthResponse) => {
     window.localStorage.setItem(authStorageKey, response.accessToken);
     setAccessToken(response.accessToken);
     setUser(normalizeSessionUser(response.user));
@@ -115,6 +119,12 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
     payload: unknown,
   ) => {
     applyAuthResponse(await loginWithProviderRequest(provider, payload));
+  }, [applyAuthResponse]);
+
+  const registerWithEmail = useCallback(async (
+    payload: RegisterWithEmailRequest,
+  ) => {
+    applyAuthResponse(await registerWithEmailRequest(payload));
   }, [applyAuthResponse]);
 
   const loginWithGoogleCredential = useCallback(async (credential: string) => {
@@ -138,6 +148,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       loginWithGoogle,
       loginWithGoogleCredential,
       loginWithProvider,
+      registerWithEmail,
       refreshUser,
       updateUser,
       logout,
@@ -149,6 +160,7 @@ export function AuthProvider({ children }: Readonly<{ children: React.ReactNode 
       loginWithGoogle,
       loginWithGoogleCredential,
       loginWithProvider,
+      registerWithEmail,
       logout,
       refreshUser,
       status,

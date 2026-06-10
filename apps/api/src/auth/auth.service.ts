@@ -4,11 +4,13 @@ import type {
   AuthProviderFlags,
   AuthResponse,
   AuthUser,
+  RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
 import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
+import { PasswordHashingService } from "./password-hashing.service";
 
 @Injectable()
 export class AuthService {
@@ -16,6 +18,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly googleAuthService: GoogleAuthService,
+    private readonly passwordHashingService: PasswordHashingService,
   ) {}
 
   async loginWithGoogle(credential: string): Promise<AuthResponse> {
@@ -34,6 +37,23 @@ export class AuthService {
       lastName: profile.lastName,
       avatarUrl: profile.avatarUrl,
       emailVerified: profile.emailVerified,
+    });
+
+    return this.buildAuthResponse(user);
+  }
+
+  async registerWithEmail(
+    input: RegisterWithEmailRequest,
+  ): Promise<AuthResponse> {
+    const email = input.email.trim().toLowerCase();
+    const nickname = input.nickname.trim().toLowerCase();
+    const passwordHash = await this.passwordHashingService.hashPassword(
+      input.password,
+    );
+    const user = await this.usersService.createWithEmail({
+      email,
+      nickname,
+      passwordHash,
     });
 
     return this.buildAuthResponse(user);

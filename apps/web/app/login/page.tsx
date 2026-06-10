@@ -33,7 +33,7 @@ const initialSignupErrors: SignupFormErrors = {};
 
 export default function LoginPage() {
   const router = useRouter();
-  const { status } = useAuth();
+  const { registerWithEmail, status } = useAuth();
   const [mode, setMode] = useState<AuthMode>("login");
   const [identifier, setIdentifier] = useState("");
   const [email, setEmail] = useState("");
@@ -46,6 +46,8 @@ export default function LoginPage() {
   const [signupErrors, setSignupErrors] =
     useState<SignupFormErrors>(initialSignupErrors);
   const [statusMessage, setStatusMessage] = useState<string | null>(null);
+  const [signupSubmitError, setSignupSubmitError] = useState<string | null>(null);
+  const [isSignupSubmitting, setIsSignupSubmitting] = useState(false);
 
   useEffect(() => {
     if (status === "authenticated") {
@@ -70,6 +72,7 @@ export default function LoginPage() {
     setLoginErrors(initialLoginErrors);
     setSignupErrors(initialSignupErrors);
     setStatusMessage(null);
+    setSignupSubmitError(null);
   };
 
   const showComingSoon = (message: string) => {
@@ -89,8 +92,9 @@ export default function LoginPage() {
     showComingSoon("Email, phone and nickname login is coming soon");
   };
 
-  const handleSignupSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSignupSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    setSignupSubmitError(null);
 
     const nextErrors = validateSignupForm({
       email,
@@ -104,7 +108,33 @@ export default function LoginPage() {
       return;
     }
 
-    showComingSoon("Email sign up is coming soon");
+    setIsSignupSubmitting(true);
+
+    try {
+      await registerWithEmail({
+        email: email.trim().toLowerCase(),
+        nickname: nickname.trim().toLowerCase(),
+        password,
+      });
+      router.replace("/");
+    } catch (error) {
+      const message = getRegistrationErrorMessage(error);
+      setSignupSubmitError(message);
+
+      if (message === "Email already exists") {
+        setSignupErrors((currentErrors) => ({
+          ...currentErrors,
+          email: message,
+        }));
+      } else if (message === "Nickname already exists") {
+        setSignupErrors((currentErrors) => ({
+          ...currentErrors,
+          nickname: message,
+        }));
+      }
+    } finally {
+      setIsSignupSubmitting(false);
+    }
   };
 
   const isSignup = mode === "signup";
@@ -189,8 +219,17 @@ export default function LoginPage() {
               placeholder="Confirm password"
               value={confirmPassword}
             />
-            <Button className="auth-primary-button" type="submit">
-              Create Account
+            {signupSubmitError ? (
+              <p className="auth-field-error" role="alert">
+                {signupSubmitError}
+              </p>
+            ) : null}
+            <Button
+              className="auth-primary-button"
+              disabled={isSignupSubmitting}
+              type="submit"
+            >
+              {isSignupSubmitting ? "Creating account..." : "Create Account"}
             </Button>
           </form>
         ) : (
@@ -299,4 +338,20 @@ function AuthTextField({
       ) : null}
     </div>
   );
+}
+
+function getRegistrationErrorMessage(error: unknown): string {
+  if (error instanceof Error && error.message.trim()) {
+    if (error.message.includes("Email already exists")) {
+      return "Email already exists";
+    }
+
+    if (error.message.includes("Nickname already exists")) {
+      return "Nickname already exists";
+    }
+
+    return error.message;
+  }
+
+  return "Could not create account. Please try again.";
 }

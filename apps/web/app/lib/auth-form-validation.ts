@@ -16,6 +16,7 @@ export type LoginFormErrors = Partial<Record<keyof LoginFormValues, string>>;
 export type SignupFormErrors = Partial<Record<keyof SignupFormValues, string>>;
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const nicknamePattern = /^[A-Za-z0-9._-]+$/;
 
 export function validateLoginForm(values: LoginFormValues): LoginFormErrors {
   const errors: LoginFormErrors = {};
@@ -46,6 +47,9 @@ export function validateSignupForm(values: SignupFormValues): SignupFormErrors {
     errors.nickname = "Enter your nickname.";
   } else if (nickname.length < 3 || nickname.length > 30) {
     errors.nickname = "Nickname must be 3-30 characters.";
+  } else if (!nicknamePattern.test(nickname)) {
+    errors.nickname =
+      "Nickname can use letters, numbers, underscore, dot and hyphen.";
   }
 
   if (!values.password) {

@@ -8,7 +8,9 @@ company data and Yahoo Finance for historical chart candles. Authenticated users
 can also manually maintain a portfolio, review live position values, profit/loss
 calculations, allocation by ticker, and recorded portfolio transactions. Google
 authentication is wired for the web app and NestJS API, with users stored in
-MongoDB.
+MongoDB. Users can also create an email/password account from the sign-up form;
+the API stores only a password hash and immediately returns the same app JWT
+session shape used by Google login.
 
 ## Repository Layout
 
@@ -123,6 +125,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | --- | --- | --- | --- |
 | API | `GET` | `http://localhost:3001/health` | NestJS health check |
 | API | `POST` | `http://localhost:3001/auth/google` | Verify Google ID token, create user, return app JWT |
+| API | `POST` | `http://localhost:3001/auth/register` | Create an email/password user, hash the password, and return the common auth response |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
@@ -178,9 +181,15 @@ curl -X POST http://localhost:8000/analysis/mock \
 The login page uses Google Identity Services to obtain a Google ID token. The
 web app posts that token to the API, the API verifies it against
 `GOOGLE_CLIENT_ID`, creates or updates the MongoDB user record, and returns an
-application JWT. The browser stores the JWT in local storage and validates it
-with `GET /users/me` after page refreshes. Protected app routes redirect to
-`/login` when no valid session is present.
+application JWT. The sign-up mode also supports email/password registration
+through `POST /auth/register` with `email`, `nickname`, and `password`; the API
+normalizes email and nickname, stores a secure password hash, sets
+`authProviders.email = true`, and returns the same common auth response. Email
+login, password reset, and email verification are not implemented yet.
+
+The browser stores the JWT in local storage and validates it with
+`GET /users/me` after page refreshes. Protected app routes redirect to `/login`
+when no valid session is present.
 
 Local browser check:
 
@@ -188,8 +197,8 @@ Local browser check:
 2. Start the API with `npm run dev:api`.
 3. Start the web app with `npm run dev:web`.
 4. Open `http://localhost:3000/login`.
-5. Sign in with Google.
-6. After login, the app redirects to the protected home page at
+5. Sign in with Google or switch to Sign up and create an email/password account.
+6. After authentication, the app redirects to the protected home page at
    `http://localhost:3000`.
 7. Refresh the page. The session should remain active.
 8. Sign out. Opening `http://localhost:3000` should redirect back to
@@ -205,20 +214,22 @@ docker compose exec mongodb mongosh ai-stock-advisor \
 ## User Domain
 
 The API keeps user data in MongoDB through the NestJS `UsersModule`.
-Google authentication is the current source of user creation: `POST /auth/google`
-verifies the Google ID token, then `UsersService.findOrCreateFromGoogle`
-creates or updates a user by normalized email.
+Google authentication creates or updates users through `POST /auth/google`.
+Email/password registration creates users through `POST /auth/register` and
+does not implement email login yet.
 
 User documents are stored in the `users` collection with these fields:
 
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
-| `email` | `string` | Yes | Unique, indexed, lowercased, and trimmed. |
-| `name` | `string` | Yes | Display name from the Google profile. |
+| `email` | `string` | No | Unique, indexed, lowercased, and trimmed when present. |
+| `name` | `string` | No | Display name from the Google profile; email users fall back to nickname/email for display. |
 | `firstName` | `string` | No | User-managed first name. |
 | `lastName` | `string` | No | User-managed last name. |
 | `nickname` | `string` | No | User-managed nickname. |
 | `avatarUrl` | `string` | No | Google profile image or local profile upload URL. |
+| `passwordHash` | `string` | No | Stored only for email users and excluded from API responses. |
+| `authProviders` | `object` | Yes | Provider flags for Google, email, Apple, Facebook, and phone. |
 | `language` | `"en" \| "ru" \| "uk"` | Yes | Preferred language. Defaults to English. |
 | `theme` | `"light" \| "dark" \| "system"` | No | Preferred application theme. |
 | `watchlistViewMode` | `"grid" \| "list"` | Yes | Preferred Watchlist display mode. Defaults to grid. |

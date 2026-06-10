@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import { ConflictException, Injectable, NotFoundException } from "@nestjs/common";
 import { InjectModel } from "@nestjs/mongoose";
 import type {
   AuthProviderFlags,
@@ -17,6 +17,12 @@ export interface GoogleUserProfile {
   lastName?: string;
   avatarUrl?: string;
   emailVerified: boolean;
+}
+
+export interface EmailUserInput {
+  email: string;
+  nickname: string;
+  passwordHash: string;
 }
 
 @Injectable()
@@ -59,6 +65,39 @@ export class UsersService {
       .exec();
 
     return this.toDto(user);
+  }
+
+  async createWithEmail(input: EmailUserInput): Promise<UserDto> {
+    const email = input.email.trim().toLowerCase();
+    const nickname = input.nickname.trim().toLowerCase();
+
+    await this.assertEmailAndNicknameAvailable(email, nickname);
+
+    try {
+      const user = await this.userModel.create({
+        email,
+        nickname,
+        passwordHash: input.passwordHash,
+        emailVerified: false,
+        authProviders: {
+          google: false,
+          email: true,
+          apple: false,
+          facebook: false,
+          phone: false,
+        },
+        phoneVerified: false,
+        twoFactorEnabled: false,
+        twoFactorMethod: null,
+        language: "en",
+        watchlistViewMode: "grid",
+      });
+
+      return this.toDto(user);
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
   }
 
   async findById(id: string): Promise<UserDto> {
@@ -154,6 +193,23 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  private async assertEmailAndNicknameAvailable(
+    email: string,
+    nickname: string,
+  ): Promise<void> {
+    const userByEmail = await this.userModel.findOne({ email }).exec();
+
+    if (userByEmail) {
+      throw new ConflictException("Email already exists");
+    }
+
+    const userByNickname = await this.userModel.findOne({ nickname }).exec();
+
+    if (userByNickname) {
+      throw new ConflictException("Nickname already exists");
+    }
+  }
+
   private toDto(user: UserDocument): UserDto {
     const email = user.email;
     const name = user.name ?? buildFallbackName(user, email ?? "");
@@ -209,4 +265,38 @@ function removeUndefinedValues<T extends Record<string, unknown>>(input: T): T {
   return Object.fromEntries(
     Object.entries(input).filter(([, value]) => value !== undefined),
   ) as T;
+}
+
+function throwDuplicateKeyConflict(error: unknown): void {
+  if (!isMongoDuplicateKeyError(error)) {
+    return;
+  }
+
+  const keyPattern = error.keyPattern ?? {};
+  const keyValue = error.keyValue ?? {};
+
+  if ("email" in keyPattern || "email" in keyValue) {
+    throw new ConflictException("Email already exists");
+  }
+
+  if ("nickname" in keyPattern || "nickname" in keyValue) {
+    throw new ConflictException("Nickname already exists");
+  }
+
+  throw new ConflictException("User already exists");
+}
+
+function isMongoDuplicateKeyError(
+  error: unknown,
+): error is {
+  code: number;
+  keyPattern?: Record<string, unknown>;
+  keyValue?: Record<string, unknown>;
+} {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    (error as { code?: unknown }).code === 11000
+  );
 }

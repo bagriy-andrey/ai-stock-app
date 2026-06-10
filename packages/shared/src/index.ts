@@ -205,6 +205,12 @@ export interface GoogleLoginRequest {
   credential: string;
 }
 
+export interface RegisterWithEmailRequest {
+  email: string;
+  nickname: string;
+  password: string;
+}
+
 export interface AuthResponse {
   accessToken: string;
   refreshToken?: string;

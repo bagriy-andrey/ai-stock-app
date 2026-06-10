@@ -6,6 +6,7 @@ import { AuthController } from "./auth.controller";
 import { AuthService } from "./auth.service";
 import { GoogleAuthService } from "./google-auth.service";
 import { JwtAuthGuard } from "./guards/jwt-auth.guard";
+import { PasswordHashingService } from "./password-hashing.service";
 
 const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
   "7d") as JwtSignOptions["expiresIn"];
@@ -21,7 +22,12 @@ const jwtExpiresIn = (process.env.JWT_EXPIRES_IN ??
     }),
   ],
   controllers: [AuthController],
-  providers: [AuthService, GoogleAuthService, JwtAuthGuard],
+  providers: [
+    AuthService,
+    GoogleAuthService,
+    JwtAuthGuard,
+    PasswordHashingService,
+  ],
   exports: [JwtModule, JwtAuthGuard],
 })
 export class AuthModule {}

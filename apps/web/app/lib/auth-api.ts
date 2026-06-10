@@ -2,6 +2,7 @@ import type {
   AuthProvider,
   AuthResponse,
   GoogleLoginRequest,
+  RegisterWithEmailRequest,
 } from "@ai-stock-advisor/shared";
 import { apiRequest } from "./api";
 
@@ -11,6 +12,15 @@ export function loginWithGoogle(credential: string): Promise<AuthResponse> {
   return apiRequest<AuthResponse>("/auth/google", {
     method: "POST",
     body: JSON.stringify(body),
+  });
+}
+
+export function registerWithEmail(
+  payload: RegisterWithEmailRequest,
+): Promise<AuthResponse> {
+  return apiRequest<AuthResponse>("/auth/register", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 

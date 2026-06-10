@@ -3,18 +3,25 @@ import { JwtService } from "@nestjs/jwt";
 import { AuthService } from "./auth.service";
 import type { GoogleAuthService, GoogleAuthProfile } from "./google-auth.service";
 import type { UsersService } from "../users/users.service";
+import type { PasswordHashingService } from "./password-hashing.service";
 
 describe("AuthService", () => {
   const usersService = {
     findOrCreateFromGoogle: jest.fn(),
+    createWithEmail: jest.fn(),
     findById: jest.fn(),
-  } as unknown as jest.Mocked<Pick<UsersService, "findOrCreateFromGoogle" | "findById">>;
+  } as unknown as jest.Mocked<
+    Pick<UsersService, "findOrCreateFromGoogle" | "createWithEmail" | "findById">
+  >;
   const jwtService = {
     signAsync: jest.fn(),
   } as unknown as jest.Mocked<Pick<JwtService, "signAsync">>;
   const googleAuthService = {
     verifyCredential: jest.fn(),
   } as unknown as jest.Mocked<Pick<GoogleAuthService, "verifyCredential">>;
+  const passwordHashingService = {
+    hashPassword: jest.fn(),
+  } as unknown as jest.Mocked<Pick<PasswordHashingService, "hashPassword">>;
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -60,6 +67,7 @@ describe("AuthService", () => {
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
       googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
     );
 
     await expect(service.loginWithGoogle("google-id-token")).resolves.toEqual({
@@ -96,6 +104,7 @@ describe("AuthService", () => {
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
       googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
     );
     googleAuthService.verifyCredential.mockResolvedValue({
       providerId: "google-user-id",
@@ -142,6 +151,7 @@ describe("AuthService", () => {
       usersService as unknown as UsersService,
       jwtService as unknown as JwtService,
       googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
     );
 
     const response = await service.loginWithGoogle("google-id-token");
@@ -158,5 +168,72 @@ describe("AuthService", () => {
     });
     expect(response.user).not.toHaveProperty("passwordHash");
     expect(response.user).not.toHaveProperty("providerIds");
+  });
+
+  it("registers an email user and returns the common AuthResponse", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "test",
+      nickname: "test",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    passwordHashingService.hashPassword.mockResolvedValue("scrypt:salt:hash");
+    usersService.createWithEmail.mockResolvedValue(user);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.registerWithEmail({
+        email: " TEST@example.com ",
+        nickname: " Test ",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toEqual({
+      accessToken: "app-jwt",
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        firstName: undefined,
+        lastName: undefined,
+        avatarUrl: undefined,
+        authProviders: user.authProviders,
+        twoFactorEnabled: false,
+      },
+    });
+    expect(passwordHashingService.hashPassword).toHaveBeenCalledWith(
+      "StrongPassword123",
+    );
+    expect(usersService.createWithEmail).toHaveBeenCalledWith({
+      email: "test@example.com",
+      nickname: "test",
+      passwordHash: "scrypt:salt:hash",
+    });
+    expect(usersService.createWithEmail).not.toHaveBeenCalledWith(
+      expect.objectContaining({ password: "StrongPassword123" }),
+    );
+    expect(jwtService.signAsync).toHaveBeenCalledWith({
+      sub: user.id,
+      email: user.email,
+    });
   });
 });

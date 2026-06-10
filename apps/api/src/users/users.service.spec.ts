@@ -7,6 +7,7 @@ describe("UsersService", () => {
   const userModel = {
     findOne: jest.fn(),
     findOneAndUpdate: jest.fn(),
+    create: jest.fn(),
     findById: jest.fn(),
     findByIdAndUpdate: jest.fn(),
   };
@@ -168,6 +169,133 @@ describe("UsersService", () => {
       createdAt: now.toISOString(),
       updatedAt: now.toISOString(),
     });
+  });
+
+  it("creates an email user with email auth enabled", async () => {
+    const emailUserDocument = {
+      ...userDocument,
+      email: "user@example.com",
+      name: undefined,
+      nickname: "andrey",
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      emailVerified: false,
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      watchlistViewMode: "grid",
+    } as unknown as UserDocument;
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(null);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
+    userModel.create.mockResolvedValue(emailUserDocument);
+
+    await expect(
+      service.createWithEmail({
+        email: " USER@example.com ",
+        nickname: " Andrey ",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).resolves.toMatchObject({
+      email: "user@example.com",
+      nickname: "andrey",
+      emailVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(1, {
+      email: "user@example.com",
+    });
+    expect(userModel.findOne).toHaveBeenNthCalledWith(2, {
+      nickname: "andrey",
+    });
+    expect(userModel.create).toHaveBeenCalledWith({
+      email: "user@example.com",
+      nickname: "andrey",
+      passwordHash: "scrypt:salt:hash",
+      emailVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      phoneVerified: false,
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en",
+      watchlistViewMode: "grid",
+    });
+    expect(userModel.create).not.toHaveBeenCalledWith(
+      expect.objectContaining({ password: expect.any(String) }),
+    );
+  });
+
+  it("rejects duplicate email during email registration pre-check", async () => {
+    userModel.findOne.mockReturnValueOnce({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(userDocument),
+    });
+
+    await expect(
+      service.createWithEmail({
+        email: "test@example.com",
+        nickname: "andrey",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).rejects.toThrow("Email already exists");
+  });
+
+  it("rejects duplicate nickname during email registration pre-check", async () => {
+    userModel.findOne
+      .mockReturnValueOnce({
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+      })
+      .mockReturnValueOnce({
+        exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(userDocument),
+      });
+
+    await expect(
+      service.createWithEmail({
+        email: "user@example.com",
+        nickname: "tester",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).rejects.toThrow("Nickname already exists");
+  });
+
+  it("maps duplicate key errors from MongoDB to conflict messages", async () => {
+    const findOneExec = jest
+      .fn<Promise<UserDocument | null>, []>()
+      .mockResolvedValue(null);
+    userModel.findOne.mockReturnValue({ exec: findOneExec });
+    userModel.create.mockRejectedValue({
+      code: 11000,
+      keyPattern: { nickname: 1 },
+    });
+
+    await expect(
+      service.createWithEmail({
+        email: "user@example.com",
+        nickname: "tester",
+        passwordHash: "scrypt:salt:hash",
+      }),
+    ).rejects.toThrow("Nickname already exists");
   });
 
   it("falls back to English when a stored language is invalid", async () => {
