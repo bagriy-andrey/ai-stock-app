@@ -34,6 +34,12 @@ export interface UserCredentialsDto extends UserDto {
   passwordHash?: string;
 }
 
+export interface PasswordResetUserDto {
+  id: string;
+  authProviders: AuthProviderFlags;
+  passwordHash?: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -143,6 +149,32 @@ export class UsersService {
     });
 
     return userByNickname ? this.toCredentialsDto(userByNickname) : null;
+  }
+
+  async findByEmailForPasswordReset(
+    email: string,
+  ): Promise<PasswordResetUserDto | null> {
+    const user = await this.userModel
+      .findOne({ email: email.trim().toLowerCase() })
+      .select("+passwordHash")
+      .exec();
+
+    return user ? this.toPasswordResetDto(user) : null;
+  }
+
+  async storePasswordResetTokenHash(
+    id: string,
+    tokenHash: string,
+    expiresAt: Date,
+  ): Promise<void> {
+    await this.userModel
+      .findByIdAndUpdate(id, {
+        $set: {
+          passwordResetTokenHash: tokenHash,
+          passwordResetExpiresAt: expiresAt,
+        },
+      })
+      .exec();
   }
 
   async findById(id: string): Promise<UserDto> {
@@ -295,6 +327,14 @@ export class UsersService {
   private toCredentialsDto(user: UserDocument): UserCredentialsDto {
     return {
       ...this.toDto(user),
+      passwordHash: user.passwordHash,
+    };
+  }
+
+  private toPasswordResetDto(user: UserDocument): PasswordResetUserDto {
+    return {
+      id: user._id.toString(),
+      authProviders: normalizeAuthProviderFlags(user.authProviders),
       passwordHash: user.passwordHash,
     };
   }

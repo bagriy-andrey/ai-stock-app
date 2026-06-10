@@ -1,4 +1,9 @@
-import { loginWithEmail, loginWithPhone, loginWithProvider } from "./auth-api";
+import {
+  forgotPassword,
+  loginWithEmail,
+  loginWithPhone,
+  loginWithProvider,
+} from "./auth-api";
 
 describe("auth-api", () => {
   const fetchMock = jest.fn();
@@ -184,5 +189,36 @@ describe("auth-api", () => {
         password: "wrong-password",
       }),
     ).rejects.toThrow("Invalid credentials");
+  });
+
+  it("calls the forgot password endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          success: true,
+          message:
+            "If an account with this email exists, password reset instructions have been sent.",
+        }),
+        {
+          status: 200,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(forgotPassword("user@example.com")).resolves.toEqual({
+      success: true,
+      message:
+        "If an account with this email exists, password reset instructions have been sent.",
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/forgot-password",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          email: "user@example.com",
+        }),
+      }),
+    );
   });
 });

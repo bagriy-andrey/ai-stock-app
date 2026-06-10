@@ -171,6 +171,57 @@ describe("UsersService", () => {
     });
   });
 
+  it("finds password reset users with password hash selected", async () => {
+    const select = jest.fn().mockReturnThis();
+    const exec = jest.fn<Promise<UserDocument>, []>().mockResolvedValue({
+      ...userDocument,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      passwordHash: "scrypt:salt:hash",
+    } as unknown as UserDocument);
+    userModel.findOne.mockReturnValue({ select, exec });
+
+    await expect(
+      service.findByEmailForPasswordReset(" USER@example.com "),
+    ).resolves.toEqual({
+      id: userId.toString(),
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      passwordHash: "scrypt:salt:hash",
+    });
+    expect(userModel.findOne).toHaveBeenCalledWith({ email: "user@example.com" });
+    expect(select).toHaveBeenCalledWith("+passwordHash");
+  });
+
+  it("stores password reset token hash and expiration", async () => {
+    const exec = jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null);
+    const expiresAt = new Date("2026-06-02T09:30:00.000Z");
+    userModel.findByIdAndUpdate.mockReturnValue({ exec });
+
+    await service.storePasswordResetTokenHash(
+      userId.toString(),
+      "hashed-token",
+      expiresAt,
+    );
+
+    expect(userModel.findByIdAndUpdate).toHaveBeenCalledWith(userId.toString(), {
+      $set: {
+        passwordResetTokenHash: "hashed-token",
+        passwordResetExpiresAt: expiresAt,
+      },
+    });
+  });
+
   it("creates an email user with email auth enabled", async () => {
     const emailUserDocument = {
       ...userDocument,

@@ -1073,6 +1073,18 @@ p {
   line-height: 1.4;
 }
 
+.auth-success-message {
+  margin: 0;
+  border: 1px solid rgb(34 197 94 / 32%);
+  border-radius: 14px;
+  background: rgb(34 197 94 / 10%);
+  color: #bbf7d0;
+  font-size: 0.88rem;
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 12px 14px;
+}
+
 .auth-form-row {
   display: flex;
   justify-content: flex-end;

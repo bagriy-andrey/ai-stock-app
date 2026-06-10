@@ -76,6 +76,12 @@ export class User {
   @Prop({ select: false })
   passwordHash?: string;
 
+  @Prop({ select: false })
+  passwordResetTokenHash?: string;
+
+  @Prop({ select: false })
+  passwordResetExpiresAt?: Date;
+
   @Prop({ default: false })
   twoFactorEnabled!: boolean;
 

@@ -68,6 +68,7 @@ REDIS_URL=redis://localhost:6379
 FINNHUB_API_KEY=your_finnhub_api_key
 FMP_API_KEY=your_fmp_api_key
 TRADING_AGENT_URL=http://localhost:8000
+APP_WEB_URL=http://localhost:3000
 TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GOOGLE_CLIENT_ID=your_google_oauth_client_id.apps.googleusercontent.com
 JWT_SECRET=replace_with_a_long_random_secret
@@ -787,11 +788,13 @@ return `503`.
 The scaffold includes sanitized `.env.example` files. Required API variables
 include `MONGODB_URI`, `GOOGLE_CLIENT_ID`, `JWT_SECRET`, and `FINNHUB_API_KEY`.
 Set `FMP_API_KEY` to load home page market movers. `JWT_EXPIRES_IN` defaults to
-`7d` when omitted. `PROFILE_UPLOAD_DIR` optionally changes the writable local
-avatar directory. The web app requires `NEXT_PUBLIC_GOOGLE_CLIENT_ID` and
-`NEXT_PUBLIC_API_URL`. Telegram and Redis configuration remains reserved for
-later integrations. Create Finnhub and Financial Modeling Prep API keys and
-keep them only in `apps/api/.env`. Never commit real tokens or credentials.
+`7d` when omitted. `APP_WEB_URL` controls password reset links and defaults to
+`http://localhost:3000` for local development. `PROFILE_UPLOAD_DIR` optionally
+changes the writable local avatar directory. The web app requires
+`NEXT_PUBLIC_GOOGLE_CLIENT_ID` and `NEXT_PUBLIC_API_URL`. Telegram and Redis
+configuration remains reserved for later integrations. Create Finnhub and
+Financial Modeling Prep API keys and keep them only in `apps/api/.env`. Never
+commit real tokens or credentials.
 
 Local `.env` files are ignored by git. Before committing, verify that secrets
 are not staged:

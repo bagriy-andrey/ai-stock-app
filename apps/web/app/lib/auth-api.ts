@@ -1,6 +1,8 @@
 import type {
   AuthProvider,
   AuthResponse,
+  ForgotPasswordRequest,
+  ForgotPasswordResponse,
   GoogleLoginRequest,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
@@ -31,6 +33,15 @@ export function loginWithEmail(
   return apiRequest<AuthResponse>("/auth/login", {
     method: "POST",
     body: JSON.stringify(payload),
+  });
+}
+
+export function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  const body: ForgotPasswordRequest = { email };
+
+  return apiRequest<ForgotPasswordResponse>("/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
 

@@ -1,6 +1,8 @@
 import { UnauthorizedException } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { AuthService } from "./auth.service";
+import { createHash } from "node:crypto";
+import { AuthService, forgotPasswordSuccessMessage } from "./auth.service";
+import type { EmailService } from "./email.service";
 import type { GoogleAuthService, GoogleAuthProfile } from "./google-auth.service";
 import type { UsersService } from "../users/users.service";
 import type { PasswordHashingService } from "./password-hashing.service";
@@ -10,14 +12,18 @@ describe("AuthService", () => {
     findOrCreateFromGoogle: jest.fn(),
     createWithEmail: jest.fn(),
     findByEmailOrNicknameForLogin: jest.fn(),
+    findByEmailForPasswordReset: jest.fn(),
     findById: jest.fn(),
+    storePasswordResetTokenHash: jest.fn(),
   } as unknown as jest.Mocked<
     Pick<
       UsersService,
       | "findOrCreateFromGoogle"
       | "createWithEmail"
       | "findByEmailOrNicknameForLogin"
+      | "findByEmailForPasswordReset"
       | "findById"
+      | "storePasswordResetTokenHash"
     >
   >;
   const jwtService = {
@@ -32,10 +38,18 @@ describe("AuthService", () => {
   } as unknown as jest.Mocked<
     Pick<PasswordHashingService, "hashPassword" | "verifyPassword">
   >;
+  const emailService = {
+    sendPasswordResetEmail: jest.fn(),
+  } as unknown as jest.Mocked<Pick<EmailService, "sendPasswordResetEmail">>;
 
   beforeEach(() => {
     jest.clearAllMocks();
     process.env.GOOGLE_CLIENT_ID = "google-client-id";
+    process.env.APP_WEB_URL = "http://localhost:3000";
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
   });
 
   it("creates or updates a verified Google user and returns a JWT", async () => {
@@ -661,5 +675,146 @@ describe("AuthService", () => {
     expect(response.user).not.toHaveProperty("totpSecret");
     expect(response.user).not.toHaveProperty("resetPasswordToken");
     expect(response.user).not.toHaveProperty("resetPasswordExpires");
+  });
+
+  it("returns generic success for an existing eligible email and stores only a hashed reset token", async () => {
+    jest.useFakeTimers().setSystemTime(new Date("2026-06-02T09:00:00.000Z"));
+    usersService.findByEmailForPasswordReset.mockResolvedValue({
+      id: "user-id",
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      passwordHash: "scrypt:salt:hash",
+    });
+    usersService.storePasswordResetTokenHash.mockResolvedValue(undefined);
+    emailService.sendPasswordResetEmail.mockResolvedValue(undefined);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+    );
+
+    await expect(service.forgotPassword(" USER@example.com ")).resolves.toEqual({
+      success: true,
+      message: forgotPasswordSuccessMessage,
+    });
+
+    expect(usersService.findByEmailForPasswordReset).toHaveBeenCalledWith(
+      "user@example.com",
+    );
+    expect(usersService.storePasswordResetTokenHash).toHaveBeenCalledTimes(1);
+    const [, storedHash, expiresAt] =
+      usersService.storePasswordResetTokenHash.mock.calls[0];
+    expect(expiresAt).toEqual(new Date("2026-06-02T09:30:00.000Z"));
+    expect(storedHash).toMatch(/^[a-f0-9]{64}$/);
+    expect(emailService.sendPasswordResetEmail).toHaveBeenCalledTimes(1);
+    const [email, resetUrl] = emailService.sendPasswordResetEmail.mock.calls[0];
+    const rawToken = new URL(resetUrl).searchParams.get("token");
+
+    expect(email).toBe("user@example.com");
+    expect(resetUrl).toMatch(
+      /^http:\/\/localhost:3000\/auth\/reset-password\?token=/,
+    );
+    expect(rawToken).toMatch(/^[a-f0-9]{64}$/);
+    expect(storedHash).not.toBe(rawToken);
+    expect(storedHash).toBe(
+      createHash("sha256").update(rawToken ?? "").digest("hex"),
+    );
+
+    jest.useRealTimers();
+  });
+
+  it("returns generic success for a non-existing email without generating a token", async () => {
+    usersService.findByEmailForPasswordReset.mockResolvedValue(null);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+    );
+
+    await expect(service.forgotPassword("missing@example.com")).resolves.toEqual({
+      success: true,
+      message: forgotPasswordSuccessMessage,
+    });
+    expect(usersService.storePasswordResetTokenHash).not.toHaveBeenCalled();
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not generate a reset token for social-only users", async () => {
+    usersService.findByEmailForPasswordReset.mockResolvedValue({
+      id: "user-id",
+      authProviders: {
+        google: true,
+        email: false,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+    });
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+    );
+
+    await expect(service.forgotPassword("google@example.com")).resolves.toEqual({
+      success: true,
+      message: forgotPasswordSuccessMessage,
+    });
+    expect(usersService.storePasswordResetTokenHash).not.toHaveBeenCalled();
+    expect(emailService.sendPasswordResetEmail).not.toHaveBeenCalled();
+  });
+
+  it("does not expose reset token fields in auth responses", async () => {
+    const userWithResetFields = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "test",
+      nickname: "andrey",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+      passwordHash: "$2b$12$password-hash",
+      passwordResetTokenHash: "hashed-token",
+      passwordResetExpiresAt: new Date("2026-06-02T09:30:00.000Z"),
+    };
+    usersService.findByEmailOrNicknameForLogin.mockResolvedValue(userWithResetFields);
+    passwordHashingService.verifyPassword.mockResolvedValue(true);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    const response = await service.loginWithEmail({
+      identifier: "test@example.com",
+      password: "StrongPassword123",
+    });
+
+    expect(response.user).not.toHaveProperty("passwordResetTokenHash");
+    expect(response.user).not.toHaveProperty("passwordResetExpiresAt");
   });
 });

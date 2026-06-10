@@ -88,6 +88,8 @@ describe("UserSchema", () => {
   it("marks sensitive persistence fields as excluded from default selections", () => {
     expect(UserSchema.path("providerIds")?.options.select).toBe(false);
     expect(UserSchema.path("passwordHash")?.options.select).toBe(false);
+    expect(UserSchema.path("passwordResetTokenHash")?.options.select).toBe(false);
+    expect(UserSchema.path("passwordResetExpiresAt")?.options.select).toBe(false);
     expect(UserSchema.path("totpSecret")?.options.select).toBe(false);
   });
 });

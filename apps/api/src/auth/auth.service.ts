@@ -1,30 +1,43 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
+import { createHash, randomBytes } from "node:crypto";
 import type {
   AuthProviderFlags,
   AuthResponse,
   AuthUser,
+  ForgotPasswordResponse,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
   UserDto,
 } from "@ai-stock-advisor/shared";
 import { normalizePhoneNumber } from "@ai-stock-advisor/shared";
 import { UsersService } from "../users/users.service";
+import { EmailService } from "./email.service";
 import { GoogleAuthService } from "./google-auth.service";
 import type { JwtPayload } from "./jwt-payload";
 import { PasswordHashingService } from "./password-hashing.service";
 
+export const forgotPasswordSuccessMessage =
+  "If an account with this email exists, password reset instructions have been sent.";
+
+const passwordResetTokenBytes = 32;
+const passwordResetTokenTtlMs = 30 * 60 * 1000;
+
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly googleAuthService: GoogleAuthService,
     private readonly passwordHashingService: PasswordHashingService,
+    private readonly emailService: EmailService = new EmailService(),
   ) {}
 
   async loginWithGoogle(credential: string): Promise<AuthResponse> {
@@ -95,6 +108,42 @@ export class AuthService {
     return this.buildAuthResponse(user);
   }
 
+  async forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmailForPasswordReset(
+      normalizedEmail,
+    );
+
+    if (user?.passwordHash && user.authProviders.email) {
+      try {
+        // TODO: Add IP/email rate limiting when API-wide throttling is introduced.
+        const rawToken = randomBytes(passwordResetTokenBytes).toString("hex");
+        const tokenHash = hashPasswordResetToken(rawToken);
+        const expiresAt = new Date(Date.now() + passwordResetTokenTtlMs);
+
+        await this.usersService.storePasswordResetTokenHash(
+          user.id,
+          tokenHash,
+          expiresAt,
+        );
+        await this.emailService.sendPasswordResetEmail(
+          normalizedEmail,
+          buildPasswordResetUrl(rawToken),
+        );
+      } catch (error) {
+        this.logger.error(
+          `Failed to prepare password reset instructions for user ${user.id}`,
+          error instanceof Error ? error.stack : undefined,
+        );
+      }
+    }
+
+    return {
+      success: true,
+      message: forgotPasswordSuccessMessage,
+    };
+  }
+
   async getCurrentUser(userId: string): Promise<AuthUser> {
     return this.toAuthUser(await this.usersService.findById(userId));
   }
@@ -129,6 +178,19 @@ export class AuthService {
       twoFactorEnabled: user.twoFactorEnabled === true,
     };
   }
+}
+
+function hashPasswordResetToken(token: string): string {
+  return createHash("sha256").update(token).digest("hex");
+}
+
+function buildPasswordResetUrl(rawToken: string): string {
+  const appWebUrl = (process.env.APP_WEB_URL ?? "http://localhost:3000").replace(
+    /\/$/,
+    "",
+  );
+
+  return `${appWebUrl}/auth/reset-password?token=${encodeURIComponent(rawToken)}`;
 }
 
 function normalizeAuthProviderFlags(
