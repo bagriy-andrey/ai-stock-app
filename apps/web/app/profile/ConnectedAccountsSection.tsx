@@ -33,8 +33,11 @@ interface FacebookLoginResponse {
 }
 
 interface ConnectedAccountsSectionProps {
+  className?: string;
   connectedAccounts?: ConnectedAccountsResponse;
+  heading?: string;
   profile: UserDto;
+  subheading?: string;
   onLinked: (user: AuthUser) => void;
 }
 
@@ -50,8 +53,11 @@ const linkableProviders: Array<{
 ];
 
 export function ConnectedAccountsSection({
+  className,
   connectedAccounts,
+  heading = "Security",
   profile,
+  subheading = "Connected accounts",
   onLinked,
 }: ConnectedAccountsSectionProps) {
   const { accessToken } = useAuth();
@@ -261,10 +267,10 @@ export function ConnectedAccountsSection({
   };
 
   return (
-    <Card>
+    <Card className={className}>
       <CardHeader>
-        <h2>Security</h2>
-        <p>Connected accounts</p>
+        <h2>{heading}</h2>
+        <p>{subheading}</p>
       </CardHeader>
       <CardContent>
         <Script
