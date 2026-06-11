@@ -2,10 +2,13 @@ import type {
   AuthProvider,
   AppleLoginRequest,
   AuthResponse,
+  ConnectedAccountsResponse,
   FacebookLoginRequest,
   ForgotPasswordRequest,
   ForgotPasswordResponse,
+  GoogleLinkRequest,
   GoogleLoginRequest,
+  LinkedAuthProviderResponse,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
   ResetPasswordRequest,
@@ -70,6 +73,49 @@ export function resetPassword(
 ): Promise<ResetPasswordResponse> {
   return apiRequest<ResetPasswordResponse>("/auth/reset-password", {
     method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function fetchConnectedAccounts(
+  accessToken: string,
+): Promise<ConnectedAccountsResponse> {
+  return apiRequest<ConnectedAccountsResponse>("/auth/connected-accounts", {
+    headers: getAuthorizationHeader(accessToken),
+  });
+}
+
+export function linkGoogle(
+  accessToken: string,
+  idToken: string,
+): Promise<LinkedAuthProviderResponse> {
+  const body: GoogleLinkRequest = { idToken };
+
+  return apiRequest<LinkedAuthProviderResponse>("/auth/link/google", {
+    method: "POST",
+    headers: getAuthorizationHeader(accessToken),
+    body: JSON.stringify(body),
+  });
+}
+
+export function linkApple(
+  accessToken: string,
+  payload: AppleLoginRequest,
+): Promise<LinkedAuthProviderResponse> {
+  return apiRequest<LinkedAuthProviderResponse>("/auth/link/apple", {
+    method: "POST",
+    headers: getAuthorizationHeader(accessToken),
+    body: JSON.stringify(payload),
+  });
+}
+
+export function linkFacebook(
+  accessToken: string,
+  payload: FacebookLoginRequest,
+): Promise<LinkedAuthProviderResponse> {
+  return apiRequest<LinkedAuthProviderResponse>("/auth/link/facebook", {
+    method: "POST",
+    headers: getAuthorizationHeader(accessToken),
     body: JSON.stringify(payload),
   });
 }
@@ -147,4 +193,10 @@ function isEmailLoginPayload(payload: unknown): payload is LoginWithEmailRequest
     "password" in payload &&
     typeof payload.password === "string"
   );
+}
+
+function getAuthorizationHeader(accessToken: string): HeadersInit {
+  return {
+    authorization: `Bearer ${accessToken}`,
+  };
 }

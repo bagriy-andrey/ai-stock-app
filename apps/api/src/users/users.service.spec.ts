@@ -1,4 +1,4 @@
-import { NotFoundException } from "@nestjs/common";
+import { ConflictException, NotFoundException } from "@nestjs/common";
 import { Types } from "mongoose";
 import { UsersService } from "./users.service";
 import type { UserDocument } from "./schemas/user.schema";
@@ -1143,6 +1143,178 @@ describe("UsersService", () => {
       userId.toString(),
       { $unset: { avatarUrl: 1 } },
       { new: true },
+    );
+  });
+
+  it("links Google to the current user and stores provider id internally", async () => {
+    const currentUser = {
+      ...userDocument,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      providerIds: {},
+    } as unknown as UserDocument;
+    const updatedUser = {
+      ...currentUser,
+      authProviders: {
+        google: true,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      providerIds: {
+        google: "google-user-id",
+      },
+    } as unknown as UserDocument;
+    const selectCurrent = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(currentUser),
+    });
+    const selectProvider = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    const selectEmail = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(currentUser),
+    });
+    const execUpdate = jest.fn<Promise<UserDocument>, []>().mockResolvedValue(
+      updatedUser,
+    );
+    userModel.findById.mockReturnValue({ select: selectCurrent });
+    userModel.findOne
+      .mockReturnValueOnce({ select: selectProvider })
+      .mockReturnValueOnce({ select: selectEmail });
+    userModel.findOneAndUpdate.mockReturnValue({ exec: execUpdate });
+
+    await expect(
+      service.linkGoogleProvider(userId.toString(), {
+        email: "TEST@example.com",
+        providerId: "google-user-id",
+        name: "Google Name",
+        firstName: "Google",
+        lastName: "User",
+        avatarUrl: "https://example.com/google.png",
+        emailVerified: true,
+      }),
+    ).resolves.toMatchObject({
+      authProviders: expect.objectContaining({ google: true }),
+    });
+
+    expect(selectCurrent).toHaveBeenCalledWith("+providerIds");
+    expect(userModel.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: userId },
+      {
+        $set: {
+          emailVerified: true,
+          "authProviders.google": true,
+          "providerIds.google": "google-user-id",
+        },
+      },
+      {
+        new: true,
+        runValidators: true,
+      },
+    );
+  });
+
+  it("links the same Apple provider to the same user idempotently", async () => {
+    const currentUser = {
+      ...userDocument,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      providerIds: {
+        apple: "apple-user-id",
+      },
+    } as unknown as UserDocument;
+    const selectCurrent = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(currentUser),
+    });
+    const selectProvider = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(currentUser),
+    });
+    const selectEmail = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(currentUser),
+    });
+    userModel.findById.mockReturnValue({ select: selectCurrent });
+    userModel.findOne
+      .mockReturnValueOnce({ select: selectProvider })
+      .mockReturnValueOnce({ select: selectEmail });
+    userModel.findOneAndUpdate.mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(currentUser),
+    });
+
+    await expect(
+      service.linkAppleProvider(userId.toString(), {
+        providerId: "apple-user-id",
+        email: "test@example.com",
+        emailVerified: true,
+      }),
+    ).resolves.toMatchObject({
+      authProviders: expect.objectContaining({ apple: true }),
+    });
+  });
+
+  it("rejects provider ids already linked to another user", async () => {
+    const otherUser = {
+      ...userDocument,
+      _id: new Types.ObjectId("665daec06c456275631b7af2"),
+      providerIds: {
+        facebook: "facebook-user-id",
+      },
+    } as unknown as UserDocument;
+    const selectCurrent = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument),
+    });
+    const selectProvider = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(otherUser),
+    });
+    userModel.findById.mockReturnValue({ select: selectCurrent });
+    userModel.findOne.mockReturnValue({ select: selectProvider });
+
+    await expect(
+      service.linkFacebookProvider(userId.toString(), {
+        providerId: "facebook-user-id",
+        emailVerified: false,
+      }),
+    ).rejects.toThrow(ConflictException);
+  });
+
+  it("rejects verified provider emails that belong to another user", async () => {
+    const otherUser = {
+      ...userDocument,
+      _id: new Types.ObjectId("665daec06c456275631b7af2"),
+      email: "other@example.com",
+    } as unknown as UserDocument;
+    const selectCurrent = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(userDocument),
+    });
+    const selectProvider = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),
+    });
+    const selectEmail = jest.fn().mockReturnValue({
+      exec: jest.fn<Promise<UserDocument>, []>().mockResolvedValue(otherUser),
+    });
+    userModel.findById.mockReturnValue({ select: selectCurrent });
+    userModel.findOne
+      .mockReturnValueOnce({ select: selectProvider })
+      .mockReturnValueOnce({ select: selectEmail });
+
+    await expect(
+      service.linkAppleProvider(userId.toString(), {
+        providerId: "apple-user-id",
+        email: "other@example.com",
+        emailVerified: true,
+      }),
+    ).rejects.toThrow(
+      "This provider email is already associated with another account.",
     );
   });
 

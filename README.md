@@ -160,6 +160,10 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/auth/login` | Log in with email, nickname, or phone number plus password and return the common auth response |
 | API | `POST` | `http://localhost:3001/auth/forgot-password` | Generate a single-use password reset link for eligible email users without revealing account existence |
 | API | `POST` | `http://localhost:3001/auth/reset-password` | Reset a password with a valid reset token, clear the token fields, and require login with the new password |
+| API | `GET` | `http://localhost:3001/auth/connected-accounts` | Return authenticated user's connected provider flags and safe email/phone status |
+| API | `POST` | `http://localhost:3001/auth/link/google` | Link a verified Google account to the current bearer JWT user |
+| API | `POST` | `http://localhost:3001/auth/link/apple` | Link an Apple account to the current bearer JWT user |
+| API | `POST` | `http://localhost:3001/auth/link/facebook` | Link a Facebook account to the current bearer JWT user |
 | API | `GET` | `http://localhost:3001/auth/me` | Return the current user for a bearer JWT |
 | API | `GET` | `http://localhost:3001/users/me` | Return the current user from the user domain for a bearer JWT |
 | API | `GET` | `http://localhost:3001/profile` | Return the authenticated user's profile |
@@ -224,6 +228,13 @@ Facebook users are found first by `providerIds.facebook`, then by email when
 Facebook returns one, and can be created without an email when Facebook only
 returns a stable user id. Existing profile fields are not overwritten by empty
 Facebook profile values.
+Authenticated users can explicitly connect Google, Apple, and Facebook from the
+Profile security section. Link endpoints verify provider tokens with the same
+provider services as login, reject provider IDs already connected to another
+user, and reject verified provider emails that belong to another account. A
+successful link updates `authProviders` and internal `providerIds` without
+returning or replacing the current app JWT. Provider unlinking, 2FA, recovery
+codes, and SMS verification are not part of this MVP task.
 The sign-up mode also supports email/password registration through
 `POST /auth/register` with `email`, `nickname`, optional `phoneNumber`, and
 `password`; the API normalizes email, nickname, and phone number, stores a
@@ -338,7 +349,9 @@ The page uses TanStack Query for loading and mutations, and updates the active
 theme immediately after a saved preference changes. Users can add, edit, or
 clear a phone number from the profile page; saved phone numbers are normalized
 to E.164 and displayed with `Not verified` status because phone verification is
-not part of the MVP yet. Users can switch the interface between English,
+not part of the MVP yet. The Security section shows connected Google, Apple,
+Facebook, email, and phone status; Google, Apple, and Facebook can be connected
+without logging out or switching the current session. Users can switch the interface between English,
 Russian, and Ukrainian from the header or profile page. Language changes are
 saved immediately through `PATCH /profile`, applied after the API confirms the
 update, and restored from the saved user profile after login. The compact

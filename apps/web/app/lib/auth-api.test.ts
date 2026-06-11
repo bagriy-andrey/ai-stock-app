@@ -1,5 +1,9 @@
 import {
+  fetchConnectedAccounts,
   forgotPassword,
+  linkApple,
+  linkFacebook,
+  linkGoogle,
   loginWithApple,
   loginWithEmail,
   loginWithFacebook,
@@ -435,5 +439,157 @@ describe("auth-api", () => {
         password: "NewStrongPassword123",
       }),
     ).rejects.toThrow("Invalid or expired reset token");
+  });
+
+  it("fetches connected accounts with the current access token", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          providers: {
+            google: true,
+            email: true,
+            apple: false,
+            facebook: true,
+            phone: false,
+          },
+          email: "user@example.com",
+          emailVerified: false,
+          phoneVerified: false,
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(fetchConnectedAccounts("app-jwt")).resolves.toMatchObject({
+      providers: expect.objectContaining({ google: true, facebook: true }),
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/connected-accounts",
+      expect.objectContaining({
+        headers: expect.any(Headers),
+      }),
+    );
+    const headers = fetchMock.mock.calls[0][1].headers as Headers;
+    expect(headers.get("authorization")).toBe("Bearer app-jwt");
+  });
+
+  it("calls the Google link endpoint without requesting a new session", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: "user-id",
+            authProviders: {
+              google: true,
+              email: true,
+              apple: false,
+              facebook: false,
+              phone: false,
+            },
+            twoFactorEnabled: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(linkGoogle("app-jwt", "google-id-token")).resolves.toEqual({
+      user: expect.objectContaining({ id: "user-id" }),
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/link/google",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ idToken: "google-id-token" }),
+      }),
+    );
+  });
+
+  it("calls the Apple link endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: "user-id",
+            authProviders: {
+              google: false,
+              email: true,
+              apple: true,
+              facebook: false,
+              phone: false,
+            },
+            twoFactorEnabled: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      linkApple("app-jwt", {
+        identityToken: "apple-id-token",
+        authorizationCode: "apple-code",
+      }),
+    ).resolves.toHaveProperty("user.id", "user-id");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/link/apple",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({
+          identityToken: "apple-id-token",
+          authorizationCode: "apple-code",
+        }),
+      }),
+    );
+  });
+
+  it("calls the Facebook link endpoint", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          user: {
+            id: "user-id",
+            authProviders: {
+              google: false,
+              email: true,
+              apple: false,
+              facebook: true,
+              phone: false,
+            },
+            twoFactorEnabled: false,
+          },
+        }),
+        { status: 200 },
+      ),
+    );
+
+    await expect(
+      linkFacebook("app-jwt", { accessToken: "facebook-access-token" }),
+    ).resolves.toHaveProperty("user.id", "user-id");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "http://localhost:3001/auth/link/facebook",
+      expect.objectContaining({
+        method: "POST",
+        body: JSON.stringify({ accessToken: "facebook-access-token" }),
+      }),
+    );
+  });
+
+  it("surfaces provider link conflict errors", async () => {
+    fetchMock.mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: "This Google account is already connected to another user.",
+        }),
+        {
+          status: 409,
+          headers: { "content-type": "application/json" },
+        },
+      ),
+    );
+
+    await expect(linkGoogle("app-jwt", "google-id-token")).rejects.toThrow(
+      "This Google account is already connected to another user.",
+    );
   });
 });

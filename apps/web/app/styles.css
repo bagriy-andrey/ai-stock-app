@@ -2291,6 +2291,40 @@ p {
   flex-wrap: wrap;
 }
 
+.connected-accounts-list {
+  display: grid;
+  gap: 12px;
+}
+
+.connected-account-row {
+  display: flex;
+  min-height: 56px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.connected-account-row:last-child {
+  border-bottom: 0;
+}
+
+.connected-account-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.connected-account-status {
+  color: var(--muted-foreground);
+  font-size: 0.84rem;
+  font-weight: 700;
+}
+
+.connected-account-status.connected {
+  color: var(--positive);
+}
+
 .ui-avatar {
   display: grid;
   width: 96px;

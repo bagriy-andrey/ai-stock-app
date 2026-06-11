@@ -2,7 +2,9 @@ import { Body, Controller, Get, Post, Request, UseGuards } from "@nestjs/common"
 import type {
   AuthResponse,
   AuthUser,
+  ConnectedAccountsResponse,
   ForgotPasswordResponse,
+  LinkedAuthProviderResponse,
   ResetPasswordResponse,
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "./authenticated-request";
@@ -10,6 +12,7 @@ import { AuthService } from "./auth.service";
 import { AppleLoginDto } from "./dto/apple-login.dto";
 import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { FacebookLoginDto } from "./dto/facebook-login.dto";
+import { GoogleLinkDto } from "./dto/google-link.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
@@ -57,6 +60,57 @@ export class AuthController {
     @Body() body: ResetPasswordDto,
   ): Promise<ResetPasswordResponse> {
     return this.authService.resetPassword(body.token, body.password);
+  }
+
+  @Get("connected-accounts")
+  @UseGuards(JwtAuthGuard)
+  getConnectedAccounts(
+    @Request() request: AuthenticatedRequest,
+  ): Promise<ConnectedAccountsResponse> {
+    if (!request.user) {
+      throw new Error("Authenticated request is missing user payload");
+    }
+
+    return this.authService.getConnectedAccounts(request.user.sub);
+  }
+
+  @Post("link/google")
+  @UseGuards(JwtAuthGuard)
+  linkGoogle(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: GoogleLinkDto,
+  ): Promise<LinkedAuthProviderResponse> {
+    if (!request.user) {
+      throw new Error("Authenticated request is missing user payload");
+    }
+
+    return this.authService.linkGoogle(request.user.sub, body.idToken);
+  }
+
+  @Post("link/apple")
+  @UseGuards(JwtAuthGuard)
+  linkApple(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: AppleLoginDto,
+  ): Promise<LinkedAuthProviderResponse> {
+    if (!request.user) {
+      throw new Error("Authenticated request is missing user payload");
+    }
+
+    return this.authService.linkApple(request.user.sub, body);
+  }
+
+  @Post("link/facebook")
+  @UseGuards(JwtAuthGuard)
+  linkFacebook(
+    @Request() request: AuthenticatedRequest,
+    @Body() body: FacebookLoginDto,
+  ): Promise<LinkedAuthProviderResponse> {
+    if (!request.user) {
+      throw new Error("Authenticated request is missing user payload");
+    }
+
+    return this.authService.linkFacebook(request.user.sub, body.accessToken);
   }
 
   @Get("me")

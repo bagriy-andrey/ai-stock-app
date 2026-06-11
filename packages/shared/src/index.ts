@@ -213,6 +213,10 @@ export interface GoogleLoginRequest {
   credential: string;
 }
 
+export interface GoogleLinkRequest {
+  idToken: string;
+}
+
 export interface AppleLoginRequest {
   identityToken: string;
   authorizationCode?: string;
@@ -225,6 +229,14 @@ export interface AppleLoginRequest {
 
 export interface FacebookLoginRequest {
   accessToken: string;
+}
+
+export interface ConnectedAccountsResponse {
+  providers: AuthProviderFlags;
+  email?: string;
+  emailVerified: boolean;
+  phoneNumber?: string;
+  phoneVerified: boolean;
 }
 
 export interface RegisterWithEmailRequest {
@@ -261,6 +273,10 @@ export interface ResetPasswordResponse {
 export interface AuthResponse {
   accessToken: string;
   refreshToken?: string;
+  user: AuthUser;
+}
+
+export interface LinkedAuthProviderResponse {
   user: AuthUser;
 }
 

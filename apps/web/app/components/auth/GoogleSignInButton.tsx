@@ -26,6 +26,7 @@ interface GoogleAccounts {
           text: "signin_with" | "signup_with" | "continue_with" | "signin";
         },
       ) => void;
+      prompt?: () => void;
     };
   };
 }

@@ -24,11 +24,13 @@ import {
   updateProfile,
   uploadProfileAvatar,
 } from "../lib/profile-api";
+import { fetchConnectedAccounts } from "../lib/auth-api";
 import {
   normalizeOptionalProfilePhoneNumber,
   validateOptionalProfilePhoneNumber,
 } from "../lib/profile-phone-validation";
 import { getUserInitials } from "../lib/profile-display";
+import { ConnectedAccountsSection } from "./ConnectedAccountsSection";
 
 const profileQueryKey = ["profile"] as const;
 
@@ -61,6 +63,11 @@ export function ProfilePage() {
   const profileQuery = useQuery({
     queryKey: profileQueryKey,
     queryFn: () => fetchProfile(accessToken ?? ""),
+    enabled: Boolean(accessToken),
+  });
+  const connectedAccountsQuery = useQuery({
+    queryKey: ["connected-accounts"],
+    queryFn: () => fetchConnectedAccounts(accessToken ?? ""),
     enabled: Boolean(accessToken),
   });
 
@@ -340,6 +347,31 @@ export function ProfilePage() {
               </form>
             </CardContent>
           </Card>
+
+          <ConnectedAccountsSection
+            connectedAccounts={connectedAccountsQuery.data}
+            profile={profile}
+            onLinked={(user) => {
+              queryClient.setQueryData(profileQueryKey, {
+                ...profile,
+                ...user,
+              });
+              queryClient.setQueryData(["connected-accounts"], {
+                providers: user.authProviders,
+                email: user.email,
+                emailVerified: profile.emailVerified,
+                phoneNumber: user.phoneNumber,
+                phoneVerified: user.phoneVerified,
+              });
+              void queryClient.invalidateQueries({
+                queryKey: ["connected-accounts"],
+              });
+              void queryClient.invalidateQueries({
+                queryKey: profileQueryKey,
+              });
+              updateUser(user);
+            }}
+          />
         </div>
       ) : null}
     </main>

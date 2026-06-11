@@ -57,6 +57,10 @@ export interface PasswordResetUserDto {
   passwordHash?: string;
 }
 
+export interface UserSecurityInfoDto extends UserDto {
+  passwordHash?: string;
+}
+
 @Injectable()
 export class UsersService {
   constructor(
@@ -383,6 +387,113 @@ export class UsersService {
     return this.toDto(user);
   }
 
+  async findSecurityInfoById(id: string): Promise<UserSecurityInfoDto> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException("User not found");
+    }
+
+    const user = await this.userModel
+      .findById(id)
+      .select("+passwordHash")
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return {
+      ...this.toDto(user),
+      passwordHash: user.passwordHash,
+    };
+  }
+
+  async linkGoogleProvider(
+    userId: string,
+    profile: GoogleUserProfile & { providerId: string },
+  ): Promise<UserDto> {
+    const providerId = profile.providerId.trim();
+    const email = normalizeOptionalEmail(profile.email);
+    const currentUser = await this.findUserByIdWithProviderIds(userId);
+    const userByProviderId = await this.findUserByGoogleProviderId(providerId);
+
+    assertProviderAvailableForUser(
+      userByProviderId,
+      currentUser,
+      "This Google account is already connected to another user.",
+    );
+    await this.assertVerifiedEmailAvailableForUser(
+      email,
+      profile.emailVerified,
+      currentUser,
+    );
+
+    return this.toDto(
+      await this.updateUserFromGoogle(currentUser, {
+        ...profile,
+        providerId,
+        email,
+      }),
+    );
+  }
+
+  async linkAppleProvider(
+    userId: string,
+    profile: AppleUserProfile,
+  ): Promise<UserDto> {
+    const providerId = profile.providerId.trim();
+    const email = normalizeOptionalEmail(profile.email);
+    const currentUser = await this.findUserByIdWithProviderIds(userId);
+    const userByProviderId = await this.findUserByAppleProviderId(providerId);
+
+    assertProviderAvailableForUser(
+      userByProviderId,
+      currentUser,
+      "This Apple account is already connected to another user.",
+    );
+    await this.assertVerifiedEmailAvailableForUser(
+      email,
+      profile.emailVerified,
+      currentUser,
+    );
+
+    return this.toDto(
+      await this.updateUserFromApple(currentUser, {
+        ...profile,
+        providerId,
+        email,
+      }),
+    );
+  }
+
+  async linkFacebookProvider(
+    userId: string,
+    profile: FacebookUserProfile,
+  ): Promise<UserDto> {
+    const providerId = profile.providerId.trim();
+    const email = normalizeOptionalEmail(profile.email);
+    const currentUser = await this.findUserByIdWithProviderIds(userId);
+    const userByProviderId = await this.findUserByFacebookProviderId(providerId);
+
+    assertProviderAvailableForUser(
+      userByProviderId,
+      currentUser,
+      "This Facebook account is already connected to another user.",
+    );
+    await this.assertVerifiedEmailAvailableForUser(
+      email,
+      profile.emailVerified,
+      currentUser,
+    );
+
+    return this.toDto(
+      await this.updateUserFromFacebook(currentUser, {
+        ...profile,
+        providerId,
+        email,
+      }),
+    );
+  }
+
   async updateProfile(id: string, input: UpdateProfileRequest): Promise<UserDto> {
     const update = this.buildProfileUpdate(input);
 
@@ -482,6 +593,34 @@ export class UsersService {
     return this.userModel.findOne({ email }).exec();
   }
 
+  private async findUserByIdWithProviderIds(
+    id: string,
+  ): Promise<UserDocument> {
+    if (!Types.ObjectId.isValid(id)) {
+      throw new NotFoundException("User not found");
+    }
+
+    const user = await this.userModel
+      .findById(id)
+      .select("+providerIds")
+      .exec();
+
+    if (!user) {
+      throw new NotFoundException("User not found");
+    }
+
+    return user;
+  }
+
+  private async findUserByGoogleProviderId(
+    providerId: string,
+  ): Promise<UserDocument | null> {
+    return this.userModel
+      .findOne({ "providerIds.google": providerId })
+      .select("+providerIds")
+      .exec();
+  }
+
   private async findUserByAppleProviderId(
     providerId: string,
   ): Promise<UserDocument | null> {
@@ -504,6 +643,75 @@ export class UsersService {
     email: string,
   ): Promise<UserDocument | null> {
     return this.userModel.findOne({ email }).select("+providerIds").exec();
+  }
+
+  private async assertVerifiedEmailAvailableForUser(
+    email: string | undefined,
+    emailVerified: boolean,
+    currentUser: UserDocument,
+  ): Promise<void> {
+    if (!email || emailVerified !== true) {
+      return;
+    }
+
+    const userByEmail = await this.findUserByEmailWithProviderIds(email);
+
+    if (userByEmail && !isSameUser(userByEmail, currentUser)) {
+      throw new ConflictException(
+        "This provider email is already associated with another account.",
+      );
+    }
+  }
+
+  private async updateUserFromGoogle(
+    user: UserDocument,
+    profile: Omit<GoogleUserProfile, "email"> & {
+      providerId: string;
+      email?: string;
+    },
+  ): Promise<UserDocument> {
+    const email = normalizeOptionalEmail(profile.email);
+    const emailMatchesExistingUser = Boolean(email && user.email === email);
+    const shouldSetEmail = Boolean(email && !user.email);
+    const firstName = normalizeOptionalString(profile.firstName);
+    const lastName = normalizeOptionalString(profile.lastName);
+    const name = normalizeOptionalString(profile.name);
+    const avatarUrl = normalizeOptionalString(profile.avatarUrl);
+    const displayName = name ?? buildGoogleLinkDisplayName(profile, email);
+    const $set = removeUndefinedValues({
+      ...(shouldSetEmail ? { email } : {}),
+      ...(displayName && !user.name ? { name: displayName } : {}),
+      ...(firstName && !user.firstName ? { firstName } : {}),
+      ...(lastName && !user.lastName ? { lastName } : {}),
+      ...(avatarUrl && !user.avatarUrl ? { avatarUrl } : {}),
+      ...((shouldSetEmail || emailMatchesExistingUser) && profile.emailVerified
+        ? { emailVerified: true }
+        : {}),
+      "authProviders.google": true,
+      "providerIds.google": profile.providerId,
+    });
+
+    try {
+      const updatedUser = await this.userModel
+        .findOneAndUpdate(
+          { _id: user._id },
+          { $set },
+          {
+            new: true,
+            runValidators: true,
+          },
+        )
+        .exec();
+
+      if (!updatedUser) {
+        throw new NotFoundException("User not found");
+      }
+
+      return updatedUser;
+    } catch (error) {
+      throwDuplicateKeyConflict(error);
+      throw error;
+    }
   }
 
   private async updateUserFromApple(
@@ -688,6 +896,18 @@ function buildDisplayName(profile: GoogleUserProfile, email: string): string {
   return profile.name ?? (fullName || email);
 }
 
+function buildGoogleLinkDisplayName(
+  profile: Pick<GoogleUserProfile, "firstName" | "lastName">,
+  email: string | undefined,
+): string | undefined {
+  const fullName = [profile.firstName, profile.lastName]
+    .map(normalizeOptionalString)
+    .filter(Boolean)
+    .join(" ");
+
+  return fullName || email;
+}
+
 function buildAppleDisplayName(
   profile: Pick<AppleUserProfile, "firstName" | "lastName">,
   email: string | undefined,
@@ -736,6 +956,20 @@ function removeUndefinedValues<T extends Record<string, unknown>>(input: T): T {
   ) as T;
 }
 
+function assertProviderAvailableForUser(
+  userByProviderId: UserDocument | null,
+  currentUser: UserDocument,
+  conflictMessage: string,
+): void {
+  if (userByProviderId && !isSameUser(userByProviderId, currentUser)) {
+    throw new ConflictException(conflictMessage);
+  }
+}
+
+function isSameUser(first: UserDocument, second: UserDocument): boolean {
+  return first._id.toString() === second._id.toString();
+}
+
 function throwDuplicateKeyConflict(error: unknown): void {
   if (!isMongoDuplicateKeyError(error)) {
     return;
@@ -758,6 +992,10 @@ function throwDuplicateKeyConflict(error: unknown): void {
 
   if ("providerIds.apple" in keyPattern || "providerIds.apple" in keyValue) {
     throw new ConflictException("Apple account is already linked");
+  }
+
+  if ("providerIds.google" in keyPattern || "providerIds.google" in keyValue) {
+    throw new ConflictException("Google account is already linked");
   }
 
   if (

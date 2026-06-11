@@ -11,7 +11,9 @@ import type {
   AuthResponse,
   AuthUser,
   AppleLoginRequest,
+  ConnectedAccountsResponse,
   ForgotPasswordResponse,
+  LinkedAuthProviderResponse,
   LoginWithEmailRequest,
   RegisterWithEmailRequest,
   ResetPasswordResponse,
@@ -95,6 +97,88 @@ export class AuthService {
     });
 
     return this.buildAuthResponse(user);
+  }
+
+  async getConnectedAccounts(
+    userId: string,
+  ): Promise<ConnectedAccountsResponse> {
+    const user = await this.usersService.findSecurityInfoById(userId);
+    const providers = normalizeAuthProviderFlags(user.authProviders);
+
+    return {
+      providers: {
+        ...providers,
+        email: providers.email || Boolean(user.passwordHash),
+        phone: providers.phone || Boolean(user.phoneNumber),
+      },
+      email: user.email,
+      emailVerified: user.emailVerified === true,
+      phoneNumber: user.phoneNumber,
+      phoneVerified: user.phoneVerified === true,
+    };
+  }
+
+  async linkGoogle(
+    userId: string,
+    idToken: string,
+  ): Promise<LinkedAuthProviderResponse> {
+    const profile = await this.googleAuthService.verifyCredential(idToken);
+
+    if (!profile.providerId) {
+      throw new UnauthorizedException("Invalid Google credential");
+    }
+
+    if (!profile.email || !profile.emailVerified) {
+      throw new UnauthorizedException("Google account email is not verified");
+    }
+
+    const user = await this.usersService.linkGoogleProvider(userId, {
+      email: profile.email,
+      providerId: profile.providerId,
+      name: profile.name,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
+      emailVerified: profile.emailVerified,
+    });
+
+    return { user: this.toAuthUser(user) };
+  }
+
+  async linkApple(
+    userId: string,
+    input: AppleLoginRequest,
+  ): Promise<LinkedAuthProviderResponse> {
+    const profile = await this.appleAuthService.verifyIdentityToken({
+      identityToken: input.identityToken,
+      user: input.user,
+    });
+    const user = await this.usersService.linkAppleProvider(userId, {
+      providerId: profile.providerId,
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+    });
+
+    return { user: this.toAuthUser(user) };
+  }
+
+  async linkFacebook(
+    userId: string,
+    accessToken: string,
+  ): Promise<LinkedAuthProviderResponse> {
+    const profile = await this.facebookAuthService.verifyAccessToken(accessToken);
+    const user = await this.usersService.linkFacebookProvider(userId, {
+      providerId: profile.providerId,
+      email: profile.email,
+      emailVerified: profile.emailVerified,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
+    });
+
+    return { user: this.toAuthUser(user) };
   }
 
   async registerWithEmail(

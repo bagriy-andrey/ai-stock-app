@@ -1,4 +1,8 @@
-import { BadRequestException, UnauthorizedException } from "@nestjs/common";
+import {
+  BadRequestException,
+  ConflictException,
+  UnauthorizedException,
+} from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { createHash } from "node:crypto";
 import type { AppleAuthProfile, AppleAuthService } from "./apple-auth.service";
@@ -21,6 +25,10 @@ describe("AuthService", () => {
     findByEmailOrNicknameForLogin: jest.fn(),
     findByEmailForPasswordReset: jest.fn(),
     findById: jest.fn(),
+    findSecurityInfoById: jest.fn(),
+    linkGoogleProvider: jest.fn(),
+    linkAppleProvider: jest.fn(),
+    linkFacebookProvider: jest.fn(),
     storePasswordResetTokenHash: jest.fn(),
     resetPasswordByTokenHash: jest.fn(),
   } as unknown as jest.Mocked<
@@ -33,6 +41,10 @@ describe("AuthService", () => {
       | "findByEmailOrNicknameForLogin"
       | "findByEmailForPasswordReset"
       | "findById"
+      | "findSecurityInfoById"
+      | "linkGoogleProvider"
+      | "linkAppleProvider"
+      | "linkFacebookProvider"
       | "storePasswordResetTokenHash"
       | "resetPasswordByTokenHash"
     >
@@ -1145,5 +1157,228 @@ describe("AuthService", () => {
     expect(response).not.toHaveProperty("passwordResetExpiresAt");
     expect(response).not.toHaveProperty("providerIds");
     expect(response).not.toHaveProperty("totpSecret");
+  });
+
+  it("returns connected account status without sensitive fields", async () => {
+    usersService.findSecurityInfoById.mockResolvedValue({
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "Test User",
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      passwordHash: "scrypt:salt:hash",
+      authProviders: {
+        google: false,
+        email: false,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    });
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    const response = await service.getConnectedAccounts("user-id");
+
+    expect(response).toEqual({
+      providers: {
+        google: false,
+        email: true,
+        apple: true,
+        facebook: false,
+        phone: true,
+      },
+      email: "test@example.com",
+      emailVerified: false,
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+    });
+    expect(response).not.toHaveProperty("providerIds");
+    expect(response).not.toHaveProperty("passwordHash");
+    expect(response).not.toHaveProperty("totpSecret");
+    expect(response).not.toHaveProperty("passwordResetTokenHash");
+  });
+
+  it("links Google to the current user without replacing the session token", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: true,
+      name: "Test User",
+      phoneVerified: false,
+      authProviders: {
+        google: true,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    googleAuthService.verifyCredential.mockResolvedValue({
+      providerId: "google-user-id",
+      email: "test@example.com",
+      emailVerified: true,
+      name: "Test User",
+    });
+    usersService.linkGoogleProvider.mockResolvedValue(user);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(service.linkGoogle("user-id", "google-id-token")).resolves.toEqual({
+      user: expect.objectContaining({
+        id: "user-id",
+        authProviders: expect.objectContaining({ google: true }),
+      }),
+    });
+    expect(usersService.linkGoogleProvider).toHaveBeenCalledWith("user-id", {
+      email: "test@example.com",
+      providerId: "google-user-id",
+      name: "Test User",
+      firstName: undefined,
+      lastName: undefined,
+      avatarUrl: undefined,
+      emailVerified: true,
+    });
+    expect(jwtService.signAsync).not.toHaveBeenCalled();
+  });
+
+  it("links Apple and returns an auth-safe user", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: true,
+      name: "Test User",
+      firstName: "Test",
+      lastName: "User",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: true,
+        facebook: false,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    appleAuthService.verifyIdentityToken.mockResolvedValue({
+      providerId: "apple-user-id",
+      email: "test@example.com",
+      emailVerified: true,
+      firstName: "Test",
+      lastName: "User",
+    });
+    usersService.linkAppleProvider.mockResolvedValue(user);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+      appleAuthService as unknown as AppleAuthService,
+    );
+
+    await expect(
+      service.linkApple("user-id", {
+        identityToken: "apple-id-token",
+        authorizationCode: "apple-code",
+      }),
+    ).resolves.toEqual({
+      user: expect.objectContaining({
+        id: "user-id",
+        authProviders: expect.objectContaining({ apple: true }),
+      }),
+    });
+  });
+
+  it("links Facebook and returns an auth-safe user", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "Test User",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: true,
+        phone: false,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+    };
+    facebookAuthService.verifyAccessToken.mockResolvedValue({
+      providerId: "facebook-user-id",
+      email: "test@example.com",
+      emailVerified: false,
+    });
+    usersService.linkFacebookProvider.mockResolvedValue(user);
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+      emailService as unknown as EmailService,
+      appleAuthService as unknown as AppleAuthService,
+      facebookAuthService as unknown as FacebookAuthService,
+    );
+
+    await expect(
+      service.linkFacebook("user-id", "facebook-access-token"),
+    ).resolves.toEqual({
+      user: expect.objectContaining({
+        id: "user-id",
+        authProviders: expect.objectContaining({ facebook: true }),
+      }),
+    });
+  });
+
+  it("surfaces provider link conflicts safely", async () => {
+    googleAuthService.verifyCredential.mockResolvedValue({
+      providerId: "google-user-id",
+      email: "test@example.com",
+      emailVerified: true,
+    });
+    usersService.linkGoogleProvider.mockRejectedValue(
+      new ConflictException(
+        "This Google account is already connected to another user.",
+      ),
+    );
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(service.linkGoogle("user-id", "google-id-token")).rejects.toThrow(
+      ConflictException,
+    );
   });
 });
