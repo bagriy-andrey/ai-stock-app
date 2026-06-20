@@ -129,6 +129,7 @@ export function AppleSignInButton() {
         onLoad={initializeApple}
       />
       <SocialAuthButton
+        className="auth-social-button-apple"
         disabled={isSubmitting}
         icon={<AppleProviderIcon />}
         provider={isSubmitting ? "Signing in with Apple..." : "Continue with Apple"}

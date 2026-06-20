@@ -703,10 +703,11 @@ p {
   display: grid;
   width: 100%;
   max-width: none;
-  min-height: 100vh;
+  min-height: 100svh;
   place-items: center;
-  overflow: hidden;
-  padding: 32px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  padding: clamp(16px, 3vw, 32px);
   background:
     radial-gradient(circle at 12% 10%, rgb(56 189 248 / 16%), transparent 28%),
     radial-gradient(circle at 88% 86%, rgb(34 197 94 / 10%), transparent 30%),
@@ -731,10 +732,11 @@ p {
   z-index: 1;
   display: grid;
   width: min(100%, 1120px);
-  grid-template-columns: minmax(0, 1.05fr) minmax(430px, 0.95fr);
+  max-height: calc(100svh - clamp(32px, 6vw, 64px));
+  grid-template-columns: minmax(0, 1fr) minmax(380px, 0.92fr);
   overflow: hidden;
   border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 32px;
+  border-radius: clamp(22px, 3vw, 32px);
   background: rgb(9 14 24 / 82%);
   box-shadow: 0 32px 120px rgb(0 0 0 / 48%);
   backdrop-filter: blur(18px);
@@ -743,11 +745,11 @@ p {
 .auth-visual-panel {
   position: relative;
   display: grid;
-  min-height: 720px;
+  min-height: min(720px, calc(100svh - clamp(32px, 6vw, 64px)));
   align-content: space-between;
-  gap: 32px;
+  gap: clamp(20px, 3vw, 32px);
   overflow: hidden;
-  padding: 36px;
+  padding: clamp(24px, 3vw, 36px);
   background:
     radial-gradient(circle at 18% 18%, rgb(125 211 252 / 25%), transparent 30%),
     radial-gradient(circle at 88% 78%, rgb(34 197 94 / 17%), transparent 32%),
@@ -812,8 +814,8 @@ p {
 .auth-visual-copy h2 {
   margin: 14px 0;
   max-width: 520px;
-  font-size: clamp(2.3rem, 5vw, 4.6rem);
-  letter-spacing: -0.075em;
+  font-size: clamp(2.2rem, 4.7vw, 4.2rem);
+  letter-spacing: 0;
   line-height: 0.95;
 }
 
@@ -880,12 +882,14 @@ p {
 
 .auth-panel {
   display: grid;
+  min-height: 0;
+  overflow-y: auto;
   place-items: center;
-  padding: 36px;
+  padding: clamp(22px, 3vw, 36px);
 }
 
 .auth-card.ui-card {
-  width: min(100%, 500px);
+  width: min(100%, 480px);
   border-color: rgb(255 255 255 / 12%);
   border-radius: 28px;
   background:
@@ -896,8 +900,8 @@ p {
 
 .auth-card-content.ui-card-content {
   display: grid;
-  gap: 22px;
-  padding: 30px;
+  gap: clamp(16px, 2.4vh, 22px);
+  padding: clamp(22px, 3vw, 30px);
 }
 
 .auth-card-header {
@@ -907,12 +911,35 @@ p {
 
 .auth-card-header h1 {
   margin: 0;
-  font-size: clamp(2rem, 5vw, 3.15rem);
-  letter-spacing: -0.07em;
+  font-size: clamp(1.9rem, 4vw, 2.85rem);
+  letter-spacing: 0;
+  line-height: 1;
 }
 
 .auth-card-header p {
   margin: 0;
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-card.ui-card {
+  width: min(100%, 470px);
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-card-content.ui-card-content {
+  gap: clamp(14px, 1.8vh, 18px);
+  padding: clamp(20px, 2.6vw, 26px);
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-card-header {
+  gap: 8px;
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-card-header h1 {
+  font-size: clamp(1.85rem, 3vw, 2.55rem);
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-social-stack,
+.auth-screen[data-auth-mode="signup"] .auth-form {
+  gap: 10px;
 }
 
 .auth-social-stack,
@@ -921,53 +948,96 @@ p {
   gap: 12px;
 }
 
-.auth-google-button-shell {
+.google-sign-in,
+.apple-sign-in,
+.facebook-sign-in {
   display: grid;
-  min-height: 48px;
-  align-items: center;
-  overflow: hidden;
-  border: 1px solid rgb(255 255 255 / 14%);
-  border-radius: 14px;
-  background: #f8fafc;
-  padding: 3px;
-}
-
-.auth-google-button-shell .google-sign-in {
   width: 100%;
   gap: 8px;
   margin: 0;
 }
 
-.auth-google-button-shell .google-sign-in > div {
-  display: grid;
+.google-sign-in-control {
+  position: relative;
   width: 100%;
-  place-items: center;
 }
 
-.apple-sign-in {
-  display: grid;
-  gap: 8px;
+.google-sign-in-native {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  overflow: hidden;
+  opacity: 0.01;
 }
 
-.apple-sign-in .auth-social-button {
-  width: 100%;
+.google-sign-in-native[data-ready="false"] {
+  pointer-events: none;
+}
+
+.google-sign-in-native > div,
+.google-sign-in-native iframe {
+  width: 100% !important;
+  height: 100% !important;
 }
 
 .auth-social-button.ui-button {
   position: relative;
+  display: grid;
+  width: 100%;
   min-height: 50px;
-  justify-content: flex-start;
+  grid-template-columns: 24px minmax(0, 1fr) 24px;
+  align-items: center;
   gap: 12px;
   border-radius: 14px;
   border-color: rgb(255 255 255 / 13%);
   background: rgb(255 255 255 / 6%);
   color: var(--foreground);
   padding: 0 14px;
+  text-align: center;
+}
+
+.auth-social-button.ui-button::after {
+  width: 24px;
+  height: 24px;
+  content: "";
 }
 
 .auth-social-button.ui-button:hover {
   border-color: rgb(125 211 252 / 34%);
   background: rgb(255 255 255 / 10%);
+}
+
+.auth-social-button-google.ui-button {
+  border-color: #dadce0;
+  background: #ffffff;
+  color: #202124;
+}
+
+.auth-social-button-google.ui-button:hover {
+  border-color: #c8d3e1;
+  background: #f8fafc;
+}
+
+.auth-social-button-apple.ui-button {
+  border-color: #000000;
+  background: #000000;
+  color: #ffffff;
+}
+
+.auth-social-button-apple.ui-button:hover {
+  border-color: #1f2937;
+  background: #111827;
+}
+
+.auth-social-button-facebook.ui-button {
+  border-color: #1877f2;
+  background: #1877f2;
+  color: #ffffff;
+}
+
+.auth-social-button-facebook.ui-button:hover {
+  border-color: #166fe5;
+  background: #166fe5;
 }
 
 .auth-social-icon,
@@ -1029,6 +1099,16 @@ p {
   border-color: rgb(255 255 255 / 12%);
   background: rgb(2 6 23 / 54%);
   color: var(--foreground);
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-field {
+  gap: 6px;
+}
+
+.auth-screen[data-auth-mode="signup"] .auth-field .ui-input,
+.auth-screen[data-auth-mode="signup"] .auth-primary-button.ui-button,
+.auth-screen[data-auth-mode="signup"] .auth-social-button.ui-button {
+  min-height: 46px;
 }
 
 .auth-field .ui-input::placeholder {
@@ -1249,8 +1329,23 @@ p {
 
 .google-sign-in {
   display: grid;
-  gap: 14px;
-  margin-top: 28px;
+  gap: 8px;
+  margin: 0;
+}
+
+@media (max-height: 820px) and (min-width: 981px) {
+  .auth-visual-copy h2 {
+    font-size: clamp(2rem, 4vw, 3.4rem);
+  }
+
+  .auth-visual-copy p:last-child {
+    font-size: 0.98rem;
+  }
+
+  .auth-insight-card,
+  .auth-metrics-grid {
+    display: none;
+  }
 }
 
 @media (max-width: 980px) {
@@ -1259,6 +1354,7 @@ p {
   }
 
   .auth-shell {
+    max-height: none;
     grid-template-columns: 1fr;
   }
 

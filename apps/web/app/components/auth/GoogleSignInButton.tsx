@@ -3,6 +3,10 @@
 import Script from "next/script";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  GoogleProviderIcon,
+  SocialAuthButton,
+} from "./AuthorizationUI";
 import { useAuth } from "./AuthProvider";
 import { useI18n } from "../i18n/I18nProvider";
 
@@ -49,16 +53,19 @@ export function GoogleSignInButton({
   const { loginWithGoogle } = useAuth();
   const { t } = useI18n();
   const [error, setError] = useState<string | null>(null);
+  const [isButtonReady, setIsButtonReady] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
 
   const initializeGoogleButton = useCallback(() => {
     if (!clientId) {
       setError(t.googleNotConfigured);
+      setIsButtonReady(false);
       return;
     }
 
     if (!window.google || !buttonRef.current) {
+      setIsButtonReady(false);
       return;
     }
 
@@ -92,6 +99,7 @@ export function GoogleSignInButton({
       width: Math.min(buttonRef.current.clientWidth || 400, 400),
       text,
     });
+    setIsButtonReady(true);
   }, [clientId, loginWithGoogle, router, t, text]);
 
   useEffect(() => {
@@ -105,7 +113,33 @@ export function GoogleSignInButton({
         strategy="afterInteractive"
         onLoad={initializeGoogleButton}
       />
-      <div ref={buttonRef} aria-hidden={isSubmitting} />
+      <div className="google-sign-in-control">
+        <SocialAuthButton
+          className="auth-social-button-google"
+          disabled={!clientId || isSubmitting}
+          icon={<GoogleProviderIcon />}
+          provider={isSubmitting ? t.signingIn : "Continue with Google"}
+          onClick={() => {
+            if (!clientId) {
+              setError(t.googleNotConfigured);
+              return;
+            }
+
+            if (!isButtonReady) {
+              setError("Google login is still loading. Please try again.");
+              return;
+            }
+
+            window.google?.accounts.id.prompt?.();
+          }}
+        />
+        <div
+          ref={buttonRef}
+          aria-hidden="true"
+          className="google-sign-in-native"
+          data-ready={isButtonReady && !isSubmitting ? "true" : "false"}
+        />
+      </div>
       {isSubmitting ? <p>{t.signingIn}</p> : null}
       {error ? <p className="error-text">{error}</p> : null}
     </div>
