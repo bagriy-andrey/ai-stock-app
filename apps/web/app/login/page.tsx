@@ -179,9 +179,7 @@ export default function LoginPage() {
         title={isSignup ? "Create your account" : "Log in to AI Stock Advisor"}
       >
         <div className="auth-social-stack">
-          <div className="auth-google-button-shell">
-            <GoogleSignInButton text="continue_with" />
-          </div>
+          <GoogleSignInButton text="continue_with" />
           <AppleSignInButton />
           <FacebookSignInButton />
         </div>

@@ -110,6 +110,7 @@ export function FacebookSignInButton() {
         onLoad={initializeFacebook}
       />
       <SocialAuthButton
+        className="auth-social-button-facebook"
         disabled={isSubmitting}
         icon={<FacebookProviderIcon />}
         provider={

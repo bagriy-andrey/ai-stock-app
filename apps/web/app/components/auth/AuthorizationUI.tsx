@@ -53,7 +53,7 @@ export function AuthLayout({ children, mode }: AuthLayoutProps) {
   const isSignup = mode === "signup";
 
   return (
-    <main className="auth-screen">
+    <main className="auth-screen" data-auth-mode={mode}>
       <section className="auth-shell" aria-label="Authorization">
         <aside className="auth-visual-panel" aria-label="AI Stock Advisor overview">
           <Link className="auth-brand" href="/" aria-label="AI Stock Advisor home page">
@@ -188,19 +188,48 @@ export function PasswordInput({
 }
 
 export function SocialAuthButton({
+  className = "",
   icon,
   provider,
   statusLabel,
   ...props
 }: SocialAuthButtonProps) {
   return (
-    <Button className="auth-social-button" type="button" variant="outline" {...props}>
+    <Button
+      {...props}
+      className={`auth-social-button ${className}`.trim()}
+      type="button"
+      variant="outline"
+    >
       <span className="auth-social-icon" aria-hidden="true">
         {icon}
       </span>
       <span>{provider}</span>
       {statusLabel ? <small>{statusLabel}</small> : null}
     </Button>
+  );
+}
+
+export function GoogleProviderIcon() {
+  return (
+    <svg viewBox="0 0 24 24" role="img" aria-label="Google">
+      <path
+        d="M21.6 12.23c0-.76-.07-1.49-.2-2.18H12v4.13h5.37a4.59 4.59 0 0 1-1.99 3.01v2.5h3.22c1.89-1.74 3-4.31 3-7.46Z"
+        fill="#4285F4"
+      />
+      <path
+        d="M12 22c2.7 0 4.96-.9 6.61-2.31l-3.22-2.5c-.89.6-2.03.95-3.39.95-2.6 0-4.8-1.76-5.59-4.12H3.08v2.58A9.99 9.99 0 0 0 12 22Z"
+        fill="#34A853"
+      />
+      <path
+        d="M6.41 14.02A6.01 6.01 0 0 1 6.1 12c0-.7.11-1.39.31-2.02V7.4H3.08A9.99 9.99 0 0 0 2 12c0 1.61.39 3.13 1.08 4.6l3.33-2.58Z"
+        fill="#FBBC05"
+      />
+      <path
+        d="M12 5.86c1.47 0 2.78.5 3.82 1.49l2.86-2.86C16.95 2.88 14.7 2 12 2a9.99 9.99 0 0 0-8.92 5.4l3.33 2.58C7.2 7.62 9.4 5.86 12 5.86Z"
+        fill="#EA4335"
+      />
+    </svg>
   );
 }
 
