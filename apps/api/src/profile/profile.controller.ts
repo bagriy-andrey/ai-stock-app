@@ -48,7 +48,7 @@ export class ProfileController {
 
   @Post("avatar")
   @UseInterceptors(
-    FileInterceptor("avatar", {
+    FileInterceptor("file", {
       limits: { files: 1, fileSize: profileAvatarMaxBytes },
     }),
   )
