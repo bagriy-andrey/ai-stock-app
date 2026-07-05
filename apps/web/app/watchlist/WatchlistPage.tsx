@@ -25,6 +25,7 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { PaginationControls } from "../components/ui/PaginationControls";
+import { Textarea } from "../components/ui/textarea";
 import { SortIndicator } from "../components/ui/SortIndicator";
 import { CompanyLogo } from "../components/stocks/CompanyLogo";
 import { StockCard, TrashIcon } from "../components/watchlist/StockCard";
@@ -50,6 +51,7 @@ import {
 } from "../lib/pagination-state";
 import type { SortState } from "../lib/table-sorting";
 import { sortItems, toggleSortState } from "../lib/table-sorting";
+import { getWatchlistTargetPriceSummary } from "../lib/watchlist-target-price";
 import { updateProfile } from "../lib/profile-api";
 import {
   formatCurrency,
@@ -81,6 +83,7 @@ const watchlistSortAccessors: Record<
   changePercent: ({ quote }) => quote?.changePercent,
   companyName: ({ item, profile }) =>
     profile?.name ?? item.companyName ?? item.ticker,
+  targetPrice: ({ item }) => item.targetPrice,
 };
 const watchlistUrlKeys = ["search", "sort", "order", "page"] as const;
 
@@ -127,6 +130,8 @@ export function WatchlistPage() {
   const { accessToken, updateUser, user } = useAuth();
   const { language, t } = useI18n();
   const [searchInput, setSearchInput] = useState("");
+  const [targetPriceInput, setTargetPriceInput] = useState("");
+  const [notesInput, setNotesInput] = useState("");
   const [selectedStock, setSelectedStock] = useState<StockSearchResult | null>(
     null,
   );
@@ -179,9 +184,13 @@ export function WatchlistPage() {
       addWatchlistItem(accessToken ?? "", {
         ticker: stock.ticker,
         companyName: stock.name,
+        targetPrice: parseTargetPriceInput(targetPriceInput),
+        notes: notesInput.trim() || undefined,
       }),
     onSuccess: async () => {
       setSearchInput("");
+      setTargetPriceInput("");
+      setNotesInput("");
       setSelectedStock(null);
       setFormError(null);
       await queryClient.invalidateQueries({ queryKey: watchlistQueryKey });
@@ -389,19 +398,19 @@ export function WatchlistPage() {
         <h2 id="add-ticker-heading">{t.addStock}</h2>
         <form className="watchlist-form" onSubmit={onSubmit}>
           <div className="stock-search">
-            <label htmlFor="stock-search">{t.tickerOrCompanyName}</label>
-            <input
+            <Label htmlFor="stock-search">{t.tickerOrCompanyName}</Label>
+            <Input
+              autoComplete="off"
+              disabled={addMutation.isPending}
               id="stock-search"
               name="stock-search"
-              placeholder={t.stockSearchPlaceholder}
-              value={searchInput}
               onChange={(event) => {
                 setSearchInput(event.target.value);
                 setSelectedStock(null);
                 setFormError(null);
               }}
-              autoComplete="off"
-              disabled={addMutation.isPending}
+              placeholder={t.stockSearchPlaceholder}
+              value={searchInput}
             />
             {!selectedStock && debouncedSearchInput.length >= 2 ? (
               <SearchResults
@@ -416,6 +425,36 @@ export function WatchlistPage() {
                 }}
               />
             ) : null}
+          </div>
+          <div className="watchlist-form-meta">
+            <div className="profile-field">
+              <Label htmlFor="target-price">{t.targetPrice}</Label>
+              <Input
+                disabled={addMutation.isPending}
+                id="target-price"
+                inputMode="decimal"
+                min="0"
+                name="target-price"
+                onChange={(event) => setTargetPriceInput(event.target.value)}
+                placeholder={t.targetPricePlaceholder}
+                step="0.01"
+                type="number"
+                value={targetPriceInput}
+              />
+            </div>
+            <div className="profile-field">
+              <Label htmlFor="watchlist-notes">{t.watchNotes}</Label>
+              <Textarea
+                disabled={addMutation.isPending}
+                id="watchlist-notes"
+                maxLength={280}
+                name="watchlist-notes"
+                onChange={(event) => setNotesInput(event.target.value)}
+                placeholder={t.watchNotesPlaceholder}
+                rows={3}
+                value={notesInput}
+              />
+            </div>
           </div>
           <button type="submit" disabled={addMutation.isPending}>
             {addMutation.isPending ? t.adding : t.add}
@@ -467,6 +506,12 @@ export function WatchlistPage() {
                 label={t.companyName}
                 onSort={setSort}
                 sort="companyName"
+                sortState={sortState}
+              />
+              <WatchlistSortButton
+                label={t.targetPrice}
+                onSort={setSort}
+                sort="targetPrice"
                 sortState={sortState}
               />
             </div>
@@ -672,6 +717,7 @@ function WatchlistTable({
             <th>{t.companyName}</th>
             <th>{t.currentPrice}</th>
             <th>{t.dailyChangePercent}</th>
+            <th>{t.targetPrice}</th>
             <th className="watchlist-actions-heading">
               <span className="visually-hidden">{t.actions}</span>
             </th>
@@ -685,6 +731,12 @@ function WatchlistTable({
             const changeVariant = quote
               ? getChangeVariant(quote.changePercent)
               : "neutral";
+            const targetPriceSummary = getWatchlistTargetPriceSummary({
+              currentPrice: quote?.currentPrice,
+              currency: profile?.currency || quote?.currency || "USD",
+              language,
+              targetPrice: item.targetPrice,
+            });
 
             return (
               <tr
@@ -718,6 +770,11 @@ function WatchlistTable({
                   <span className="watchlist-table-company" title={companyName}>
                     {companyName}
                   </span>
+                  {item.notes ? (
+                    <p className="watchlist-table-notes" title={item.notes}>
+                      {item.notes}
+                    </p>
+                  ) : null}
                 </td>
                 <td>
                   {isPriceLoading ? (
@@ -749,6 +806,22 @@ function WatchlistTable({
                     <span className="watchlist-table-status">
                       {t.priceUnavailable}
                     </span>
+                  )}
+                </td>
+                <td>
+                  {targetPriceSummary.targetLabel ? (
+                    <div className="watchlist-target-cell">
+                      <span>{targetPriceSummary.targetLabel}</span>
+                      {targetPriceSummary.deltaLabel ? (
+                        <strong
+                          className={`stock-change stock-change-${targetPriceSummary.variant}`}
+                        >
+                          {targetPriceSummary.deltaLabel}
+                        </strong>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <span className="watchlist-table-status">{t.notSet}</span>
                   )}
                 </td>
                 <td className="watchlist-actions-cell">
@@ -979,6 +1052,17 @@ function SearchResults({
       ))}
     </ul>
   );
+}
+
+function parseTargetPriceInput(value: string): number | undefined {
+  const normalizedValue = value.trim();
+
+  if (!normalizedValue) {
+    return undefined;
+  }
+
+  const parsedValue = Number.parseFloat(normalizedValue);
+  return Number.isFinite(parsedValue) ? parsedValue : undefined;
 }
 
 function useDebouncedValue(value: string, delayMilliseconds: number): string {

@@ -41,6 +41,8 @@ export class WatchlistService {
     const ownerId = this.toUserObjectId(userId);
     const ticker = this.normalizeTicker(input.ticker);
     const companyName = input.companyName?.trim() || undefined;
+    const targetPrice = this.normalizeTargetPrice(input.targetPrice);
+    const notes = input.notes?.trim() || undefined;
     const existingItem = await this.watchlistItemModel
       .findOne({ userId: ownerId, ticker })
       .exec();
@@ -54,6 +56,8 @@ export class WatchlistService {
         userId: ownerId,
         ticker,
         companyName,
+        targetPrice,
+        notes,
       });
 
       return this.toDto(item);
@@ -86,6 +90,14 @@ export class WatchlistService {
     return ticker.trim().toUpperCase();
   }
 
+  private normalizeTargetPrice(targetPrice?: number): number | undefined {
+    if (targetPrice === undefined) {
+      return undefined;
+    }
+
+    return Math.round(targetPrice * 100) / 100;
+  }
+
   private toUserObjectId(userId: string): Types.ObjectId {
     if (!Types.ObjectId.isValid(userId)) {
       throw new BadRequestException("Invalid user id");
@@ -100,6 +112,8 @@ export class WatchlistService {
       userId: item.userId.toString(),
       ticker: item.ticker,
       companyName: item.companyName,
+      targetPrice: item.targetPrice,
+      notes: item.notes,
       createdAt: item.createdAt.toISOString(),
       updatedAt: item.updatedAt.toISOString(),
     };

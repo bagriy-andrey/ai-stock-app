@@ -285,6 +285,8 @@ export interface WatchlistItemDto {
   userId: string;
   ticker: string;
   companyName?: string;
+  targetPrice?: number;
+  notes?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -292,6 +294,8 @@ export interface WatchlistItemDto {
 export interface CreateWatchlistItemRequest {
   ticker: string;
   companyName?: string;
+  targetPrice?: number;
+  notes?: string;
 }
 
 export interface PaginationMetaDto {

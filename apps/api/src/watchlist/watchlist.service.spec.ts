@@ -41,6 +41,8 @@ describe("WatchlistService", () => {
         userId: userId.toString(),
         ticker: "AAPL",
         companyName: "Apple Inc.",
+        targetPrice: undefined,
+        notes: undefined,
         createdAt: now.toISOString(),
         updatedAt: now.toISOString(),
       },
@@ -61,6 +63,8 @@ describe("WatchlistService", () => {
       service.addForUser(userId.toString(), {
         ticker: " aapl ",
         companyName: " Apple Inc. ",
+        targetPrice: 214.129,
+        notes: " Buy on weakness. ",
       }),
     ).resolves.toMatchObject({
       id: itemId.toString(),
@@ -77,6 +81,8 @@ describe("WatchlistService", () => {
       userId,
       ticker: "AAPL",
       companyName: "Apple Inc.",
+      targetPrice: 214.13,
+      notes: "Buy on weakness.",
     });
   });
 

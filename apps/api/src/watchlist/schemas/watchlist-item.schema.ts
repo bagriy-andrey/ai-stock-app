@@ -16,6 +16,12 @@ export class WatchlistItem {
   @Prop({ trim: true })
   companyName?: string;
 
+  @Prop({ min: 0 })
+  targetPrice?: number;
+
+  @Prop({ trim: true, maxlength: 280 })
+  notes?: string;
+
   createdAt!: Date;
   updatedAt!: Date;
 }

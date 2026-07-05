@@ -25,6 +25,7 @@ export const watchlistSortFields = [
   "currentPrice",
   "changePercent",
   "companyName",
+  "targetPrice",
 ] as const;
 
 export type WatchlistSortField = (typeof watchlistSortFields)[number];
