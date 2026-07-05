@@ -6,6 +6,7 @@ import type {
   StockQuote,
   WatchlistItemDto,
 } from "@ai-stock-advisor/shared";
+import clsx from "clsx";
 import type { Dictionary } from "../../dictionaries";
 import type { StockChartCandle } from "../../lib/market-data-api";
 import {
@@ -13,6 +14,7 @@ import {
   formatPercent,
   getChangeVariant,
 } from "../../lib/stock-format";
+import { getWatchlistTargetPriceSummary } from "../../lib/watchlist-target-price";
 import { CompanyLogo } from "../stocks/CompanyLogo";
 
 interface StockCardProps {
@@ -46,6 +48,12 @@ export function StockCard({
 }: StockCardProps) {
   const companyName =
     profile?.name ?? item.companyName ?? t.companyNameNotSet;
+  const targetPriceSummary = getWatchlistTargetPriceSummary({
+    currentPrice: quote?.currentPrice,
+    currency: profile?.currency || quote?.currency || "USD",
+    language,
+    targetPrice: item.targetPrice,
+  });
 
   return (
     <article className="stock-card">
@@ -64,6 +72,21 @@ export function StockCard({
           <div className="stock-card-identity">
             <strong>{item.ticker}</strong>
             <p>{companyName}</p>
+            {targetPriceSummary.targetLabel ? (
+              <p className="stock-card-target">
+                <span>{t.targetPrice}: {targetPriceSummary.targetLabel}</span>
+                {targetPriceSummary.deltaLabel ? (
+                  <strong
+                    className={clsx(
+                      "stock-change",
+                      `stock-change-${targetPriceSummary.variant}`,
+                    )}
+                  >
+                    {targetPriceSummary.deltaLabel}
+                  </strong>
+                ) : null}
+              </p>
+            ) : null}
           </div>
         </div>
         <StockCardPrice
@@ -79,6 +102,9 @@ export function StockCard({
           isLoading={isChartLoading}
           t={t}
         />
+        {item.notes ? (
+          <p className="stock-card-notes">{item.notes}</p>
+        ) : null}
       </button>
       <button
         aria-label={`${isRemoving ? t.removing : t.remove} ${item.ticker}`}

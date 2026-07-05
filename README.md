@@ -12,7 +12,8 @@ stored in MongoDB. Users can also create an email/password account from the
 sign-up form with an optional phone number and log in with email, nickname, or
 phone number plus password; the API stores only a password hash, supports
 email-based password reset links, and returns the same app JWT session shape
-used by social login.
+used by social login. Watchlist items can optionally store a target price and
+private notes for the tracked ticker.
 
 ## Repository Layout
 
@@ -171,7 +172,7 @@ docker run --rm -p 8000:8000 ai-stock-advisor-trading-agent
 | API | `POST` | `http://localhost:3001/profile/avatar` | Upload or replace the authenticated user's avatar |
 | API | `DELETE` | `http://localhost:3001/profile/avatar` | Delete the authenticated user's avatar |
 | API | `GET` | `http://localhost:3001/watchlist` | Return the authenticated user's watchlist |
-| API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist |
+| API | `POST` | `http://localhost:3001/watchlist` | Add a ticker to the authenticated user's watchlist, optionally with `targetPrice` and `notes` |
 | API | `DELETE` | `http://localhost:3001/watchlist/:id` | Remove one owned watchlist item |
 | API | `GET` | `http://localhost:3001/portfolio?page=1&limit=10` | Return paginated aggregated open positions and portfolio summary |
 | API | `GET` | `http://localhost:3001/portfolio/allocation` | Return full-portfolio allocation data independent of pagination |
