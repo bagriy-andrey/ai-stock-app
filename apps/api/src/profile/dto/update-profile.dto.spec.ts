@@ -35,6 +35,15 @@ describe("UpdateProfileDto", () => {
     expect(dto.phoneNumber).toBeNull();
   });
 
+  it("normalizes phone numbers with access code and extension", async () => {
+    const dto = plainToInstance(UpdateProfileDto, {
+      phoneNumber: "0048 500 111 222 extension 9",
+    });
+
+    await expect(validate(dto)).resolves.toHaveLength(0);
+    expect(dto.phoneNumber).toBe("+48500111222");
+  });
+
   it("rejects unsupported language, theme, and watchlist view values", async () => {
     const errors = await validate(
       plainToInstance(UpdateProfileDto, {

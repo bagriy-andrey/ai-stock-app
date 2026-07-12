@@ -14,6 +14,7 @@ import { ForgotPasswordDto } from "./dto/forgot-password.dto";
 import { FacebookLoginDto } from "./dto/facebook-login.dto";
 import { GoogleLinkDto } from "./dto/google-link.dto";
 import { GoogleLoginDto } from "./dto/google-login.dto";
+import { getAuthenticatedUserId } from "./get-authenticated-user-id";
 import { LoginDto } from "./dto/login.dto";
 import { RegisterDto } from "./dto/register.dto";
 import { ResetPasswordDto } from "./dto/reset-password.dto";
@@ -67,11 +68,7 @@ export class AuthController {
   getConnectedAccounts(
     @Request() request: AuthenticatedRequest,
   ): Promise<ConnectedAccountsResponse> {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return this.authService.getConnectedAccounts(request.user.sub);
+    return this.authService.getConnectedAccounts(getAuthenticatedUserId(request));
   }
 
   @Post("link/google")
@@ -80,11 +77,10 @@ export class AuthController {
     @Request() request: AuthenticatedRequest,
     @Body() body: GoogleLinkDto,
   ): Promise<LinkedAuthProviderResponse> {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return this.authService.linkGoogle(request.user.sub, body.idToken);
+    return this.authService.linkGoogle(
+      getAuthenticatedUserId(request),
+      body.idToken,
+    );
   }
 
   @Post("link/apple")
@@ -93,11 +89,7 @@ export class AuthController {
     @Request() request: AuthenticatedRequest,
     @Body() body: AppleLoginDto,
   ): Promise<LinkedAuthProviderResponse> {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return this.authService.linkApple(request.user.sub, body);
+    return this.authService.linkApple(getAuthenticatedUserId(request), body);
   }
 
   @Post("link/facebook")
@@ -106,20 +98,15 @@ export class AuthController {
     @Request() request: AuthenticatedRequest,
     @Body() body: FacebookLoginDto,
   ): Promise<LinkedAuthProviderResponse> {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return this.authService.linkFacebook(request.user.sub, body.accessToken);
+    return this.authService.linkFacebook(
+      getAuthenticatedUserId(request),
+      body.accessToken,
+    );
   }
 
   @Get("me")
   @UseGuards(JwtAuthGuard)
   getCurrentUser(@Request() request: AuthenticatedRequest): Promise<AuthUser> {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return this.authService.getCurrentUser(request.user.sub);
+    return this.authService.getCurrentUser(getAuthenticatedUserId(request));
   }
 }

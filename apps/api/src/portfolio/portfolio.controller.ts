@@ -18,7 +18,9 @@ import type {
   PortfolioPositionDto,
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
+import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ListLimitQueryDto } from "../common/dto/list-limit-query.dto";
 import { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
 import { ListPortfolioPerformanceQueryDto } from "./dto/list-portfolio-performance-query.dto";
 import { ListPortfolioQueryDto } from "./dto/list-portfolio-query.dto";
@@ -37,9 +39,11 @@ export class PortfolioController {
   @Get("allocation")
   getAllocation(
     @Request() request: AuthenticatedRequest,
+    @Query() query: ListLimitQueryDto,
   ): Promise<PortfolioAllocationDto> {
     return this.portfolioService.getAllocationForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
+      query.limit,
     );
   }
 
@@ -49,7 +53,7 @@ export class PortfolioController {
     @Query() query: ListPortfolioPerformanceQueryDto,
   ): Promise<PortfolioPerformancePointDto[]> {
     return this.portfolioPerformanceService.getPerformanceForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       query.range,
     );
   }
@@ -60,7 +64,7 @@ export class PortfolioController {
     @Query() query: ListPortfolioQueryDto,
   ): Promise<PortfolioDto> {
     return this.portfolioService.findAllForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       query,
     );
   }
@@ -71,7 +75,7 @@ export class PortfolioController {
     @Body() body: CreatePortfolioPositionDto,
   ): Promise<PortfolioPositionDto> {
     return this.portfolioService.createForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       body,
     );
   }
@@ -83,7 +87,7 @@ export class PortfolioController {
     @Body() body: UpdatePortfolioPositionDto,
   ): Promise<PortfolioPositionDto> {
     return this.portfolioService.updateForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
       body,
     );
@@ -96,16 +100,8 @@ export class PortfolioController {
     @Param("id") id: string,
   ): Promise<void> {
     return this.portfolioService.removeForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
     );
-  }
-
-  private getAuthenticatedUserId(request: AuthenticatedRequest): string {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return request.user.sub;
   }
 }

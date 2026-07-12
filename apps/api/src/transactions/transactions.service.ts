@@ -12,6 +12,7 @@ import type {
 import { Model, Types } from "mongoose";
 import {
   createPaginatedResponse,
+  getPaginationWindow,
   normalizePagination,
 } from "../common/pagination";
 import type { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
@@ -66,14 +67,14 @@ export class TransactionsService {
   ): Promise<PaginatedTransactionsDto> {
     const ownerId = this.toUserObjectId(userId);
     const pagination = normalizePagination(filters);
+    const window = getPaginationWindow(pagination);
     const query = this.buildFindQuery(ownerId, filters);
-    const skip = (pagination.page - 1) * pagination.limit;
     const [totalItems, transactions] = await Promise.all([
       this.portfolioTransactionModel.countDocuments(query).exec(),
       this.portfolioTransactionModel
         .find(query)
         .sort({ transactionDate: -1, createdAt: -1 })
-        .skip(skip)
+        .skip(window.offset)
         .limit(pagination.limit)
         .exec(),
     ]);

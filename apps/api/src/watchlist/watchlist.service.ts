@@ -24,12 +24,20 @@ export class WatchlistService {
     private readonly watchlistItemModel: Model<WatchlistItemDocument>,
   ) {}
 
-  async findAllForUser(userId: string): Promise<WatchlistItemDto[]> {
+  async findAllForUser(
+    userId: string,
+    limit?: number,
+  ): Promise<WatchlistItemDto[]> {
     const ownerId = this.toUserObjectId(userId);
-    const items = await this.watchlistItemModel
+    const query = this.watchlistItemModel
       .find({ userId: ownerId })
-      .sort({ createdAt: -1 })
-      .exec();
+      .sort({ createdAt: -1 });
+
+    if (limit !== undefined) {
+      query.limit(limit);
+    }
+
+    const items = await query.exec();
 
     return items.map((item) => this.toDto(item));
   }

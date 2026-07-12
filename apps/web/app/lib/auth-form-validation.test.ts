@@ -85,6 +85,16 @@ describe("auth form validation", () => {
     expect(validateSignupForm(values)).toEqual({});
   });
 
+  it("accepts signup phone numbers with international access codes and extensions", () => {
+    expect(validateSignupForm({
+      email: "andrii@example.com",
+      nickname: "andrii",
+      phoneNumber: "0048 500 111 222 ext 77",
+      password: "password123",
+      confirmPassword: "password123",
+    })).toEqual({});
+  });
+
   it("accepts a valid signup form", () => {
     const errors = validateSignupForm({
       email: "andrii@example.com",

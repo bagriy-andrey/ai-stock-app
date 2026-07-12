@@ -1,4 +1,6 @@
+import { UnauthorizedException } from "@nestjs/common";
 import type { UserDto } from "@ai-stock-advisor/shared";
+import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import type { UsersService } from "../users/users.service";
 import type { ProfileAvatarStorageService } from "./profile-avatar-storage.service";
 import { ProfileController } from "./profile.controller";
@@ -97,5 +99,17 @@ describe("ProfileController", () => {
 
     expect(usersService.updateAvatar).toHaveBeenCalledWith(user.id);
     expect(avatarStorage.remove).toHaveBeenCalledWith(user.avatarUrl);
+  });
+
+  it("rejects requests without an authenticated user payload", () => {
+    const unauthenticatedRequest: AuthenticatedRequest = {
+      headers: {},
+    };
+
+    expect(() => controller.getProfile(unauthenticatedRequest)).toThrow(
+      new UnauthorizedException(
+        "Authenticated request is missing user payload",
+      ),
+    );
   });
 });
