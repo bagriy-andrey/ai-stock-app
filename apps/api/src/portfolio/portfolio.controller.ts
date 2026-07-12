@@ -20,6 +20,7 @@ import type {
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ListLimitQueryDto } from "../common/dto/list-limit-query.dto";
 import { CreatePortfolioPositionDto } from "./dto/create-portfolio-position.dto";
 import { ListPortfolioPerformanceQueryDto } from "./dto/list-portfolio-performance-query.dto";
 import { ListPortfolioQueryDto } from "./dto/list-portfolio-query.dto";
@@ -38,9 +39,11 @@ export class PortfolioController {
   @Get("allocation")
   getAllocation(
     @Request() request: AuthenticatedRequest,
+    @Query() query: ListLimitQueryDto,
   ): Promise<PortfolioAllocationDto> {
     return this.portfolioService.getAllocationForUser(
       getAuthenticatedUserId(request),
+      query.limit,
     );
   }
 

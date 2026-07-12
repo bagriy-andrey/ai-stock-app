@@ -115,7 +115,10 @@ export class PortfolioService implements OnModuleInit {
     };
   }
 
-  async getAllocationForUser(userId: string): Promise<PortfolioAllocationDto> {
+  async getAllocationForUser(
+    userId: string,
+    limit: number = allocationTopPositionsLimit,
+  ): Promise<PortfolioAllocationDto> {
     const valuedPositions = await this.getValuedOpenPositionsForUser(userId);
     const sortedPositions = [...valuedPositions].sort(
       (left, right) => right.currentValue - left.currentValue,
@@ -132,8 +135,8 @@ export class PortfolioService implements OnModuleInit {
       };
     }
 
-    const topPositions = sortedPositions.slice(0, allocationTopPositionsLimit);
-    const remainingPositions = sortedPositions.slice(allocationTopPositionsLimit);
+    const topPositions = sortedPositions.slice(0, limit);
+    const remainingPositions = sortedPositions.slice(limit);
     const allocations = topPositions.map((position) =>
       this.toAllocationItem(position.ticker, position.currentValue, totalPortfolioValue),
     );

@@ -6,6 +6,7 @@ import {
   HttpCode,
   Param,
   Post,
+  Query,
   Request,
   UseGuards,
 } from "@nestjs/common";
@@ -13,6 +14,7 @@ import type { WatchlistItemDto } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
+import { ListLimitQueryDto } from "../common/dto/list-limit-query.dto";
 import { CreateWatchlistItemDto } from "./dto/create-watchlist-item.dto";
 import { WatchlistService } from "./watchlist.service";
 
@@ -24,8 +26,12 @@ export class WatchlistController {
   @Get()
   getWatchlist(
     @Request() request: AuthenticatedRequest,
+    @Query() query: ListLimitQueryDto,
   ): Promise<WatchlistItemDto[]> {
-    return this.watchlistService.findAllForUser(getAuthenticatedUserId(request));
+    return this.watchlistService.findAllForUser(
+      getAuthenticatedUserId(request),
+      query.limit,
+    );
   }
 
   @Post()

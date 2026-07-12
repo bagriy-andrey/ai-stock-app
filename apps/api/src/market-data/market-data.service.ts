@@ -170,12 +170,22 @@ export class MarketDataService {
     };
   }
 
-  getMarketMovers(): Promise<MarketMoversResponse> {
-    return this.cache.getOrSet(
+  async getMarketMovers(limit?: number): Promise<MarketMoversResponse> {
+    const marketMovers = await this.cache.getOrSet(
       "market-data:market-movers",
       MARKET_MOVERS_TTL_MS,
       () => this.marketMoversProvider.getMarketMovers(),
     );
+
+    if (limit === undefined) {
+      return marketMovers;
+    }
+
+    return {
+      ...marketMovers,
+      gainers: marketMovers.gainers.slice(0, limit),
+      losers: marketMovers.losers.slice(0, limit),
+    };
   }
 
   private normalizeTicker(ticker: string): string {
