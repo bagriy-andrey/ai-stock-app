@@ -672,6 +672,55 @@ describe("AuthService", () => {
     );
   });
 
+  it("logs in with phone number using an international access code", async () => {
+    const user = {
+      id: "user-id",
+      email: "test@example.com",
+      emailVerified: false,
+      name: "andrey",
+      nickname: "andrey",
+      phoneNumber: "+48500111222",
+      phoneVerified: false,
+      authProviders: {
+        google: false,
+        email: true,
+        apple: false,
+        facebook: false,
+        phone: true,
+      },
+      twoFactorEnabled: false,
+      twoFactorMethod: null,
+      language: "en" as const,
+      createdAt: "2026-06-02T09:00:00.000Z",
+      updatedAt: "2026-06-02T09:00:00.000Z",
+      passwordHash: "$2b$12$password-hash",
+    };
+    usersService.findByEmailOrNicknameForLogin.mockResolvedValue(user);
+    passwordHashingService.verifyPassword.mockResolvedValue(true);
+    jwtService.signAsync.mockResolvedValue("app-jwt");
+    const service = new AuthService(
+      usersService as unknown as UsersService,
+      jwtService as unknown as JwtService,
+      googleAuthService as unknown as GoogleAuthService,
+      passwordHashingService as unknown as PasswordHashingService,
+    );
+
+    await expect(
+      service.loginWithEmail({
+        identifier: "0048 500 111 222 ext 7",
+        password: "StrongPassword123",
+      }),
+    ).resolves.toMatchObject({
+      user: {
+        phoneNumber: "+48500111222",
+        phoneVerified: false,
+      },
+    });
+    expect(usersService.findByEmailOrNicknameForLogin).toHaveBeenCalledWith(
+      "0048 500 111 222 ext 7",
+    );
+  });
+
   it("rejects invalid passwords with a generic authentication error", async () => {
     usersService.findByEmailOrNicknameForLogin.mockResolvedValue({
       id: "user-id",

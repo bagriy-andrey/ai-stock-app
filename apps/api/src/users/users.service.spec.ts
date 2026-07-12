@@ -888,6 +888,40 @@ describe("UsersService", () => {
     expect(phoneSelect).toHaveBeenCalledWith("+passwordHash");
   });
 
+  it("looks up login credentials by phone with access code and extension", async () => {
+    const phoneSelect = jest.fn().mockReturnValue({
+      exec: jest
+        .fn<Promise<UserDocument | null>, []>()
+        .mockResolvedValue({
+          ...userDocument,
+          email: "user@example.com",
+          nickname: "andrey",
+          phoneNumber: "+48500111222",
+          passwordHash: "$2b$12$password-hash",
+          authProviders: {
+            google: false,
+            email: true,
+            apple: false,
+            facebook: false,
+            phone: true,
+          },
+        } as unknown as UserDocument),
+    });
+    userModel.findOne.mockReturnValue({ select: phoneSelect });
+
+    await expect(
+      service.findByEmailOrNicknameForLogin("0048 500 111 222 x9"),
+    ).resolves.toMatchObject({
+      phoneNumber: "+48500111222",
+      passwordHash: "$2b$12$password-hash",
+    });
+    expect(userModel.findOne).toHaveBeenCalledTimes(1);
+    expect(userModel.findOne).toHaveBeenCalledWith({
+      phoneNumber: "+48500111222",
+    });
+    expect(phoneSelect).toHaveBeenCalledWith("+passwordHash");
+  });
+
   it("returns null when login email and nickname lookups miss", async () => {
     const select = jest.fn().mockReturnValue({
       exec: jest.fn<Promise<UserDocument | null>, []>().mockResolvedValue(null),

@@ -11,6 +11,7 @@ import {
 } from "@nestjs/common";
 import type { WatchlistItemDto } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
+import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CreateWatchlistItemDto } from "./dto/create-watchlist-item.dto";
 import { WatchlistService } from "./watchlist.service";
@@ -24,7 +25,7 @@ export class WatchlistController {
   getWatchlist(
     @Request() request: AuthenticatedRequest,
   ): Promise<WatchlistItemDto[]> {
-    return this.watchlistService.findAllForUser(this.getAuthenticatedUserId(request));
+    return this.watchlistService.findAllForUser(getAuthenticatedUserId(request));
   }
 
   @Post()
@@ -33,7 +34,7 @@ export class WatchlistController {
     @Body() body: CreateWatchlistItemDto,
   ): Promise<WatchlistItemDto> {
     return this.watchlistService.addForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       body,
     );
   }
@@ -45,16 +46,8 @@ export class WatchlistController {
     @Param("id") id: string,
   ): Promise<void> {
     return this.watchlistService.removeForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
     );
-  }
-
-  private getAuthenticatedUserId(request: AuthenticatedRequest): string {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return request.user.sub;
   }
 }

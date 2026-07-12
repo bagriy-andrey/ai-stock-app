@@ -1,3 +1,4 @@
+import { UnauthorizedException } from "@nestjs/common";
 import type { UserDto } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
 import { UsersController } from "./users.controller";
@@ -56,7 +57,9 @@ describe("UsersController", () => {
     };
 
     expect(() => controller.getCurrentUser(request)).toThrow(
-      "Authenticated request is missing user payload",
+      new UnauthorizedException(
+        "Authenticated request is missing user payload",
+      ),
     );
   });
 });

@@ -16,6 +16,7 @@ import type {
   PortfolioTransactionDto,
 } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
+import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { CreatePortfolioTransactionDto } from "./dto/create-portfolio-transaction.dto";
 import { ListTransactionsQueryDto } from "./dto/list-transactions-query.dto";
@@ -33,7 +34,7 @@ export class TransactionsController {
     @Query() query: ListTransactionsQueryDto,
   ): Promise<PaginatedTransactionsDto> {
     return this.transactionsService.findPageForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       query,
     );
   }
@@ -44,7 +45,7 @@ export class TransactionsController {
     @Param("id") id: string,
   ): Promise<PortfolioTransactionDto> {
     return this.transactionsService.findOneForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
     );
   }
@@ -55,7 +56,7 @@ export class TransactionsController {
     @Body() body: CreatePortfolioTransactionDto,
   ): Promise<PortfolioTransactionDto> {
     return this.transactionsService.createForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       body,
     );
   }
@@ -67,7 +68,7 @@ export class TransactionsController {
     @Body() body: UpdatePortfolioTransactionDto,
   ): Promise<PortfolioTransactionDto> {
     return this.transactionsService.updateForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
       body,
     );
@@ -80,16 +81,8 @@ export class TransactionsController {
     @Param("id") id: string,
   ): Promise<void> {
     return this.transactionsService.removeForUser(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       id,
     );
-  }
-
-  private getAuthenticatedUserId(request: AuthenticatedRequest): string {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return request.user.sub;
   }
 }

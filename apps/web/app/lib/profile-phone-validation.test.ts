@@ -10,6 +10,12 @@ describe("profile phone validation", () => {
     );
   });
 
+  it("normalizes profile phone numbers with an international access code and extension", () => {
+    expect(normalizeOptionalProfilePhoneNumber("0048 500 111 222 x55")).toBe(
+      "+48500111222",
+    );
+  });
+
   it("uses null to clear empty profile phone numbers", () => {
     expect(normalizeOptionalProfilePhoneNumber("  ")).toBeNull();
   });

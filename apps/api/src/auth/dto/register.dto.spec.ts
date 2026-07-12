@@ -27,6 +27,18 @@ describe("RegisterDto", () => {
     expect(dto.phoneNumber).toBe("+48500111222");
   });
 
+  it("normalizes optional phone numbers with access code and extension", async () => {
+    const dto = plainToInstance(RegisterDto, {
+      email: "user@example.com",
+      nickname: "andrey",
+      phoneNumber: " 0048 500 111 222 ext 12 ",
+      password: "StrongPassword123",
+    });
+
+    await expect(validate(dto)).resolves.toEqual([]);
+    expect(dto.phoneNumber).toBe("+48500111222");
+  });
+
   it("rejects invalid email and short password", async () => {
     const dto = plainToInstance(RegisterDto, {
       email: "invalid",

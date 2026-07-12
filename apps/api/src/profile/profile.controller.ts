@@ -13,6 +13,7 @@ import {
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { UserDto } from "@ai-stock-advisor/shared";
 import type { AuthenticatedRequest } from "../auth/authenticated-request";
+import { getAuthenticatedUserId } from "../auth/get-authenticated-user-id";
 import { JwtAuthGuard } from "../auth/guards/jwt-auth.guard";
 import { UsersService } from "../users/users.service";
 import { UpdateProfileDto } from "./dto/update-profile.dto";
@@ -32,7 +33,7 @@ export class ProfileController {
 
   @Get()
   getProfile(@Request() request: AuthenticatedRequest): Promise<UserDto> {
-    return this.usersService.findById(this.getAuthenticatedUserId(request));
+    return this.usersService.findById(getAuthenticatedUserId(request));
   }
 
   @Patch()
@@ -41,7 +42,7 @@ export class ProfileController {
     @Body() body: UpdateProfileDto,
   ): Promise<UserDto> {
     return this.usersService.updateProfile(
-      this.getAuthenticatedUserId(request),
+      getAuthenticatedUserId(request),
       body,
     );
   }
@@ -56,7 +57,7 @@ export class ProfileController {
     @Request() request: AuthenticatedRequest,
     @UploadedFile() file: UploadedAvatarFile | undefined,
   ): Promise<UserDto> {
-    const userId = this.getAuthenticatedUserId(request);
+    const userId = getAuthenticatedUserId(request);
     const currentProfile = await this.usersService.findById(userId);
     const avatarUrl = await this.avatarStorage.save(file);
 
@@ -74,18 +75,10 @@ export class ProfileController {
   async deleteAvatar(
     @Request() request: AuthenticatedRequest,
   ): Promise<UserDto> {
-    const userId = this.getAuthenticatedUserId(request);
+    const userId = getAuthenticatedUserId(request);
     const currentProfile = await this.usersService.findById(userId);
     const profile = await this.usersService.updateAvatar(userId);
     await this.avatarStorage.remove(currentProfile.avatarUrl);
     return profile;
-  }
-
-  private getAuthenticatedUserId(request: AuthenticatedRequest): string {
-    if (!request.user) {
-      throw new Error("Authenticated request is missing user payload");
-    }
-
-    return request.user.sub;
   }
 }
