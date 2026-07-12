@@ -15,7 +15,9 @@ import type {
 } from "@ai-stock-advisor/shared";
 import { Model, Types } from "mongoose";
 import {
-  paginateItems,
+  createPaginatedResponse,
+  getPaginationWindow,
+  normalizePagination,
   type PaginationOptions,
 } from "../common/pagination";
 import { MarketDataService } from "../market-data/market-data.service";
@@ -98,7 +100,13 @@ export class PortfolioService implements OnModuleInit {
     paginationOptions: PaginationOptions = {},
   ): Promise<PortfolioDto> {
     const valuedPositions = await this.getValuedOpenPositionsForUser(userId);
-    const paginatedPositions = paginateItems(valuedPositions, paginationOptions);
+    const pagination = normalizePagination(paginationOptions);
+    const window = getPaginationWindow(pagination);
+    const paginatedPositions = createPaginatedResponse(
+      valuedPositions.slice(window.offset, window.endIndex),
+      valuedPositions.length,
+      pagination,
+    );
 
     return {
       items: paginatedPositions.items,

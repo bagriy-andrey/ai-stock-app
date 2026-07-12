@@ -15,6 +15,11 @@ export interface NormalizedPagination {
   limit: number;
 }
 
+export interface PaginationWindow {
+  offset: number;
+  endIndex: number;
+}
+
 export function normalizePagination(
   options: PaginationOptions = {},
 ): NormalizedPagination {
@@ -52,6 +57,17 @@ export function createPaginationMeta(
   };
 }
 
+export function getPaginationWindow(
+  pagination: NormalizedPagination,
+): PaginationWindow {
+  const offset = (pagination.page - 1) * pagination.limit;
+
+  return {
+    offset,
+    endIndex: offset + pagination.limit,
+  };
+}
+
 export function createPaginatedResponse<T>(
   items: T[],
   totalItems: number,
@@ -68,10 +84,10 @@ export function paginateItems<T>(
   options: PaginationOptions = {},
 ): PaginatedResponseDto<T> {
   const pagination = normalizePagination(options);
-  const startIndex = (pagination.page - 1) * pagination.limit;
+  const window = getPaginationWindow(pagination);
 
   return createPaginatedResponse(
-    items.slice(startIndex, startIndex + pagination.limit),
+    items.slice(window.offset, window.endIndex),
     items.length,
     pagination,
   );
